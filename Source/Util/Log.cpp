@@ -28,3 +28,8 @@ void Log::setInstance(Log *inst)
 {
 	logInstance = inst;
 }
+
+Log *Log::getInstance()
+{
+	return logInstance;
+}

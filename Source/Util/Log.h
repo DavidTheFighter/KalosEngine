@@ -14,6 +14,7 @@ public:
 
 	static std::shared_ptr<spdlog::logger> get();
 	static void setInstance(Log *inst);
+	static Log *getInstance();
 
 private:
 	static Log *logInstance;
