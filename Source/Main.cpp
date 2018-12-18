@@ -6,16 +6,14 @@
 #include <GLFW/glfw3.h>
 #include <assimp/version.h>
 #include <lodepng.h>
-#include <Resources/FileLoader.h>
+
+#include <Game/EventHandler.h>
+#include <Game/KalosEngine.h>
 
 #include <RendererCore/RendererCore.h>
+#include <Resources/FileLoader.h>
 
 void printEnvironment(std::vector<std::string> launchArgs);
-
-typedef struct
-{
-	
-} Jef;
 
 int main(int argc, char *argv[])
 {
@@ -48,49 +46,60 @@ int main(int argc, char *argv[])
 	std::string workdingDir = std::string(getenv("DEV_WORKING_DIR")) + "/";
 
 	// Initialize the singletons
+	EventHandler::setInstance(new EventHandler());
 	FileLoader::setInstance(new FileLoader());
 	FileLoader::instance()->setWorkingDir(workdingDir);
 
-	RendererBackend rendererBackend = Renderer::chooseRendererBackend(launchArgs);
+	RendererBackend rendererBackend = RendererCore::chooseRendererBackend(launchArgs);
 
 	switch (rendererBackend)
 	{
-	case RENDERER_BACKEND_VULKAN:
-	case RENDERER_BACKEND_D3D12:
-	{
-		glfwInit();
+		case RENDERER_BACKEND_VULKAN:
+		case RENDERER_BACKEND_D3D12:
+		{
+			glfwInit();
 
-		break;
+			break;
+		}
+		default:
+			break;
 	}
-	default:
-		break;
-	}
+
+	KalosEngine *engine = new KalosEngine(launchArgs, rendererBackend, 60);
 
 	Log::get()->info("Completed startup");
 
-	system("pause");
+	do
+	{
+		engine->handleEvents();
+		engine->update();
+		engine->render();
+	} while (engine->isRunning());
 
 	Log::get()->info("Beginning shutdown");
 
 	// Delete the singletons
+	delete EventHandler::instance();
 	delete FileLoader::instance();
 
 	switch (rendererBackend)
 	{
-	case RENDERER_BACKEND_VULKAN:
-	case RENDERER_BACKEND_D3D12:
-	{
-		glfwTerminate();
+		case RENDERER_BACKEND_VULKAN:
+		case RENDERER_BACKEND_D3D12:
+		{
+			glfwTerminate();
 
-		break;
+			break;
+		}
+		default:
+			break;
 	}
-	default:
-		break;
-	}
+
+	delete engine;
 
 	Log::get()->info("Completed graceful shutdown");
 
-	system("pause");
+	delete Log::getInstance();
 
 	return 0;
 }

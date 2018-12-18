@@ -26,6 +26,8 @@
 
 #define GLFW_DOUBLE_PRESS 3
 
+#define RENDER_DEBUG_MARKERS 1
+
 #ifndef M_PI
 #define M_PI 3.1415926535897932384
 #endif

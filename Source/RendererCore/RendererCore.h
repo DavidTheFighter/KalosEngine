@@ -15,12 +15,12 @@ typedef struct RendererAllocInfo
 		Window* mainWindow;
 } RendererAllocInfo;
 
-class Renderer
+class RendererCore
 {
 	public:
 
-		Renderer ();
-		virtual ~Renderer ();
+	RendererCore();
+		virtual ~RendererCore();
 
 		/*
 		 * Initializes the renderer.
@@ -85,7 +85,7 @@ class Renderer
 		virtual void destroyFence (Fence fence) = 0;
 		virtual void destroySemaphore (Semaphore sem) = 0;
 
-#if SE_RENDER_DEBUG_MARKERS
+#if RENDER_DEBUG_MARKERS
 		virtual void setObjectDebugName (void *obj, RendererObjectType objType, const std::string &name) = 0;
 #else
 		inline void setObjectDebugName (void *obj, RendererObjectType objType, const std::string &name) {};
@@ -103,7 +103,7 @@ class Renderer
 		virtual void setSwapchainTexture (Window *wnd, TextureView texView, Sampler sampler, TextureLayout layout) = 0;
 
 		static RendererBackend chooseRendererBackend (const std::vector<std::string>& launchArgs);
-		static Renderer* allocateRenderer (const RendererAllocInfo& allocInfo);
+		static RendererCore* allocateRenderer (const RendererAllocInfo& allocInfo);
 };
 
 #endif /* RENDERING_RENDERER_H_ */
