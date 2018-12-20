@@ -22,11 +22,6 @@ class RendererCore
 	RendererCore();
 		virtual ~RendererCore();
 
-		/*
-		 * Initializes the renderer.
-		 */
-		virtual void initRenderer () = 0;
-
 		virtual CommandPool createCommandPool (QueueType queue, CommandPoolFlags flags) = 0;
 
 		virtual void submitToQueue (QueueType queue, const std::vector<CommandBuffer> &cmdBuffers, const std::vector<Semaphore> &waitSemaphores = {}, const std::vector<PipelineStageFlags> &waitSemaphoreStages = {}, const std::vector<Semaphore> &signalSemaphores = {}, Fence fence = nullptr) = 0;

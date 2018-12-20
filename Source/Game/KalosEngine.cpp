@@ -16,8 +16,14 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 	
 	mainWindow = std::unique_ptr<Window>(new Window(rendererBackendType));
 	mainWindow->initWindow(0, 0, APP_NAME);
-}
 
+	RendererAllocInfo renderAlloc = {};
+	renderAlloc.backend = rendererBackendType;
+	renderAlloc.launchArgs = launchArgs;
+	renderAlloc.mainWindow = mainWindow.get();
+
+	renderer = std::unique_ptr<RendererCore>(RendererCore::allocateRenderer(renderAlloc));
+}
 
 KalosEngine::~KalosEngine()
 {

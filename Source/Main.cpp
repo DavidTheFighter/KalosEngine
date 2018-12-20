@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 		launchArgs.push_back(argv[i]);
 	}
 
-	if (false)
+	if (true)
 	{
 		launchArgs.push_back("-force_vulkan");
 		launchArgs.push_back("-enable_vulkan_layers");
@@ -43,12 +43,14 @@ int main(int argc, char *argv[])
 
 	printEnvironment(launchArgs);
 
-	std::string workdingDir = std::string(getenv("DEV_WORKING_DIR")) + "/";
+	std::string workingDir = std::string(getenv("DEV_WORKING_DIR")) + "/";
+
+	Log::get()->info("Current working directory: {}", workingDir);
 
 	// Initialize the singletons
 	EventHandler::setInstance(new EventHandler());
 	FileLoader::setInstance(new FileLoader());
-	FileLoader::instance()->setWorkingDir(workdingDir);
+	FileLoader::instance()->setWorkingDir(workingDir);
 
 	RendererBackend rendererBackend = RendererCore::chooseRendererBackend(launchArgs);
 

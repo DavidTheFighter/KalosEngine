@@ -1,5 +1,5 @@
 #include "RendererCore/RendererCore.h"
-//#include <Rendering/Vulkan/VulkanRenderer.h>
+#include <RendererCore/Vulkan/VulkanRenderer.h>
 //#include <Rendering/D3D12/D3D12Renderer.h>
 
 RendererCore::RendererCore()
@@ -41,7 +41,7 @@ RendererCore* RendererCore::allocateRenderer (const RendererAllocInfo& allocInfo
 		{
 			Log::get()->info("Allocating renderer w/ Vulkan backend");
 
-			RendererCore *renderer = nullptr;// new VulkanRenderer(allocInfo);
+			RendererCore *renderer = new VulkanRenderer(allocInfo);
 
 			return renderer;
 		}

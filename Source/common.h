@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <fstream>
 
 #include <stdlib.h>
 
@@ -37,6 +38,8 @@
 #define M_TAU M_2PI
 
 #include <Util/Log.h>
+
+#define DEBUG_ASSERT(x) if (!(x)) { Log::get()->error("Assertion \"{}\" failed @ file \"{}\", line {}", #x, __FILE__, __LINE__); system("pause"); }
 
 /*
 Converts a UTF8 string into a UTF16 string (std::string to std::wstring)
@@ -113,6 +116,11 @@ inline std::wstring utf8_to_utf16(const std::string& utf8)
 	return utf16;
 }
 
+inline size_t stringHash(const std::string &str)
+{
+	return std::hash<std::string> {} (str);
+}
+
 /*
 Converts a value to a string, uses std::stringstream
 */
@@ -137,6 +145,36 @@ template<typename T0>
 inline void appendVector(std::vector<T0> &to, const std::vector<T0> &vectorToBeAppended)
 {
 	to.insert(to.end(), vectorToBeAppended.begin(), vectorToBeAppended.end());
+}
+
+inline void writeFileCharData(const std::string &filename, const std::vector<char> &data)
+{
+	std::ofstream file(filename, std::ios::out | std::ios::binary);
+
+	if (!file.is_open())
+	{
+		Log::get()->error("Failed to open file: {} for writing", filename);
+
+		//throw std::runtime_error("failed to open file for writing!");
+	}
+
+	file.write(reinterpret_cast<const char*> (data.data()), data.size());
+	file.close();
+}
+
+inline void writeFileStr(const std::string &filename, const std::string &data)
+{
+	std::ofstream file(filename, std::ios::out | std::ios::binary);
+
+	if (!file.is_open())
+	{
+		Log::get()->error("Failed to open file: {} for writing", filename);
+
+		//throw std::runtime_error("failed to open file for writing!");
+	}
+
+	file.write(data.c_str(), data.length());
+	file.close();
 }
 
 /*
