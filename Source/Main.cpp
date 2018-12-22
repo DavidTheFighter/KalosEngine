@@ -103,12 +103,19 @@ int main(int argc, char *argv[])
 
 	delete Log::getInstance();
 
+	system("pause");
+
 	return 0;
 }
 
 void printEnvironment(std::vector<std::string> launchArgs)
 {
-	Log::get()->info("Starting {} {}.{}.{} w/ launch args", ENGINE_NAME, ENGINE_VERSION_MAJOR, ENGINE_VERSION_MINOR, ENGINE_VERSION_REVISION);
+	std::string launchArgsStr = "";
+
+	for (size_t i = 0; i < launchArgs.size(); i++)
+		launchArgsStr += launchArgs[i] + (i < launchArgs.size() - 1 ? ", " : "");
+
+	Log::get()->info("Starting {} {}.{}.{} w/ launch args: {}", ENGINE_NAME, ENGINE_VERSION_MAJOR, ENGINE_VERSION_MINOR, ENGINE_VERSION_REVISION, launchArgsStr);
 
 	std::string osString = "";
 

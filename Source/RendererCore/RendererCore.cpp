@@ -1,6 +1,7 @@
-#include "RendererCore/RendererCore.h"
+#include "RendererCore/RendererCore.h"]
+
 #include <RendererCore/Vulkan/VulkanRenderer.h>
-//#include <Rendering/D3D12/D3D12Renderer.h>
+#include <RendererCore/D3D12/D3D12Renderer.h>
 
 RendererCore::RendererCore()
 {
@@ -50,7 +51,7 @@ RendererCore* RendererCore::allocateRenderer (const RendererAllocInfo& allocInfo
 		{
 			Log::get()->info("Allocating rednerer w/ D3D12 backend\n");
 
-			RendererCore *renderer = nullptr;// new D3D12Renderer(allocInfo);
+			RendererCore *renderer = new D3D12Renderer(allocInfo);
 
 			return renderer;
 		}

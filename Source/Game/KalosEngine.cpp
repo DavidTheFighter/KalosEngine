@@ -27,6 +27,8 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 
 KalosEngine::~KalosEngine()
 {
+	renderer->waitForDeviceIdle();
+
 	while (!gameStates.empty())
 	{
 		gameStates.back()->destroy();
@@ -103,6 +105,10 @@ void KalosEngine::render()
 {
 	if (!gameStates.empty())
 		gameStates.back()->render();
+
+	renderer->waitForQueueIdle(QUEUE_TYPE_GRAPHICS);
+
+	renderer->presentToSwapchain(mainWindow.get());
 }
 
 void KalosEngine::changeState(GameState *state)

@@ -180,7 +180,7 @@ inline std::string getVkVendorString (uint32_t vendor)
 {								\
 	VkResult res = (f);			\
 	if (res != VK_SUCCESS) {		\
-		Log::get()->error("VkResult is \"{}\" in file \"{}\", at line {}", getVkResultString(res).c_str(), __FILE__, __LINE__); \
+		Log::get()->error("Vulkan Error: VkResult is \"{}\" in file \"{}\", at line {}", getVkResultString(res).c_str(), __FILE__, __LINE__); \
 		system("pause");/*throw std::runtime_error("vulkan error");*/	\
 	}								\
 }									\
