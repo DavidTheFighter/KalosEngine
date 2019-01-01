@@ -4,7 +4,11 @@
 #include <RendererCore/D3D12/D3D12DescriptorPool.h>
 #include <RendererCore/D3D12/D3D12Objects.h>
 #include <RendererCore/D3D12/D3D12Enums.h>
+
 #include <RendererCore/D3D12/D3D12SwapchainHandler.h>
+#include <RendererCore/D3D12/D3D12PipelineHelper.h>
+
+#include <Resources/FileLoader.h>
 
 D3D12Renderer::D3D12Renderer(const RendererAllocInfo& allocInfo)
 {
@@ -74,6 +78,8 @@ D3D12Renderer::D3D12Renderer(const RendererAllocInfo& allocInfo)
 
 	swapchainHandler = new D3D12SwapchainHandler(this);
 	initSwapchain(allocInfo.mainWindow);
+
+	pipelineHelper = std::unique_ptr<D3D12PipelineHelper>(new D3D12PipelineHelper(this));
 }
 
 D3D12Renderer::~D3D12Renderer()
@@ -190,44 +196,62 @@ void D3D12Renderer::writeDescriptorSets(const std::vector<DescriptorWriteInfo>& 
 {
 }
 
-RenderPass D3D12Renderer::createRenderPass(const std::vector<AttachmentDescription>& attachments, const std::vector<SubpassDescription>& subpasses, const std::vector<SubpassDependency>& dependencies)
+RenderGraph D3D12Renderer::createRenderGraph()
 {
-	D3D12RenderPass *renderPass = new D3D12RenderPass();
-
-	return renderPass;
+	return nullptr;
 }
 
-Framebuffer D3D12Renderer::createFramebuffer(RenderPass renderPass, const std::vector<TextureView>& attachments, uint32_t width, uint32_t height, uint32_t layers)
+ShaderModule D3D12Renderer::createShaderModule(const std::string &file, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint)
 {
-	D3D12Framebuffer *framebuffer = new D3D12Framebuffer();
+	std::string source = FileLoader::instance()->readFile(file);
 
-	return framebuffer;
-}
+	size_t i = file.find("/shaders/");
 
-ShaderModule D3D12Renderer::createShaderModule(const std::string & file, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint)
-{
-	D3D12ShaderModule *shaderModule = new D3D12ShaderModule();
+	std::string debugMarkerName = file;
 
-	return shaderModule;
+	if (i != file.npos)
+		debugMarkerName = ".../" + file.substr(i + 9);
+
+	return createShaderModuleFromSource(source, debugMarkerName, stage, sourceLang, entryPoint);
 }
 
 ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string & source, const std::string & referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint)
 {
 	D3D12ShaderModule *shaderModule = new D3D12ShaderModule();
+	ID3DBlob *blob = nullptr, *errorBuf = nullptr;
+
+	HRESULT hr = D3DCompile(source.data(), source.size(), referenceName.c_str(), nullptr, nullptr, entryPoint.c_str(), shaderStageFlagBitsToD3D12CompilerTargetStr(stage).c_str(), D3DCOMPILE_DEBUG | D3DCOMPILE_ALL_RESOURCES_BOUND | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &blob, &errorBuf);
+
+	if (FAILED(hr))
+	{
+		Log::get()->error("D3D12 failed to compile a shader, error msg: {}", std::string((char*) errorBuf->GetBufferPointer()));
+		throw std::runtime_error("d3d12 shader compile error");
+	}
+
+	shaderModule->shaderBytecode = std::unique_ptr<char>(new char[blob->GetBufferSize()]);
+	memcpy(shaderModule->shaderBytecode.get(), blob->GetBufferPointer(), blob->GetBufferSize());
+
+	shaderModule->shaderBytecodeLength = blob->GetBufferSize();
+	shaderModule->stage = stage;
+
+	blob->Release();
+
+	if (errorBuf != nullptr)
+		errorBuf->Release();
 
 	return shaderModule;
 }
 
 Pipeline D3D12Renderer::createGraphicsPipeline(const GraphicsPipelineInfo & pipelineInfo, RenderPass renderPass, uint32_t subpass)
 {
-	D3D12Pipeline *pipeline = new D3D12Pipeline();
-
-	return pipeline;
+	return pipelineHelper->createGraphicsPipeline(pipelineInfo, renderPass, subpass);
 }
 
 Pipeline D3D12Renderer::createComputePipeline(const ComputePipelineInfo &pipelineInfo)
 {
 	D3D12Pipeline *pipeline = new D3D12Pipeline();
+
+
 
 	return pipeline;
 }
@@ -322,6 +346,8 @@ Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, Textu
 TextureView D3D12Renderer::createTextureView(Texture texture, TextureViewType viewType, TextureSubresourceRange subresourceRange, ResourceFormat viewFormat)
 {
 	D3D12TextureView *textureView = new D3D12TextureView();
+	textureView->parentTexture = texture;
+	textureView->parentTextureResource = static_cast<D3D12Texture*>(texture)->textureResource;
 
 	return textureView;
 }
@@ -329,6 +355,19 @@ TextureView D3D12Renderer::createTextureView(Texture texture, TextureViewType vi
 Sampler D3D12Renderer::createSampler(SamplerAddressMode addressMode, SamplerFilter minFilter, SamplerFilter magFilter, float anisotropy, svec3 min_max_biasLod, SamplerMipmapMode mipmapMode)
 {
 	D3D12Sampler *sampler = new D3D12Sampler();
+
+	D3D12_SAMPLER_DESC samplerDesc = {};
+	samplerDesc.Filter = samplerFilterToD3D12Filter(minFilter, magFilter, mipmapMode);
+	samplerDesc.AddressU = samplerAddressModeToD3D12TextureAddressMode(addressMode);
+	samplerDesc.AddressV = samplerAddressModeToD3D12TextureAddressMode(addressMode);
+	samplerDesc.AddressW = samplerAddressModeToD3D12TextureAddressMode(addressMode);
+	samplerDesc.MipLODBias = min_max_biasLod.z;
+	samplerDesc.MaxAnisotropy = UINT(anisotropy);
+	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+	samplerDesc.BorderColor[0] = samplerDesc.BorderColor[1] = samplerDesc.BorderColor[2] = 0.0f;
+	samplerDesc.BorderColor[3] = 1.0f;
+	samplerDesc.MinLOD = min_max_biasLod.x;
+	samplerDesc.MaxLOD = min_max_biasLod.y;
 
 	return sampler;
 }
@@ -452,37 +491,27 @@ void D3D12Renderer::unmapStagingBuffer(StagingBuffer stagingBuffer)
 
 void D3D12Renderer::destroyCommandPool(CommandPool pool)
 {
-	D3D12CommandPool *d3d12Pool = static_cast<D3D12CommandPool*>(pool);
-
-	delete d3d12Pool;
+	delete static_cast<D3D12CommandPool*>(pool);
 }
 
-void D3D12Renderer::destroyRenderPass(RenderPass renderPass)
+void D3D12Renderer::destroyRenderGraph(RenderGraph &graph)
 {
-	D3D12RenderPass *d3d12RenderPass = static_cast<D3D12RenderPass*>(renderPass);
-
-	delete d3d12RenderPass;
-}
-
-void D3D12Renderer::destroyFramebuffer(Framebuffer framebuffer)
-{
-	D3D12Framebuffer *d3d12Framebuffer = static_cast<D3D12Framebuffer*>(framebuffer);
-
-	delete d3d12Framebuffer;
+	delete graph;
+	graph = nullptr;
 }
 
 void D3D12Renderer::destroyPipeline(Pipeline pipeline)
 {
 	D3D12Pipeline *d3d12Pipeline = static_cast<D3D12Pipeline*>(pipeline);
+	d3d12Pipeline->pipeline->Release();
+	d3d12Pipeline->rootSignature->Release();
 
 	delete d3d12Pipeline;
 }
 
 void D3D12Renderer::destroyShaderModule(ShaderModule module)
 {
-	D3D12ShaderModule *d3d12Module = static_cast<D3D12ShaderModule*>(module);
-
-	delete d3d12Module;
+	delete static_cast<D3D12ShaderModule*>(module);
 }
 
 void D3D12Renderer::destroyDescriptorPool(DescriptorPool pool)

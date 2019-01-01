@@ -6,6 +6,7 @@
 #include <RendererCore/Vulkan/VulkanPipelines.h>
 #include <RendererCore/Vulkan/VulkanEnums.h>
 #include <RendererCore/Vulkan/VulkanShaderLoader.h>
+#include <RendererCore/Vulkan/VulkanRenderGraph.h>
 
 #include <GLFW/glfw3.h>
 
@@ -498,11 +499,11 @@ RenderPass VulkanRenderer::createRenderPass (const std::vector<AttachmentDescrip
 			subpass_vkInputAttachments[i].push_back(vkRef);
 		}
 
-		if (subpass.depthStencilAttachment != nullptr)
+		if (subpass.hasDepthAttachment)
 		{
 			VkAttachmentReference vkRef = {};
-			vkRef.attachment = subpass.depthStencilAttachment->attachment;
-			vkRef.layout = toVkImageLayout(subpass.depthStencilAttachment->layout);
+			vkRef.attachment = subpass.depthStencilAttachment.attachment;
+			vkRef.layout = toVkImageLayout(subpass.depthStencilAttachment.layout);
 
 			subpass_vkDepthAttachment[i] = vkRef;
 
@@ -520,7 +521,7 @@ RenderPass VulkanRenderer::createRenderPass (const std::vector<AttachmentDescrip
 	{
 		const SubpassDependency &dependency = dependencies[i];
 		VkSubpassDependency vkDependency = {};
-		vkDependency.srcSubpass = dependency.srcSubpasss;
+		vkDependency.srcSubpass = dependency.srcSubpass;
 		vkDependency.dstSubpass = dependency.dstSubpass;
 		vkDependency.srcAccessMask = toVkAccessFlags(dependency.srcAccessMask);
 		vkDependency.dstAccessMask = toVkAccessFlags(dependency.dstAccessMask);
@@ -543,6 +544,13 @@ RenderPass VulkanRenderer::createRenderPass (const std::vector<AttachmentDescrip
 	VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass->renderPassHandle));
 
 	return renderPass;
+}
+
+RenderGraph VulkanRenderer::createRenderGraph()
+{
+	VulkanRenderGraph *vkRenderGraph = new VulkanRenderGraph(this);
+
+	return vkRenderGraph;
 }
 
 Framebuffer VulkanRenderer::createFramebuffer (RenderPass renderPass, const std::vector<TextureView> &attachments, uint32_t width, uint32_t height, uint32_t layers)
@@ -957,24 +965,10 @@ void VulkanRenderer::destroyCommandPool (CommandPool pool)
 	delete pool;
 }
 
-void VulkanRenderer::destroyRenderPass (RenderPass renderPass)
+void VulkanRenderer::destroyRenderGraph(RenderGraph &graph)
 {
-	VulkanRenderPass *vkRenderPass = static_cast<VulkanRenderPass*>(renderPass);
-
-	if (vkRenderPass->renderPassHandle != VK_NULL_HANDLE)
-		vkDestroyRenderPass(device, vkRenderPass->renderPassHandle, nullptr);
-
-	delete renderPass;
-}
-
-void VulkanRenderer::destroyFramebuffer (Framebuffer framebuffer)
-{
-	VulkanFramebuffer *vulkanFramebuffer = static_cast<VulkanFramebuffer*>(framebuffer);
-
-	if (vulkanFramebuffer->framebufferHandle != VK_NULL_HANDLE)
-		vkDestroyFramebuffer(device, vulkanFramebuffer->framebufferHandle, nullptr);
-
-	delete framebuffer;
+	delete graph;
+	graph = nullptr;
 }
 
 void VulkanRenderer::destroyPipeline (Pipeline pipeline)

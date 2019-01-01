@@ -1,13 +1,14 @@
 #ifndef RENDERING_D3D12_D3D12RENDERER_H_
 #define RENDERING_D3D12_D3D12RENDERER_H_
 
-#include "RendererCore/RendererCore.h"
+#include "RendererCore/Renderer.h"
 
 #include <RendererCore/D3D12/d3d12_common.h>
 
 class D3D12SwapchainHandler;
+class D3D12PipelineHelper;
 
-class D3D12Renderer : public RendererCore
+class D3D12Renderer : public Renderer
 {
 	public:
 
@@ -37,8 +38,7 @@ class D3D12Renderer : public RendererCore
 
 	void writeDescriptorSets(const std::vector<DescriptorWriteInfo> &writes);
 
-	RenderPass createRenderPass(const std::vector<AttachmentDescription> &attachments, const std::vector<SubpassDescription> &subpasses, const std::vector<SubpassDependency> &dependencies);
-	Framebuffer createFramebuffer(RenderPass renderPass, const std::vector<TextureView> &attachments, uint32_t width, uint32_t height, uint32_t layers);
+	RenderGraph createRenderGraph();
 	ShaderModule createShaderModule(const std::string &file, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint);
 	ShaderModule createShaderModuleFromSource(const std::string &source, const std::string &referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint);
 	Pipeline createGraphicsPipeline(const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass);
@@ -64,8 +64,7 @@ class D3D12Renderer : public RendererCore
 	void unmapStagingBuffer(StagingBuffer stagingBuffer);
 
 	void destroyCommandPool(CommandPool pool);
-	void destroyRenderPass(RenderPass renderPass);
-	void destroyFramebuffer(Framebuffer framebuffer);
+	void destroyRenderGraph(RenderGraph &graph);
 	void destroyPipeline(Pipeline pipeline);
 	void destroyShaderModule(ShaderModule module);
 	void destroyDescriptorPool(DescriptorPool pool);
@@ -102,6 +101,7 @@ class D3D12Renderer : public RendererCore
 	RendererAllocInfo allocInfo;
 
 	D3D12SwapchainHandler *swapchainHandler;
+	std::unique_ptr<D3D12PipelineHelper> pipelineHelper;
 
 	char *temp_mapBuffer;
 

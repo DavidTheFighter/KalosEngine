@@ -15,12 +15,12 @@ typedef struct RendererAllocInfo
 		Window* mainWindow;
 } RendererAllocInfo;
 
-class RendererCore
+class Renderer
 {
 	public:
 
-	RendererCore();
-		virtual ~RendererCore();
+	Renderer();
+		virtual ~Renderer();
 
 		virtual CommandPool createCommandPool (QueueType queue, CommandPoolFlags flags) = 0;
 
@@ -36,8 +36,7 @@ class RendererCore
 
 		virtual void writeDescriptorSets (const std::vector<DescriptorWriteInfo> &writes) = 0;
 
-		virtual RenderPass createRenderPass (const std::vector<AttachmentDescription> &attachments, const std::vector<SubpassDescription> &subpasses, const std::vector<SubpassDependency> &dependencies) = 0;
-		virtual Framebuffer createFramebuffer (RenderPass renderPass, const std::vector<TextureView> &attachments, uint32_t width, uint32_t height, uint32_t layers = 1) = 0;
+		virtual RenderGraph createRenderGraph() = 0;
 		virtual ShaderModule createShaderModule (const std::string &file, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint = "main") = 0;
 		virtual ShaderModule createShaderModuleFromSource (const std::string &source, const std::string &referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint = "main") = 0;
 		virtual Pipeline createGraphicsPipeline (const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass) = 0;
@@ -66,8 +65,7 @@ class RendererCore
 		virtual void endSingleTimeCommand (CommandBuffer cmdBuffer, CommandPool pool, QueueType queue);
 
 		virtual void destroyCommandPool (CommandPool pool) = 0;
-		virtual void destroyRenderPass (RenderPass renderPass) = 0;
-		virtual void destroyFramebuffer (Framebuffer framebuffer) = 0;
+		virtual void destroyRenderGraph(RenderGraph &graph) = 0;
 		virtual void destroyPipeline (Pipeline pipeline) = 0;
 		virtual void destroyShaderModule (ShaderModule module) = 0;
 		virtual void destroyDescriptorPool (DescriptorPool pool) = 0;
@@ -98,7 +96,7 @@ class RendererCore
 		virtual void setSwapchainTexture (Window *wnd, TextureView texView, Sampler sampler, TextureLayout layout) = 0;
 
 		static RendererBackend chooseRendererBackend (const std::vector<std::string>& launchArgs);
-		static RendererCore* allocateRenderer (const RendererAllocInfo& allocInfo);
+		static Renderer* allocateRenderer (const RendererAllocInfo& allocInfo);
 };
 
 #endif /* RENDERING_RENDERER_H_ */

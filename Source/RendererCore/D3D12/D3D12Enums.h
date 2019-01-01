@@ -1,6 +1,249 @@
 #ifndef RENDERING_D3D12_D3D12ENUMS_H_
 #define RENDERING_D3D12_D3D12ENUMS_H_
 
+inline D3D12_PRIMITIVE_TOPOLOGY_TYPE primitiveTopologyToD3D12PrimitiveTopologyType(PrimitiveTopology topo)
+{
+	switch (topo)
+	{
+		case PRIMITIVE_TOPOLOGY_POINT_LIST:
+			return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		case PRIMITIVE_TOPOLOGY_LINE_LIST:
+			return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+		case PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+			return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		case PRIMITIVE_TOPOLOGY_PATCH_LIST:
+			return D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		default:
+			return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+	}
+}
+
+inline D3D12_COMPARISON_FUNC compareOpToD3D12ComparisonFunc(CompareOp op)
+{
+	switch (op)
+	{
+		case COMPARE_OP_NEVER:
+			return D3D12_COMPARISON_FUNC_NEVER;
+		case COMPARE_OP_LESS:
+			return D3D12_COMPARISON_FUNC_LESS;
+		case COMPARE_OP_EQUAL:
+			return D3D12_COMPARISON_FUNC_EQUAL;
+		case COMPARE_OP_LESS_OR_EQUAL:
+			return D3D12_COMPARISON_FUNC_LESS_EQUAL;
+		case COMPARE_OP_GREATER:
+			return D3D12_COMPARISON_FUNC_GREATER;
+		case COMPARE_OP_NOT_EQUAL:
+			return D3D12_COMPARISON_FUNC_NOT_EQUAL;
+		case COMPARE_OP_GREATER_OR_EQUAL:
+			return D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+		case COMPARE_OP_ALWAYS:
+			return D3D12_COMPARISON_FUNC_ALWAYS;
+		default:
+			return D3D12_COMPARISON_FUNC_ALWAYS;
+	}
+}
+
+inline D3D12_CULL_MODE cullModeFlagsToD3D12CullMode(CullModeFlags mode)
+{
+	if (mode & CULL_MODE_BACK_BIT)
+		return D3D12_CULL_MODE_BACK;
+	
+	if (mode & CULL_MODE_FRONT_BIT)
+		return D3D12_CULL_MODE_FRONT;
+
+	return D3D12_CULL_MODE_NONE;
+}
+
+inline D3D12_FILL_MODE polygonModeToD3D12FillMode(PolygonMode mode)
+{
+	switch (mode)
+	{
+		case POLYGON_MODE_FILL:
+			return D3D12_FILL_MODE_SOLID;
+		case POLYGON_MODE_LINE:
+			return D3D12_FILL_MODE_WIREFRAME;
+		default:
+			return D3D12_FILL_MODE_SOLID;
+	}
+}
+
+inline D3D12_BLEND_OP blendOpToD3D12BlendOp(BlendOp op)
+{
+	switch (op)
+	{
+		case BLEND_OP_ADD:
+			return D3D12_BLEND_OP_ADD;
+		case BLEND_OP_SUBTRACT:
+			return D3D12_BLEND_OP_SUBTRACT;
+		case BLEND_OP_REVERSE_SUBTRACT:
+			return D3D12_BLEND_OP_REV_SUBTRACT;
+		case BLEND_OP_MIN:
+			return D3D12_BLEND_OP_MIN;
+		case BLEND_OP_MAX:
+			return D3D12_BLEND_OP_MAX;
+		default:
+			return D3D12_BLEND_OP_ADD;
+	}
+}
+
+inline D3D12_BLEND blendFactorToD3D12Blend(BlendFactor blend)
+{
+	switch (blend)
+	{
+		case BLEND_FACTOR_ZERO:
+			return D3D12_BLEND_ZERO;
+		case BLEND_FACTOR_ONE:
+			return D3D12_BLEND_ONE;
+
+		case BLEND_FACTOR_SRC_COLOR:
+			return D3D12_BLEND_SRC_COLOR;
+		case BLEND_FACTOR_ONE_MINUS_SRC_COLOR:
+			return D3D12_BLEND_INV_SRC_COLOR;
+		case BLEND_FACTOR_DST_COLOR:
+			return D3D12_BLEND_DEST_COLOR;
+		case BLEND_FACTOR_ONE_MINUS_DST_COLOR:
+			return D3D12_BLEND_INV_DEST_COLOR;
+
+		case BLEND_FACTOR_SRC_ALPHA:
+			return D3D12_BLEND_SRC_ALPHA;
+		case BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
+			return D3D12_BLEND_INV_SRC_ALPHA;
+		case BLEND_FACTOR_DST_ALPHA:
+			return D3D12_BLEND_DEST_ALPHA;
+		case BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
+			return D3D12_BLEND_INV_DEST_ALPHA;
+
+		case BLEND_FACTOR_SRC_ALPHA_SATURATE:
+			return D3D12_BLEND_SRC_ALPHA_SAT;
+		case BLEND_FACTOR_SRC1_COLOR:
+			return D3D12_BLEND_SRC1_COLOR;
+		case BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
+			return D3D12_BLEND_INV_SRC1_ALPHA;
+		case BLEND_FACTOR_SRC1_ALPHA:
+			return D3D12_BLEND_SRC1_ALPHA;
+		case BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
+			return D3D12_BLEND_INV_SRC1_ALPHA;
+		default:
+			return D3D12_BLEND_ZERO;
+	}
+}
+
+inline std::string shaderStageFlagBitsToD3D12CompilerTargetStr(ShaderStageFlagBits stage)
+{
+	switch (stage)
+	{
+		case SHADER_STAGE_VERTEX_BIT:
+			return "vs_5_0";
+		case SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+			return "hs_5_0";
+		case SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+			return "ds_5_0";
+		case SHADER_STAGE_GEOMETRY_BIT:
+			return "gs_5_0";
+		case SHADER_STAGE_FRAGMENT_BIT:
+			return "ps_5_0";
+		case SHADER_STAGE_COMPUTE_BIT:
+			return "cs_5_0";
+		default:
+			return "vs_5_0";
+	}
+}
+
+inline D3D12_COMMAND_LIST_TYPE queueTypeToD3D12CommandListType(QueueType queue)
+{
+	switch (queue)
+	{
+		case QUEUE_TYPE_GRAPHICS:
+			return D3D12_COMMAND_LIST_TYPE_DIRECT;
+		case QUEUE_TYPE_COMPUTE:
+			return D3D12_COMMAND_LIST_TYPE_COMPUTE;
+		case QUEUE_TYPE_TRANSFER:
+			return D3D12_COMMAND_LIST_TYPE_COPY;
+		default:
+			return D3D12_COMMAND_LIST_TYPE_DIRECT;
+	}
+}
+
+inline D3D12_TEXTURE_ADDRESS_MODE samplerAddressModeToD3D12TextureAddressMode(SamplerAddressMode addressMode)
+{
+	switch (addressMode)
+	{
+		case SAMPLER_ADDRESS_MODE_REPEAT:
+			return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		case SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:
+			return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+		case SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:
+			return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		case SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:
+			return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		case SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:
+			return D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE;
+		default:
+			return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	}
+}
+
+inline D3D12_FILTER samplerFilterToD3D12Filter(SamplerFilter minFilter, SamplerFilter magFilter, SamplerMipmapMode mipMode)
+{
+	switch (minFilter)
+	{
+		case SAMPLER_FILTER_NEAREST:
+		{
+			switch (magFilter)
+			{
+				case SAMPLER_FILTER_NEAREST:
+				{
+					switch (mipMode)
+					{
+						case SAMPLER_MIPMAP_MODE_NEAREST:
+							return D3D12_FILTER_MIN_MAG_MIP_POINT;
+						case SAMPLER_MIPMAP_MODE_LINEAR:
+							return D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+					}
+				}
+				case SAMPLER_FILTER_LINEAR:
+				{
+					switch (mipMode)
+					{
+						case SAMPLER_MIPMAP_MODE_NEAREST:
+							return D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+						case SAMPLER_MIPMAP_MODE_LINEAR:
+							return D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+					}
+				}
+			}
+		}
+		case SAMPLER_FILTER_LINEAR:
+		{
+			switch (magFilter)
+			{
+				case SAMPLER_FILTER_NEAREST:
+				{
+					switch (mipMode)
+					{
+						case SAMPLER_MIPMAP_MODE_NEAREST:
+							return D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+						case SAMPLER_MIPMAP_MODE_LINEAR:
+							return D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+					}
+				}
+				case SAMPLER_FILTER_LINEAR:
+				{
+					switch (mipMode)
+					{
+						case SAMPLER_MIPMAP_MODE_NEAREST:
+							return D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+						case SAMPLER_MIPMAP_MODE_LINEAR:
+							return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+					}
+				}
+			}
+		}
+	}
+	
+	return D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+}
+
 inline DXGI_FORMAT ResourceFormatToDXGIFormat(ResourceFormat format)
 {
 	switch (format)

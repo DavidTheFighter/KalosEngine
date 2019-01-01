@@ -64,7 +64,7 @@ typedef struct RendererAttachmentReference
 
 typedef struct RendererSupassDependency
 {
-		uint32_t srcSubpasss;
+		uint32_t srcSubpass;
 		uint32_t dstSubpass;
 		PipelineStageFlags srcStageMask;
 		PipelineStageFlags dstStageMask;
@@ -78,7 +78,8 @@ typedef struct RendererSubpassDescription
 		PipelineBindPoint bindPoint;
 		std::vector<AttachmentReference> colorAttachments;
 		std::vector<AttachmentReference> inputAttachments;
-		AttachmentReference *depthStencilAttachment;
+		bool hasDepthAttachment;
+		AttachmentReference depthStencilAttachment;
 		std::vector<uint32_t> preserveAttachments;
 } SubpassDescription;
 
@@ -381,5 +382,6 @@ typedef RendererSemaphore *Semaphore;
 #include <RendererCore/RendererCommandPool.h>
 #include <RendererCore/RendererCommandBuffer.h>
 #include <RendererCore/RendererDescriptorPool.h>
+#include <RendererCore/RendererRenderGraph.h>
 
 #endif /* RENDERING_RENDERER_RENDEREROBJECTS_H_ */

@@ -5,11 +5,13 @@
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
+class D3D12CommandPool;
+
 class D3D12CommandBuffer : public RendererCommandBuffer
 {
 	public:
 
-	D3D12CommandBuffer();
+	D3D12CommandBuffer(D3D12CommandPool *parentCommandPoolPtr, D3D12_COMMAND_LIST_TYPE commandListType);
 	virtual ~D3D12CommandBuffer();
 
 	void beginCommands(CommandBufferUsageFlags flags);
@@ -26,7 +28,7 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 	void bindVertexBuffers(uint32_t firstBinding, const std::vector<Buffer> &buffers, const std::vector<size_t> &offsets);
 
 	void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
-	void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance);
+	void drawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t firstVertex, uint32_t firstInstance);
 	void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
 	void pushConstants(ShaderStageFlags stages, uint32_t offset, uint32_t size, const void *data);
@@ -46,6 +48,18 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 	void beginDebugRegion(const std::string &regionName, glm::vec4 color);
 	void endDebugRegion();
 	void insertDebugMarker(const std::string &markerName, glm::vec4 color);
+
+	private:
+
+	D3D12CommandPool *parentCmdPool;
+	D3D12_COMMAND_LIST_TYPE cmdListType;
+
+	ID3D12GraphicsCommandList3 *cmdList;
+
+	bool ctx_inRenderPass;
+	RenderPass ctx_currentRenderPass;
+
+	friend class D3D12CommandPool;
 };
 
 #endif /* RENDERING_D3D12_D3D12COMMANDBUFFER_H_ */

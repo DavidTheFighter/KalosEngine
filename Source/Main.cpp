@@ -1,3 +1,18 @@
+/*
+
+Recognized launch args:
+
+-force_vulkan
+-force_d3d12
+
+-enable_vulkan_layers
+-enable_d3d12_debug
+-enable_d3d12_hw_debug
+
+-cube_test
+
+*/
+
 #include <iostream>
 #include <thread>
 
@@ -10,7 +25,7 @@
 #include <Game/EventHandler.h>
 #include <Game/KalosEngine.h>
 
-#include <RendererCore/RendererCore.h>
+#include <RendererCore/Renderer.h>
 #include <Resources/FileLoader.h>
 
 void printEnvironment(std::vector<std::string> launchArgs);
@@ -39,6 +54,8 @@ int main(int argc, char *argv[])
 		//launchArgs.push_back("-enable_d3d12_hw_debug");
 	}
 
+	launchArgs.push_back("-triangle_test");
+
 	Log::setInstance(new Log());
 
 	printEnvironment(launchArgs);
@@ -52,7 +69,7 @@ int main(int argc, char *argv[])
 	FileLoader::setInstance(new FileLoader());
 	FileLoader::instance()->setWorkingDir(workingDir);
 
-	RendererBackend rendererBackend = RendererCore::chooseRendererBackend(launchArgs);
+	RendererBackend rendererBackend = Renderer::chooseRendererBackend(launchArgs);
 
 	switch (rendererBackend)
 	{
@@ -103,7 +120,7 @@ int main(int argc, char *argv[])
 
 	delete Log::getInstance();
 
-	system("pause");
+	//system("pause");
 
 	return 0;
 }

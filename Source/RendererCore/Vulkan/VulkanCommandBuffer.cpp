@@ -1,32 +1,3 @@
-/*
- * MIT License
- * 
- * Copyright (c) 2017 David Allen
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- * 
- * VulkanCommandBuffer.cpp
- * 
- * Created on: Oct 2, 2017
- *     Author: david
- */
-
 #include "RendererCore/Vulkan/VulkanCommandBuffer.h"
 
 #include <RendererCore/Vulkan/VulkanEnums.h>
@@ -62,32 +33,6 @@ void VulkanCommandBuffer::resetCommands ()
 	VK_CHECK_RESULT(vkResetCommandBuffer(bufferHandle, 0));
 }
 
-void VulkanCommandBuffer::beginRenderPass (RenderPass renderPass, Framebuffer framebuffer, const Scissor &renderArea, const std::vector<ClearValue> &clearValues, SubpassContents contents)
-{
-	VkRenderPassBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	beginInfo.renderPass = static_cast<VulkanRenderPass*>(renderPass)->renderPassHandle;
-	beginInfo.framebuffer = static_cast<VulkanFramebuffer*>(framebuffer)->framebufferHandle;
-	beginInfo.renderArea.offset =
-	{	renderArea.x, renderArea.y};
-	beginInfo.renderArea.extent =
-	{	renderArea.width, renderArea.height};
-	beginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-	beginInfo.pClearValues = reinterpret_cast<const VkClearValue*>(clearValues.data()); // Generic clear values SHOULD map directly to vulkan clear values
-
-	vkCmdBeginRenderPass(bufferHandle, &beginInfo, toVkSubpassContents(contents));
-}
-
-void VulkanCommandBuffer::endRenderPass ()
-{
-	vkCmdEndRenderPass(bufferHandle);
-}
-
-void VulkanCommandBuffer::nextSubpass (SubpassContents contents)
-{
-	vkCmdNextSubpass(bufferHandle, toVkSubpassContents(contents));
-}
-
 void VulkanCommandBuffer::bindPipeline (PipelineBindPoint point, Pipeline pipeline)
 {
 	vkCmdBindPipeline(bufferHandle, toVkPipelineBindPoint(point), static_cast<VulkanPipeline*>(pipeline)->pipelineHandle);
@@ -121,9 +66,9 @@ void VulkanCommandBuffer::draw (uint32_t vertexCount, uint32_t instanceCount, ui
 	vkCmdDraw(bufferHandle, vertexCount, instanceCount, firstVertex, firstInstance);
 }
 
-void VulkanCommandBuffer::drawIndexed (uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance)
+void VulkanCommandBuffer::drawIndexed (uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t firstVertex, uint32_t firstInstance)
 {
-	vkCmdDrawIndexed(bufferHandle, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+	vkCmdDrawIndexed(bufferHandle, indexCount, instanceCount, firstIndex, firstVertex, firstInstance);
 }
 
 void VulkanCommandBuffer::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
@@ -437,4 +382,27 @@ void VulkanCommandBuffer::insertDebugMarker (const std::string &markerName, glm:
 	}
 
 #endif
+}
+
+void VulkanCommandBuffer::vulkan_beginRenderPass(VkRenderPass renderPass, VkFramebuffer framebuffer, const VkRect2D &renderArea, const std::vector<VkClearValue> &clearValues, VkSubpassContents contents)
+{
+	VkRenderPassBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	beginInfo.renderPass = renderPass;
+	beginInfo.framebuffer = framebuffer;
+	beginInfo.renderArea = renderArea;
+	beginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	beginInfo.pClearValues = clearValues.data();
+
+	vkCmdBeginRenderPass(bufferHandle, &beginInfo, contents);
+}
+
+void VulkanCommandBuffer::vulkan_endRenderPass()
+{
+	vkCmdEndRenderPass(bufferHandle);
+}
+
+void VulkanCommandBuffer::vulkan_nextSubpass(VkSubpassContents contents)
+{
+	vkCmdNextSubpass(bufferHandle, contents);
 }

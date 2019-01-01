@@ -4,6 +4,8 @@
 
 #include <GLFW/glfw3.h>
 
+#include <RendererCore/Tests/TriangleTest.h>
+
 KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBackend rendererBackendType, uint32_t engineUpdateFrequencyCap)
 {
 	this->launchArgs = launchArgs;
@@ -22,7 +24,17 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 	renderAlloc.launchArgs = launchArgs;
 	renderAlloc.mainWindow = mainWindow.get();
 
-	renderer = std::unique_ptr<RendererCore>(RendererCore::allocateRenderer(renderAlloc));
+	renderer = std::unique_ptr<Renderer>(Renderer::allocateRenderer(renderAlloc));
+
+	doingTriangleTest = std::find(launchArgs.begin(), launchArgs.end(), "-triangle_test") != launchArgs.end();
+	triangleTest = nullptr;
+
+	if (doingTriangleTest)
+	{
+		triangleTest = std::unique_ptr<TriangleTest>(new TriangleTest(renderer.get()));
+
+		renderer->setSwapchainTexture(mainWindow.get(), triangleTest->renderTargetTV, triangleTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
 }
 
 KalosEngine::~KalosEngine()
@@ -103,7 +115,11 @@ void KalosEngine::update()
 
 void KalosEngine::render()
 {
-	if (!gameStates.empty())
+	if (doingTriangleTest)
+	{
+		triangleTest->render();
+	}
+	else if (!gameStates.empty())
 		gameStates.back()->render();
 
 	renderer->waitForQueueIdle(QUEUE_TYPE_GRAPHICS);

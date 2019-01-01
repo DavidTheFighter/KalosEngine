@@ -19,17 +19,13 @@ class VulkanCommandBuffer : public RendererCommandBuffer
 		void endCommands ();
 		void resetCommands ();
 
-		void beginRenderPass (RenderPass renderPass, Framebuffer framebuffer, const Scissor &renderArea, const std::vector<ClearValue> &clearValues, SubpassContents contents);
-		void endRenderPass ();
-		void nextSubpass (SubpassContents contents);
-
 		void bindPipeline (PipelineBindPoint point, Pipeline pipeline);
 
 		void bindIndexBuffer (Buffer buffer, size_t offset, bool uses32BitIndices);
 		void bindVertexBuffers (uint32_t firstBinding, const std::vector<Buffer> &buffers, const std::vector<size_t> &offsets);
 
 		void draw (uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
-		void drawIndexed (uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance);
+		void drawIndexed (uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, int32_t firstVertex, uint32_t firstInstance);
 		void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
 		void pushConstants (ShaderStageFlags stages, uint32_t offset, uint32_t size, const void *data);
@@ -49,6 +45,10 @@ class VulkanCommandBuffer : public RendererCommandBuffer
 		void beginDebugRegion (const std::string &regionName, glm::vec4 color);
 		void endDebugRegion ();
 		void insertDebugMarker (const std::string &markerName, glm::vec4 color);
+
+		void vulkan_beginRenderPass(VkRenderPass renderPass, VkFramebuffer framebuffer, const VkRect2D &renderArea, const std::vector<VkClearValue> &clearValues, VkSubpassContents contents);
+		void vulkan_endRenderPass();
+		void vulkan_nextSubpass(VkSubpassContents contents);
 
 	private:
 

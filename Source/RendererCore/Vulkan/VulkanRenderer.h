@@ -3,14 +3,14 @@
 #ifndef RENDERING_VULKAN_VULKANRENDERER_H_
 #define RENDERING_VULKAN_VULKANRENDERER_H_
 
-#include <RendererCore/RendererCore.h>
+#include <RendererCore/Renderer.h>
 #include <RendererCore/Vulkan/vulkan_common.h>
 #include <RendererCore/Vulkan/VulkanObjects.h>
 
 class VulkanSwapchain;
 class VulkanPipelines;
 
-class VulkanRenderer : public RendererCore
+class VulkanRenderer : public Renderer
 {
 	public:
 
@@ -54,6 +54,7 @@ class VulkanRenderer : public RendererCore
 		void writeDescriptorSets (const std::vector<DescriptorWriteInfo> &writes);
 
 		RenderPass createRenderPass(const std::vector<AttachmentDescription> &attachments, const std::vector<SubpassDescription> &subpasses, const std::vector<SubpassDependency> &dependencies);
+		RenderGraph createRenderGraph();
 		Framebuffer createFramebuffer(RenderPass renderPass, const std::vector<TextureView> &attachments, uint32_t width, uint32_t height, uint32_t layers);
 		ShaderModule createShaderModule (const std::string &file, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint);
 		ShaderModule createShaderModuleFromSource (const std::string &source, const std::string &referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint);
@@ -80,8 +81,7 @@ class VulkanRenderer : public RendererCore
 		void unmapStagingBuffer(StagingBuffer stagingBuffer);
 
 		void destroyCommandPool (CommandPool pool);
-		void destroyRenderPass (RenderPass renderPass);
-		void destroyFramebuffer (Framebuffer framebuffer);
+		void destroyRenderGraph(RenderGraph &graph);
 		void destroyPipeline (Pipeline pipeline);
 		void destroyShaderModule (ShaderModule module);
 		void destroyDescriptorPool (DescriptorPool pool);

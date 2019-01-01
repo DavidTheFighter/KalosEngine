@@ -10,7 +10,7 @@ struct D3D12Texture : public RendererTexture
 
 struct D3D12TextureView : public RendererTextureView
 {
-	
+	ID3D12Resource *parentTextureResource;
 };
 
 struct D3D12Sampler : public RendererSampler
@@ -28,6 +28,9 @@ struct D3D12Framebuffer : public RendererFramebuffer
 struct D3D12Pipeline : public RendererPipeline
 {
 	ID3D12PipelineState *pipeline;
+	ID3D12RootSignature *rootSignature;
+
+	RenderPass renderPass;
 };
 
 struct D3D12DescriptorSet : public RendererDescriptorSet
@@ -36,6 +39,8 @@ struct D3D12DescriptorSet : public RendererDescriptorSet
 
 struct D3D12ShaderModule : public RendererShaderModule
 {
+	std::unique_ptr<char> shaderBytecode;
+	size_t shaderBytecodeLength;
 };
 
 struct D3D12StagingBuffer : public RendererStagingBuffer

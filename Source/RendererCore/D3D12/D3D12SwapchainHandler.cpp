@@ -102,9 +102,11 @@ void D3D12SwapchainHandler::initSwapchain(Window *wnd)
 
 void D3D12SwapchainHandler::prerecordSwapchainCommandList(D3D12SwapchainData *swapchain, ID3D12GraphicsCommandList *cmdList, uint32_t bufferIndex)
 {
-	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(swapchain->backBuffers[bufferIndex], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	CD3DX12_RESOURCE_BARRIER barrier[] = {
+		CD3DX12_RESOURCE_BARRIER::Transition(swapchain->backBuffers[bufferIndex], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET)
+	};
 
-	cmdList->ResourceBarrier(1, &barrier);
+	cmdList->ResourceBarrier(1, barrier);
 
 	float clearColor[] = {0.4f, 0.6f, 0.9f, 1.0f};
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(swapchain->descHeap->GetCPUDescriptorHandleForHeapStart(), bufferIndex, rtvDescriptorSize);
@@ -126,8 +128,8 @@ void D3D12SwapchainHandler::prerecordSwapchainCommandList(D3D12SwapchainData *sw
 	cmdList->IASetVertexBuffers(0, 1, &swapchainVertexBufferView);
 	cmdList->DrawInstanced(3, 1, 0, 0);
 
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(swapchain->backBuffers[bufferIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-	cmdList->ResourceBarrier(1, &barrier);
+	barrier[0] = CD3DX12_RESOURCE_BARRIER::Transition(swapchain->backBuffers[bufferIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+	cmdList->ResourceBarrier(1, barrier);
 
 	DX_CHECK_RESULT(cmdList->Close());
 }
@@ -555,4 +557,10 @@ void D3D12SwapchainHandler::createPSO()
 	psoDesc.SampleDesc = {1, 0};
 
 	DX_CHECK_RESULT(renderer->device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&swapchainPSO)));
+
+	vertexShader->Release();
+	pixelShader->Release();
+
+	if (errorBuf != nullptr)
+		errorBuf->Release();
 }

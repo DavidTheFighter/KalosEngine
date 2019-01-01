@@ -1,14 +1,14 @@
-#include "RendererCore/RendererCore.h"]
+#include "RendererCore/Renderer.h"
 
 #include <RendererCore/Vulkan/VulkanRenderer.h>
 #include <RendererCore/D3D12/D3D12Renderer.h>
 
-RendererCore::RendererCore()
+Renderer::Renderer()
 {
 	
 }
 
-RendererCore::~RendererCore()
+Renderer::~Renderer()
 {
 
 }
@@ -16,7 +16,7 @@ RendererCore::~RendererCore()
 /*
  * Determines a renderer backend based on the platform and launch args.
  */
-RendererBackend RendererCore::chooseRendererBackend (const std::vector<std::string>& launchArgs)
+RendererBackend Renderer::chooseRendererBackend (const std::vector<std::string>& launchArgs)
 {
 	// Check if the commmand line args forced an api first
 	if (std::find(launchArgs.begin(), launchArgs.end(), "-force_vulkan") != launchArgs.end())
@@ -34,7 +34,7 @@ RendererBackend RendererCore::chooseRendererBackend (const std::vector<std::stri
 	return RENDERER_BACKEND_VULKAN;
 }
 
-RendererCore* RendererCore::allocateRenderer (const RendererAllocInfo& allocInfo)
+Renderer* Renderer::allocateRenderer (const RendererAllocInfo& allocInfo)
 {
 	switch (allocInfo.backend)
 	{
@@ -42,7 +42,7 @@ RendererCore* RendererCore::allocateRenderer (const RendererAllocInfo& allocInfo
 		{
 			Log::get()->info("Allocating renderer w/ Vulkan backend");
 
-			RendererCore *renderer = new VulkanRenderer(allocInfo);
+			Renderer *renderer = new VulkanRenderer(allocInfo);
 
 			return renderer;
 		}
@@ -51,7 +51,7 @@ RendererCore* RendererCore::allocateRenderer (const RendererAllocInfo& allocInfo
 		{
 			Log::get()->info("Allocating rednerer w/ D3D12 backend\n");
 
-			RendererCore *renderer = new D3D12Renderer(allocInfo);
+			Renderer *renderer = new D3D12Renderer(allocInfo);
 
 			return renderer;
 		}
@@ -65,7 +65,7 @@ RendererCore* RendererCore::allocateRenderer (const RendererAllocInfo& allocInfo
 	}
 }
 
-CommandBuffer RendererCore::beginSingleTimeCommand (CommandPool pool)
+CommandBuffer Renderer::beginSingleTimeCommand (CommandPool pool)
 {
 	CommandBuffer cmdBuffer = pool->allocateCommandBuffer(COMMAND_BUFFER_LEVEL_PRIMARY);
 
@@ -74,7 +74,7 @@ CommandBuffer RendererCore::beginSingleTimeCommand (CommandPool pool)
 	return cmdBuffer;
 }
 
-void RendererCore::endSingleTimeCommand (CommandBuffer cmdBuffer, CommandPool pool, QueueType queue)
+void Renderer::endSingleTimeCommand (CommandBuffer cmdBuffer, CommandPool pool, QueueType queue)
 {
 	cmdBuffer->endCommands();
 

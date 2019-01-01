@@ -27,9 +27,9 @@ class RendererCommandBuffer
 
 		virtual void resetCommands () = 0;
 
-		virtual void beginRenderPass (RenderPass renderPass, Framebuffer framebuffer, const Scissor &renderArea, const std::vector<ClearValue> &clearValues, SubpassContents contents) = 0;
-		virtual void endRenderPass () = 0;
-		virtual void nextSubpass (SubpassContents contents) = 0;
+		//virtual void beginRenderPass (RenderPass renderPass, Framebuffer framebuffer, const Scissor &renderArea, const std::vector<ClearValue> &clearValues, SubpassContents contents) = 0;
+		//virtual void endRenderPass () = 0;
+		//virtual void nextSubpass (SubpassContents contents) = 0;
 
 		virtual void bindPipeline (PipelineBindPoint point, Pipeline pipeline) = 0;
 
@@ -37,7 +37,7 @@ class RendererCommandBuffer
 		virtual void bindVertexBuffers (uint32_t firstBinding, const std::vector<Buffer> &buffers, const std::vector<size_t> &offsets) = 0;
 
 		virtual void draw (uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0) = 0;
-		virtual void drawIndexed (uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0, uint32_t firstInstance = 0) = 0;
+		virtual void drawIndexed (uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t firstVertex = 0, uint32_t firstInstance = 0) = 0;
 
 		virtual void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
 

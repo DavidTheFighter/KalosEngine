@@ -2,7 +2,7 @@
 #ifndef RENDERING_VULKAN_VULKANPIPELINES_H_
 #define RENDERING_VULKAN_VULKANPIPELINES_H_
 
-#include <RendererCore/RendererCore.h>
+#include <RendererCore/Renderer.h>
 #include <RendererCore/Vulkan/vulkan_common.h>
 #include <RendererCore/Vulkan/VulkanObjects.h>
 
