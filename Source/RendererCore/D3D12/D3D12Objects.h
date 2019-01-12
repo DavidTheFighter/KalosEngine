@@ -29,6 +29,7 @@ struct D3D12Pipeline : public RendererPipeline
 {
 	ID3D12PipelineState *pipeline;
 	ID3D12RootSignature *rootSignature;
+	GraphicsPipelineInfo gfxPipelineInfo;
 
 	RenderPass renderPass;
 };
@@ -60,6 +61,15 @@ struct D3D12Fence : public RendererFence
 
 struct D3D12Semaphore : public RendererSemaphore
 {
+	ID3D12Fence *semFence;
+	UINT64 semFenceValue;
+	HANDLE semFenceWaitEvent;
+
+	std::atomic<bool> pendingWait;
 };
+
+#include <RendererCore/D3D12/D3D12CommandBuffer.h>
+#include <RendererCore/D3D12/D3D12CommandPool.h>
+#include <RendererCore/D3D12/D3D12DescriptorPool.h>
 
 #endif /* RENDERING_D3D12_D3D12OBJECTS_H_*/

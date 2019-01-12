@@ -169,7 +169,7 @@ void VulkanSwapchain::initSwapchain (Window *wnd)
 	createSwapchain(wnd);
 }
 
-void VulkanSwapchain::presentToSwapchain (Window *wnd)
+void VulkanSwapchain::presentToSwapchain (Window *wnd, std::vector<VkSemaphore> externalWaitSemaphores)
 {
 	vkQueueWaitIdle(renderer->presentQueue);
 
@@ -188,13 +188,20 @@ void VulkanSwapchain::presentToSwapchain (Window *wnd)
 		VK_CHECK_RESULT(result);
 	}
 
-	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	std::vector<VkPipelineStageFlags> waitStages = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	std::vector<VkSemaphore> waitSemaphores = { swapchain.swapchainNextImageAvailableSemaphore };
+
+	for (size_t i = 0; i < externalWaitSemaphores.size(); i++)
+	{
+		//waitStages.push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+		//waitSemaphores.push_back(externalWaitSemaphores[i]);
+	}
 
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &swapchain.swapchainNextImageAvailableSemaphore;
-	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size());
+	submitInfo.pWaitSemaphores = waitSemaphores.data();
+	submitInfo.pWaitDstStageMask = waitStages.data();
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &swapchain.swapchainCommandBuffers[imageIndex];
 	submitInfo.signalSemaphoreCount = 1;
@@ -227,6 +234,8 @@ void VulkanSwapchain::presentToSwapchain (Window *wnd)
 	{
 		VK_CHECK_RESULT(result);
 	}
+
+	vkQueueWaitIdle(renderer->presentQueue);
 }
 
 void VulkanSwapchain::createSwapchain (Window *wnd)
@@ -380,14 +389,13 @@ void VulkanSwapchain::prerecordCommandBuffers (WindowSwapchain &swapchain)
 	VkRect2D swapchainScissor;
 
 	swapchainViewport.x = 0.0f;
-	swapchainViewport.y = 0.0f;
+	swapchainViewport.y = (float)swapchain.swapchainExtent.height;
 	swapchainViewport.width = (float) swapchain.swapchainExtent.width;
-	swapchainViewport.height = (float) swapchain.swapchainExtent.height;
+	swapchainViewport.height = -((float) swapchain.swapchainExtent.height);
 	swapchainViewport.minDepth = 0.0f;
 	swapchainViewport.maxDepth = 1.0f;
 
-	swapchainScissor.offset =
-	{	0, 0};
+	swapchainScissor.offset = {0, 0};
 	swapchainScissor.extent = swapchain.swapchainExtent;
 
 	for (size_t i = 0; i < swapchain.swapchainCommandBuffers.size(); i ++)
@@ -401,15 +409,13 @@ void VulkanSwapchain::prerecordCommandBuffers (WindowSwapchain &swapchain)
 		debugMarkerBeginRegion(swapchain.swapchainCommandBuffers[i], "Render to Swapchain", glm::vec4(1, 0, 0, 1));
 
 		std::vector<VkClearValue> clearValues(1);
-		clearValues[0].color =
-		{	0.0f, 0.0f, 0.0f, 1.0f};
+		clearValues[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
 
 		VkRenderPassBeginInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = swapchain.swapchainRenderPass;
 		renderPassInfo.framebuffer = swapchain.swapchainFramebuffers[i];
-		renderPassInfo.renderArea.offset =
-		{	0, 0};
+		renderPassInfo.renderArea.offset = {0, 0};
 		renderPassInfo.renderArea.extent = swapchain.swapchainExtent;
 		renderPassInfo.clearValueCount = 0; //static_cast<uint32_t>(clearValues.size());
 		renderPassInfo.pClearValues = clearValues.data();
@@ -530,8 +536,7 @@ void VulkanSwapchain::createGraphicsPipeline (WindowSwapchain &swapchain)
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
-	scissor.offset =
-	{	0, 0};
+	scissor.offset = {0, 0};
 	scissor.extent = swapchain.swapchainExtent;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
@@ -547,8 +552,8 @@ void VulkanSwapchain::createGraphicsPipeline (WindowSwapchain &swapchain)
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.lineWidth = 1.0f;
-	rasterizer.cullMode = VK_CULL_MODE_NONE;
-	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 
 	VkPipelineMultisampleStateCreateInfo multisampling = {};

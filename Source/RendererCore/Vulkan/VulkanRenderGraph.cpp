@@ -14,28 +14,14 @@ VulkanRenderGraph::VulkanRenderGraph(Renderer *rendererPtr)
 
 	for (size_t i = 0; i < 3; i++)
 		gfxCommandPools.push_back(renderer->createCommandPool(QUEUE_TYPE_GRAPHICS, COMMAND_POOL_TRANSIENT_BIT));
+
+	for (size_t i = 0; i < 3; i++)
+		executionDoneSemaphores.push_back(renderer->createSemaphore());
 }
 
 VulkanRenderGraph::~VulkanRenderGraph()
 {
-	for (auto it = resourceImageViews.begin(); it != resourceImageViews.end(); it++)
-	{
-		vkDestroyImageView(static_cast<VulkanRenderer*>(renderer)->device, static_cast<VulkanTextureView*>(it->second)->imageView, nullptr);
-
-		delete it->second;
-	}
-
-	for (size_t i = 0; i < graphImages.size(); i++)
-		vmaDestroyImage(static_cast<VulkanRenderer*>(renderer)->memAllocator, graphImages[i].imageHandle, graphImages[i].imageMemory);
-
-	for (size_t i = 0; i < beginRenderPassOpsData.size(); i++)
-	{
-		vkDestroyFramebuffer(static_cast<VulkanRenderer*>(renderer)->device, beginRenderPassOpsData[i]->framebuffer, nullptr);
-		vkDestroyRenderPass(static_cast<VulkanRenderer*>(renderer)->device, beginRenderPassOpsData[i]->renderPass, nullptr);
-	}
-
-	for (CommandPool pool : gfxCommandPools)
-		renderer->destroyCommandPool(pool);
+	cleanupResources();
 }
 
 const std::string viewSelectMipPostfix = "_fg_miplvl";
@@ -46,9 +32,9 @@ TextureView VulkanRenderGraph::getRenderGraphOutputTextureView()
 	return resourceImageViews[renderGraphOutputAttachment];
 }
 
-void VulkanRenderGraph::execute()
+Semaphore VulkanRenderGraph::execute()
 {
-	VulkanCommandBuffer *cmdBuffer = static_cast<VulkanCommandBuffer*>(gfxCommandPools[execCounter]->allocateCommandBuffer());
+	VulkanCommandBuffer *cmdBuffer = static_cast<VulkanCommandBuffer*>(gfxCommandPools[execCounter % gfxCommandPools.size()]->allocateCommandBuffer());
 	cmdBuffer->beginCommands(COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	for (size_t i = 0; i < execCodes.size(); i++)
@@ -63,7 +49,7 @@ void VulkanRenderGraph::execute()
 			const VulkanRenderGraphBeginRenderPassData &opData = *static_cast<VulkanRenderGraphBeginRenderPassData*>(opDataPtr);
 			cmdBuffer->vulkan_beginRenderPass(opData.renderPass, opData.framebuffer, { 0, 0, opData.size.x, opData.size.y }, opData.clearValues, opData.subpassContents);
 			cmdBuffer->setScissors(0, { {0, 0, opData.size.x, opData.size.y} });
-			cmdBuffer->setViewports(0, { {0, 0, (float)opData.size.x, (float)opData.size.y, 0, 1} });
+			cmdBuffer->setViewports(0, { {0, 0, (float)opData.size.x, (float) opData.size.y, 0, 1} });
 
 			break;
 		}
@@ -128,16 +114,76 @@ void VulkanRenderGraph::execute()
 
 	cmdBuffer->endCommands();
 
-	std::vector<Semaphore> waitSems = {};
 	std::vector<PipelineStageFlags> waitSemStages = {};
+	std::vector<Semaphore> waitSems = {};
+	std::vector<Semaphore> signalSems = {executionDoneSemaphores[execCounter % executionDoneSemaphores.size()]};
 
-	renderer->submitToQueue(QUEUE_TYPE_GRAPHICS, { cmdBuffer }, waitSems, waitSemStages, {});
+	renderer->submitToQueue(QUEUE_TYPE_GRAPHICS, {cmdBuffer}, waitSems, waitSemStages, {});
 	renderer->waitForQueueIdle(QUEUE_TYPE_GRAPHICS);
 
-	gfxCommandPools[execCounter]->freeCommandBuffer(cmdBuffer);
+	gfxCommandPools[execCounter % gfxCommandPools.size()]->freeCommandBuffer(cmdBuffer);
 
 	execCounter++;
-	execCounter %= uint32_t(gfxCommandPools.size());
+
+	return signalSems[0];
+}
+
+void VulkanRenderGraph::resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize)
+{
+	renderer->waitForDeviceIdle();
+
+	cleanupResources();
+
+	namedSizes[sizeName] = glm::uvec3(newSize, 1);
+
+	execCounter = 0;
+
+	for (size_t i = 0; i < 3; i++)
+		gfxCommandPools.push_back(renderer->createCommandPool(QUEUE_TYPE_GRAPHICS, COMMAND_POOL_TRANSIENT_BIT));
+
+	for (size_t i = 0; i < 3; i++)
+		executionDoneSemaphores.push_back(renderer->createSemaphore());
+
+	build();
+}
+
+void VulkanRenderGraph::cleanupResources()
+{
+	for (auto it = resourceImageViews.begin(); it != resourceImageViews.end(); it++)
+	{
+		vkDestroyImageView(static_cast<VulkanRenderer*>(renderer)->device, static_cast<VulkanTextureView*>(it->second)->imageView, nullptr);
+
+		delete it->second;
+	}
+
+	for (size_t i = 0; i < graphImages.size(); i++)
+		vmaDestroyImage(static_cast<VulkanRenderer*>(renderer)->memAllocator, graphImages[i].imageHandle, graphImages[i].imageMemory);
+
+	for (size_t i = 0; i < beginRenderPassOpsData.size(); i++)
+	{
+		vkDestroyFramebuffer(static_cast<VulkanRenderer*>(renderer)->device, beginRenderPassOpsData[i]->framebuffer, nullptr);
+		vkDestroyRenderPass(static_cast<VulkanRenderer*>(renderer)->device, beginRenderPassOpsData[i]->renderPass, nullptr);
+	}
+
+	for (CommandPool pool : gfxCommandPools)
+		renderer->destroyCommandPool(pool);
+
+	for (Semaphore sem : executionDoneSemaphores)
+		renderer->destroySemaphore(sem);
+
+	graphImages.clear();
+	graphImagesMap.clear();
+	resourceImageViews.clear();
+	allAttachments.clear();
+	execCodes.clear();
+	beginRenderPassOpsData.clear();
+	postBlitOpsData.clear();
+	callRenderFuncOpsData.clear();
+	gfxCommandPools.clear();
+	executionDoneSemaphores.clear();
+
+	attachmentUsageLifetimes.clear();
+	attachmentAliasingCandidates.clear();
 }
 
 void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passStack)
@@ -202,12 +248,11 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 	{
 		uint32_t sizeX = it->second.attachment.namedRelativeSize == "" ? uint32_t(it->second.attachment.sizeX) : uint32_t(namedSizes[it->second.attachment.namedRelativeSize].x * it->second.attachment.sizeX);
 		uint32_t sizeY = it->second.attachment.namedRelativeSize == "" ? uint32_t(it->second.attachment.sizeY) : uint32_t(namedSizes[it->second.attachment.namedRelativeSize].y * it->second.attachment.sizeY);
-		uint32_t sizeZ = it->second.attachment.namedRelativeSize == "" ? uint32_t(it->second.attachment.sizeZ) : uint32_t(namedSizes[it->second.attachment.namedRelativeSize].z * it->second.attachment.sizeZ);
 
 		VkImageCreateInfo imageCreateInfo = {};
 		imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		imageCreateInfo.extent = {sizeX, sizeY, sizeZ};
-		imageCreateInfo.imageType = sizeZ > 1 ? VK_IMAGE_TYPE_3D : (sizeY > 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D);
+		imageCreateInfo.extent = {sizeX, sizeY, 1};
+		imageCreateInfo.imageType = sizeY > 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D;
 		imageCreateInfo.mipLevels = it->second.attachment.mipLevels;
 		imageCreateInfo.arrayLayers = it->second.attachment.arrayLayers;
 		imageCreateInfo.format = toVkFormat(it->second.attachment.format);
@@ -223,6 +268,7 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 		allocInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
 
 		VulkanRenderGraphImage graphImage = {};
+		graphImage.usageFlags = imageCreateInfo.usage;
 		graphImage.attachment = it->second.attachment;
 
 		VK_CHECK_RESULT(vmaCreateImage(static_cast<VulkanRenderer*>(renderer)->memAllocator, &imageCreateInfo, &allocInfo, &graphImage.imageHandle, &graphImage.imageMemory, nullptr));

@@ -61,7 +61,7 @@ class RendererCommandBuffer
 
 		virtual void blitTexture (Texture src, TextureLayout srcLayout, Texture dst, TextureLayout dstLayout, std::vector<TextureBlitInfo> blitRegions, SamplerFilter filter = SAMPLER_FILTER_LINEAR) = 0;
 
-#if SE_RENDER_DEBUG_MARKERS
+#if RENDER_DEBUG_MARKERS
 		virtual void beginDebugRegion (const std::string &regionName, glm::vec4 color = glm::vec4(1)) = 0;
 		virtual void endDebugRegion () = 0;
 		virtual void insertDebugMarker (const std::string &markerName, glm::vec4 color = glm::vec4(1)) = 0;

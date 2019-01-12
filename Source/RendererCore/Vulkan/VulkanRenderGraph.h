@@ -7,6 +7,7 @@
 typedef struct
 {
 	RenderPassAttachment attachment;
+	VkImageUsageFlags usageFlags;
 
 	VkImage imageHandle;
 	VmaAllocation imageMemory;
@@ -50,7 +51,9 @@ public:
 	VulkanRenderGraph(Renderer *rendererPtr);
 	virtual ~VulkanRenderGraph();
 
-	void execute();
+	Semaphore execute();
+
+	void resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize);
 
 	void assignPhysicalResources(const std::vector<size_t> &passStack);
 	void finishBuild(const std::vector<size_t> &passStack);
@@ -72,8 +75,11 @@ private:
 	std::vector<std::unique_ptr<VulkanRenderGraphCallRenderFuncOpData>> callRenderFuncOpsData;
 
 	std::vector<CommandPool> gfxCommandPools;
-	
-	uint32_t execCounter; // A counter incremented every time the execute() method is called, used for n-buffering of the command buffers
+	std::vector<Semaphore> executionDoneSemaphores;
+
+	size_t execCounter; // A counter incremented every time the execute() method is called, used for n-buffering of the command buffers
+
+	void cleanupResources();
 };
 
 #endif /* RENDERERCORE_VULKAN_VULKANRENDERGRAPH_H_ */

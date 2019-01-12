@@ -97,7 +97,7 @@ class VulkanRenderer : public Renderer
 		void setObjectDebugName (void *obj, RendererObjectType objType, const std::string &name);
 
 		void initSwapchain (Window *wnd);
-		void presentToSwapchain (Window *wnd);
+		void presentToSwapchain (Window *wnd, std::vector<Semaphore> waitSemaphores);
 		void recreateSwapchain (Window *wnd);
 		void setSwapchainTexture (Window *wnd, TextureView texView, Sampler sampler, TextureLayout layout);
 

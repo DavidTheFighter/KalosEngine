@@ -91,7 +91,7 @@ class Renderer
 		 * do it.
 		 */
 		virtual void initSwapchain (Window *wnd) = 0;
-		virtual void presentToSwapchain (Window *wnd) = 0;
+		virtual void presentToSwapchain (Window *wnd, std::vector<Semaphore> waitSemaphores) = 0;
 		virtual void recreateSwapchain (Window *wnd) = 0;
 		virtual void setSwapchainTexture (Window *wnd, TextureView texView, Sampler sampler, TextureLayout layout) = 0;
 

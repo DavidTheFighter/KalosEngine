@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 		launchArgs.push_back(argv[i]);
 	}
 
-	if (true)
+	if (false)
 	{
 		launchArgs.push_back("-force_vulkan");
 		launchArgs.push_back("-enable_vulkan_layers");
@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
 	delete Log::getInstance();
 
-	//system("pause");
+	system("pause");
 
 	return 0;
 }

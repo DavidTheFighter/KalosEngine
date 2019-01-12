@@ -12,8 +12,10 @@ class TriangleTest
 {
 	public:
 
-	TextureView renderTargetTV;
 	Sampler renderTargetSampler;
+	RenderGraph gfxGraph;
+
+	Semaphore renderDoneSemaphore;
 
 	TriangleTest(Renderer *rendererPtr);
 	virtual ~TriangleTest();
@@ -24,7 +26,6 @@ class TriangleTest
 
 	Renderer *renderer;
 
-	RenderGraph gfxGraph;
 	Pipeline gfxPipeline;
 
 	void createPipeline(const RenderGraphInitFunctionData &data);

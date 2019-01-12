@@ -1,6 +1,8 @@
 #include "RendererCore/D3D12/D3D12CommandBuffer.h"
 
-#include <RendererCore/D3D12/D3D12CommandPool.h>
+#include <RendererCore/D3D12/D3D12Enums.h>
+#include <RendererCore/D3D12/D3D12Objects.h>
+
 
 D3D12CommandBuffer::D3D12CommandBuffer(D3D12CommandPool *parentCommandPoolPtr, D3D12_COMMAND_LIST_TYPE commandListType)
 {
@@ -8,18 +10,17 @@ D3D12CommandBuffer::D3D12CommandBuffer(D3D12CommandPool *parentCommandPoolPtr, D
 	cmdListType = commandListType;
 
 	cmdList = nullptr;
-
-	ctx_inRenderPass = false;
 }
 
 D3D12CommandBuffer::~D3D12CommandBuffer()
 {
-
+	if (cmdList != nullptr)
+		cmdList->Release();
 }
 
 void D3D12CommandBuffer::beginCommands(CommandBufferUsageFlags flags)
 {
-	DX_CHECK_RESULT(parentCmdPool->device->CreateCommandList(0, cmdListType, parentCmdPool->cmdAlloc, nullptr, IID_PPV_ARGS(&cmdList)));
+	DX_CHECK_RESULT(parentCmdPool->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, parentCmdPool->cmdAlloc, nullptr, IID_PPV_ARGS(&cmdList)));
 }
 
 void D3D12CommandBuffer::endCommands()
@@ -32,42 +33,15 @@ void D3D12CommandBuffer::resetCommands()
 	
 }
 
-void D3D12CommandBuffer::beginRenderPass(RenderPass renderPass, Framebuffer framebuffer, const Scissor & renderArea, const std::vector<ClearValue>& clearValues, SubpassContents contents)
-{
-	if (ctx_inRenderPass)
-	{
-		Log::get()->error("D3D12CommandBuffer: Can't begin a new render pass in command buffer {}, it's still in a render pass, call D3D12CommandBuffer::endRenderPass() first before begining another", (void*) this);
-
-		return;
-	}
-
-	ctx_inRenderPass = true;
-	ctx_currentRenderPass = renderPass;
-
-	const SubpassDescription &subpass0 = renderPass->subpasses[0];
-
-	std::vector<D3D12_RESOURCE_BARRIER> subpass0Barriers;
-
-}
-
-void D3D12CommandBuffer::endRenderPass()
-{
-	if (!ctx_inRenderPass)
-	{
-		Log::get()->error("D3D12CommandBuffer: Can't end a render pass in command buffer {}, it's not currently in one. Call D3D12CommandBuffer::beginRenderPass() first before ending one", (void*) this);
-
-		return;
-	}
-
-	ctx_inRenderPass = false;
-}
-
-void D3D12CommandBuffer::nextSubpass(SubpassContents contents)
-{
-}
-
 void D3D12CommandBuffer::bindPipeline(PipelineBindPoint point, Pipeline pipeline)
 {
+	D3D12Pipeline *d3dpipeline = static_cast<D3D12Pipeline*>(pipeline);
+
+	cmdList->SetGraphicsRootSignature(d3dpipeline->rootSignature);
+	cmdList->SetPipelineState(d3dpipeline->pipeline);
+
+	cmdList->IASetPrimitiveTopology(primitiveTopologyToD3DPrimitiveTopology(d3dpipeline->gfxPipelineInfo.inputAssemblyInfo.topology, d3dpipeline->gfxPipelineInfo.tessellationInfo.patchControlPoints));
+	cmdList->OMSetBlendFactor(d3dpipeline->gfxPipelineInfo.colorBlendInfo.blendConstants);
 }
 
 void D3D12CommandBuffer::bindIndexBuffer(Buffer buffer, size_t offset, bool uses32BitIndices)
@@ -118,18 +92,40 @@ void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Buffer dstBuff
 
 void D3D12CommandBuffer::setViewports(uint32_t firstViewport, const std::vector<Viewport>& viewports)
 {
-	cmdList->RSSetViewports((UINT) viewports.size(), reinterpret_cast<const D3D12_VIEWPORT*>(viewports.data()));
+	std::vector<D3D12_VIEWPORT> d3dViewports;
+
+	for (const Viewport &vp : viewports)
+	{
+		D3D12_VIEWPORT d3dViewport = {};
+		d3dViewport.TopLeftX = vp.x;
+		d3dViewport.TopLeftY = vp.y;
+		d3dViewport.Width = vp.width;
+		d3dViewport.Height = vp.height;
+		d3dViewport.MinDepth = vp.minDepth;
+		d3dViewport.MaxDepth = vp.maxDepth;
+
+		d3dViewports.push_back(d3dViewport);
+	}
+
+	cmdList->RSSetViewports((UINT)d3dViewports.size(), d3dViewports.data());
 }
 
 void D3D12CommandBuffer::setScissors(uint32_t firstScissor, const std::vector<Scissor>& scissors)
 {
-	std::vector<D3D12_RECT> d3d12ScissorRects(scissors.size());
+	std::vector<D3D12_RECT> d3d12ScissorRects;
 
 	for (const Scissor &s : scissors)
-		d3d12ScissorRects.push_back({(LONG) s.x, (LONG) s.y, (LONG) s.width, (LONG) s.height});
+	{
+		D3D12_RECT rect = {};
+		rect.left = s.x;
+		rect.right = (LONG) s.width;
+		rect.top = s.y;
+		rect.bottom = (LONG) s.height;
+
+		d3d12ScissorRects.push_back(rect);
+	}
 
 	cmdList->RSSetScissorRects((UINT) scissors.size(), d3d12ScissorRects.data());
-
 }
 
 void D3D12CommandBuffer::blitTexture(Texture src, TextureLayout srcLayout, Texture dst, TextureLayout dstLayout, std::vector<TextureBlitInfo> blitRegions, SamplerFilter filter)
@@ -146,4 +142,24 @@ void D3D12CommandBuffer::endDebugRegion()
 
 void D3D12CommandBuffer::insertDebugMarker(const std::string & markerName, glm::vec4 color)
 {
+}
+
+void D3D12CommandBuffer::d3d12_clearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE RenderTargetView, ClearValue clearValue)
+{
+	cmdList->ClearRenderTargetView(RenderTargetView, clearValue.color.float32, 0, nullptr);
+}
+
+void D3D12CommandBuffer::d3d12_clearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView, float depthClearValue, uint8_t stencilClearValue)
+{
+	cmdList->ClearDepthStencilView(depthStencilView, D3D12_CLEAR_FLAG_DEPTH, depthClearValue, stencilClearValue, 0, nullptr);
+}
+
+void D3D12CommandBuffer::d3d12_OMSetRenderTargets(const std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> &rtvDescriptors, bool singleHandle, const D3D12_CPU_DESCRIPTOR_HANDLE *dsvDescriptor)
+{
+	cmdList->OMSetRenderTargets(rtvDescriptors.size(), rtvDescriptors.data(), singleHandle, dsvDescriptor);
+}
+
+void D3D12CommandBuffer::d3d12_resourceBarrier(const std::vector<D3D12_RESOURCE_BARRIER> &barriers)
+{
+	cmdList->ResourceBarrier(barriers.size(), barriers.data());
 }

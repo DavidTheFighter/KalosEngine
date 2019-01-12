@@ -54,7 +54,7 @@ inline void DestroyDebugReportCallbackEXT (VkInstance instance, VkDebugReportCal
 	}
 }
 
-#if SE_RENDER_DEBUG_MARKERS
+#if RENDER_DEBUG_MARKERS
 inline void debugMarkerBeginRegion (VkCommandBuffer cmdBuffer, const std::string &name, const glm::vec4 &color)
 {
 	VkDebugMarkerMarkerInfoEXT info = {};

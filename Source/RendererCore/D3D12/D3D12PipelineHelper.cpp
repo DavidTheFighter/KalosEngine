@@ -17,6 +17,7 @@ D3D12PipelineHelper::~D3D12PipelineHelper()
 Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo & pipelineInfo, RenderPass renderPass, uint32_t subpass)
 {
 	D3D12Pipeline *pipeline = new D3D12Pipeline();
+	pipeline->gfxPipelineInfo = pipelineInfo;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 
@@ -110,6 +111,8 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	psoDesc.SampleDesc = {1, 0};
 	psoDesc.NodeMask = 0;
 	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+	printf("ph is %u\n", ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].colorAttachments[0].attachment].format));
 
 	for (UINT i = 0; i < psoDesc.NumRenderTargets; i++)
 		psoDesc.RTVFormats[i] = ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].colorAttachments[i].attachment].format);

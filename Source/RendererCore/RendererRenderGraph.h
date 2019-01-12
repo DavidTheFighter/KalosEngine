@@ -24,11 +24,13 @@ class RendererRenderGraph
 	void setFrameGraphOutput(const std::string &textureName);
 	void addNamedSize(const std::string &sizeName, glm::uvec3 initialSize);
 
+	virtual void resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize) = 0;
+
 	RendererGraphRenderPass &addRenderPass(const std::string &name, FrameGraphPipelineType pipelineType);
 
 	bool validate();
 	void build(bool doValidation = true);
-	virtual void execute() = 0;
+	virtual Semaphore execute() = 0;
 
 	virtual TextureView getRenderGraphOutputTextureView() = 0;
 

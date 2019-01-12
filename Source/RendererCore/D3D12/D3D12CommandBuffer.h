@@ -18,10 +18,6 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 	void endCommands();
 	void resetCommands();
 
-	void beginRenderPass(RenderPass renderPass, Framebuffer framebuffer, const Scissor &renderArea, const std::vector<ClearValue> &clearValues, SubpassContents contents);
-	void endRenderPass();
-	void nextSubpass(SubpassContents contents);
-
 	void bindPipeline(PipelineBindPoint point, Pipeline pipeline);
 
 	void bindIndexBuffer(Buffer buffer, size_t offset, bool uses32BitIndices);
@@ -49,17 +45,20 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 	void endDebugRegion();
 	void insertDebugMarker(const std::string &markerName, glm::vec4 color);
 
+	void d3d12_clearRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE RenderTargetView, ClearValue clearValue);
+	void d3d12_clearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView, float depthClearValue, uint8_t stencilClearValue);
+	void d3d12_OMSetRenderTargets(const std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> &rtvDescriptors, bool singleHandle, const D3D12_CPU_DESCRIPTOR_HANDLE *dsvDescriptor);
+	void d3d12_resourceBarrier(const std::vector<D3D12_RESOURCE_BARRIER> &barriers);
+
 	private:
 
 	D3D12CommandPool *parentCmdPool;
 	D3D12_COMMAND_LIST_TYPE cmdListType;
 
-	ID3D12GraphicsCommandList3 *cmdList;
-
-	bool ctx_inRenderPass;
-	RenderPass ctx_currentRenderPass;
+	ID3D12GraphicsCommandList *cmdList;
 
 	friend class D3D12CommandPool;
+	friend class D3D12Renderer;
 };
 
 #endif /* RENDERING_D3D12_D3D12COMMANDBUFFER_H_ */

@@ -7,6 +7,7 @@
 
 #include <RendererCore/D3D12/D3D12SwapchainHandler.h>
 #include <RendererCore/D3D12/D3D12PipelineHelper.h>
+#include <RendererCore/D3D12/D3D12RenderGraph.h>
 
 #include <Resources/FileLoader.h>
 
@@ -55,6 +56,11 @@ D3D12Renderer::D3D12Renderer(const RendererAllocInfo& allocInfo)
 	chooseDeviceAdapter();
 	createLogicalDevice();
 
+	if (debugLayersEnabled)
+	{
+		device->QueryInterface(IID_PPV_ARGS(&debugDevice));
+	}
+
 	// Setup the d3d12 debug layer filter & stuff
 	if (debugLayersEnabled && false)
 	{
@@ -90,11 +96,18 @@ D3D12Renderer::~D3D12Renderer()
 	computeQueue->Release();
 	transferQueue->Release();
 
+	debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
+
+	if (debugLayersEnabled)
+	{
+		debugDevice->Release();
+	}
+
 	deviceAdapter->Release();
 	device->Release();
 
 	dxgiFactory->Release();
-
+	
 	debugController0->Release();
 	debugController1->Release();
 
@@ -159,8 +172,65 @@ CommandPool D3D12Renderer::createCommandPool(QueueType queue, CommandPoolFlags f
 	return cmdPool;
 }
 
-void D3D12Renderer::submitToQueue(QueueType queue, const std::vector<CommandBuffer>& cmdBuffers, const std::vector<Semaphore>& waitSemaphores, const std::vector<PipelineStageFlags>& waitSemaphoreStages, const std::vector<Semaphore>& signalSemaphores, Fence fence)
+void D3D12Renderer::submitToQueue(QueueType queueType, const std::vector<CommandBuffer>& cmdBuffers, const std::vector<Semaphore>& waitSemaphores, const std::vector<PipelineStageFlags>& waitSemaphoreStages, const std::vector<Semaphore>& signalSemaphores, Fence fence)
 {
+	ID3D12CommandQueue *cmdQueue = nullptr;
+
+	switch (queueType)
+	{
+		case QUEUE_TYPE_COMPUTE:
+			cmdQueue = computeQueue;
+			break;
+		case QUEUE_TYPE_TRANSFER:
+			cmdQueue = transferQueue;
+			break;
+		case QUEUE_TYPE_GRAPHICS:
+		default:
+			cmdQueue = graphicsQueue;
+	}
+
+	std::vector<ID3D12CommandList*> cmdLists;
+
+	for (CommandBuffer cmdBuffer : cmdBuffers)
+		cmdLists.push_back(static_cast<D3D12CommandBuffer*>(cmdBuffer)->cmdList);
+
+	for (Semaphore sem : waitSemaphores)
+	{
+		D3D12Semaphore *d3dsem = static_cast<D3D12Semaphore*>(sem);
+
+		if (!d3dsem->pendingWait)
+		{
+			Log::get()->error("D3D12Renderer: Cannot wait on a semaphore that hasn't been used as a signal sempahore, signal it as a signal semaphore before waiting on it");
+
+			continue;
+		}
+
+		d3dsem->pendingWait = false;
+		
+		cmdQueue->Wait(d3dsem->semFence, d3dsem->semFenceValue);
+	}
+
+	cmdQueue->ExecuteCommandLists(cmdLists.size(), cmdLists.data());
+	
+	for (Semaphore sem : signalSemaphores)
+	{
+		D3D12Semaphore *d3dsem = static_cast<D3D12Semaphore*>(sem);
+
+		if (d3dsem->pendingWait)
+		{
+			Log::get()->error("D3D12Renderer: Cannot signal a sempahore that has already been signaled/not been waited on, use it/wait on it before signaling again");
+
+			continue;
+		}
+
+		d3dsem->pendingWait = true;
+		UINT64 d3dsemWaitValue = ++d3dsem->semFenceValue;
+
+		cmdQueue->Signal(d3dsem->semFence, d3dsemWaitValue);
+
+		if (d3dsem->semFence->GetCompletedValue() < d3dsemWaitValue)
+			DX_CHECK_RESULT(d3dsem->semFence->SetEventOnCompletion(d3dsemWaitValue, d3dsem->semFenceWaitEvent));
+	}
 }
 
 void D3D12Renderer::waitForQueueIdle(QueueType queue)
@@ -198,7 +268,9 @@ void D3D12Renderer::writeDescriptorSets(const std::vector<DescriptorWriteInfo>& 
 
 RenderGraph D3D12Renderer::createRenderGraph()
 {
-	return nullptr;
+	D3D12RenderGraph *renderGraph = new D3D12RenderGraph(this);
+
+	return renderGraph;
 }
 
 ShaderModule D3D12Renderer::createShaderModule(const std::string &file, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint)
@@ -282,6 +354,11 @@ std::vector<Semaphore> D3D12Renderer::createSemaphores(uint32_t count)
 	for (uint32_t i = 0; i < count; i++)
 	{
 		D3D12Semaphore *sem = new D3D12Semaphore();
+		sem->semFenceValue = 0;
+		sem->semFenceWaitEvent = createEventHandle();
+		sem->pendingWait = false;
+
+		DX_CHECK_RESULT(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&sem->semFence)));
 
 		sems.push_back(sem);
 	}
@@ -348,6 +425,12 @@ TextureView D3D12Renderer::createTextureView(Texture texture, TextureViewType vi
 	D3D12TextureView *textureView = new D3D12TextureView();
 	textureView->parentTexture = texture;
 	textureView->parentTextureResource = static_cast<D3D12Texture*>(texture)->textureResource;
+	textureView->viewType = viewType;
+	textureView->viewFormat = viewFormat == RESOURCE_FORMAT_UNDEFINED ? texture->textureFormat : viewFormat;
+	textureView->baseMip = subresourceRange.baseMipLevel;
+	textureView->mipCount = subresourceRange.levelCount;
+	textureView->baseLayer = subresourceRange.baseArrayLayer;
+	textureView->layerCount = subresourceRange.layerCount;
 
 	return textureView;
 }
@@ -573,6 +656,9 @@ void D3D12Renderer::destroySemaphore(Semaphore sem)
 {
 	D3D12Semaphore *d3d12Sem = static_cast<D3D12Semaphore*>(sem);
 
+	d3d12Sem->semFence->Release();
+	CloseHandle(d3d12Sem->semFenceWaitEvent);
+
 	delete d3d12Sem;
 }
 
@@ -585,7 +671,7 @@ void D3D12Renderer::initSwapchain(Window *wnd)
 	swapchainHandler->initSwapchain(wnd);
 }
 
-void D3D12Renderer::presentToSwapchain(Window *wnd)
+void D3D12Renderer::presentToSwapchain(Window *wnd, std::vector<Semaphore> waitSemaphores)
 {
 	swapchainHandler->presentToSwapchain(wnd);
 }
@@ -597,7 +683,17 @@ void D3D12Renderer::recreateSwapchain(Window *wnd)
 
 void D3D12Renderer::setSwapchainTexture(Window *wnd, TextureView texView, Sampler sampler, TextureLayout layout)
 {
-	
+	D3D12TextureView *d3dtv = static_cast<D3D12TextureView*>(texView);
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = ResourceFormatToDXGIFormat(d3dtv->viewFormat);
+	srvDesc.ViewDimension = textureViewTypeToD3D12SRVDimension(d3dtv->viewType);
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Texture2D.MipLevels = 1;
+
+	Log::get()->info("{}", srvDesc.ViewDimension);
+
+	swapchainHandler->setSwapchainSourceTexture(srvDesc, d3dtv->parentTextureResource);
 }
 
 

@@ -16,7 +16,7 @@
 		_com_error err(hr);		\
 		LPCTSTR errMsg = err.ErrorMessage();	\
 		Log::get()->error("D3D12 Error: HRESULT is \"{}\", in file \"{}\", at line {}", errMsg, __FILE__, __LINE__); \
-		throw std::runtime_error("d3d12 error");	\
+		system("pause");	\
 	}								\
 }									\
 

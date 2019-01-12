@@ -53,7 +53,7 @@ class VulkanSwapchain
 
 		void init();
 		void initSwapchain(Window *wnd);
-		void presentToSwapchain(Window *wnd);
+		void presentToSwapchain(Window *wnd, std::vector<VkSemaphore> externalWaitSemaphores);
 
 		void createSwapchain(Window *wnd);
 		void destroySwapchain(Window *wnd);

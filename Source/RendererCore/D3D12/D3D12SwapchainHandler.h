@@ -42,6 +42,8 @@ class D3D12SwapchainHandler
 	void destroySwapchain(Window *wnd);
 	void recreateSwapchain(Window *wnd);
 
+	void setSwapchainSourceTexture(D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc, ID3D12Resource *textureResource);
+
 	private:
 
 	D3D12Renderer *renderer;
@@ -55,11 +57,8 @@ class D3D12SwapchainHandler
 
 	ID3D12PipelineState *swapchainPSO;
 	ID3D12RootSignature *swapchainRootSig;
-	ID3D12Resource *swapchainVertexBuffer;
-	D3D12_VERTEX_BUFFER_VIEW swapchainVertexBufferView;
 
 	ID3D12DescriptorHeap *swapchainDescHeap;
-	ID3D12Resource *swapchainCBufferHeap;
 	ID3D12Resource *swapchainTextureHeap;
 
 	ID3D12CommandAllocator *swapchainUtilCommandAlloc;
@@ -71,9 +70,7 @@ class D3D12SwapchainHandler
 
 	void createRootSignature();
 	void createPSO();
-	void createVertexBuffer();
 	void createTexture();
-	void createConstantBuffer();
 };
 
 #endif /* RENDERING_D3D12_D3D12SWAPCHAIN_H_ */

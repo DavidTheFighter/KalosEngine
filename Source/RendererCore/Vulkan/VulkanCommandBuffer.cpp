@@ -307,8 +307,23 @@ void VulkanCommandBuffer::stageBuffer (StagingBuffer stagingBuffer, Buffer dstBu
 
 void VulkanCommandBuffer::setViewports (uint32_t firstViewport, const std::vector<Viewport> &viewports)
 {
-	// Generic viewports have the same data struct as vulkan viewports, so they map directly
-	vkCmdSetViewport(bufferHandle, firstViewport, static_cast<uint32_t>(viewports.size()), reinterpret_cast<const VkViewport*>(viewports.data()));
+	std::vector<VkViewport> vulkanViewports;
+
+	for (const Viewport &viewport : viewports)
+	{
+		VkViewport vulkanViewPort = {};
+		vulkanViewPort.x = viewport.x;
+		vulkanViewPort.width = viewport.width;
+		vulkanViewPort.minDepth = viewport.minDepth;
+		vulkanViewPort.maxDepth = viewport.maxDepth;
+
+		vulkanViewPort.y = viewport.height;
+		vulkanViewPort.height = -viewport.height;
+
+		vulkanViewports.push_back(vulkanViewPort);
+	}
+
+	vkCmdSetViewport(bufferHandle, firstViewport, static_cast<uint32_t>(vulkanViewports.size()), vulkanViewports.data());
 }
 
 void VulkanCommandBuffer::setScissors (uint32_t firstScissor, const std::vector<Scissor> &scissors)
@@ -342,7 +357,7 @@ void VulkanCommandBuffer::blitTexture (Texture src, TextureLayout srcLayout, Tex
 
 void VulkanCommandBuffer::beginDebugRegion (const std::string &regionName, glm::vec4 color)
 {
-#if SE_VULKAN_DEBUG_MARKERS
+#if RENDER_DEBUG_MARKERS
 
 	if (VulkanExtensions::enabled_VK_EXT_debug_marker)
 	{
@@ -358,7 +373,7 @@ void VulkanCommandBuffer::beginDebugRegion (const std::string &regionName, glm::
 
 void VulkanCommandBuffer::endDebugRegion ()
 {
-#if SE_VULKAN_DEBUG_MARKERS
+#if RENDER_DEBUG_MARKERS
 
 	if (VulkanExtensions::enabled_VK_EXT_debug_marker)
 	{
@@ -370,7 +385,7 @@ void VulkanCommandBuffer::endDebugRegion ()
 
 void VulkanCommandBuffer::insertDebugMarker (const std::string &markerName, glm::vec4 color)
 {
-#if SE_VULKAN_DEBUG_MARKERS
+#if RENDER_DEBUG_MARKERS
 
 	if (VulkanExtensions::enabled_VK_EXT_debug_marker)
 	{

@@ -12,6 +12,12 @@ typedef struct RendererTexture
 typedef struct RendererTextureView
 {
 	RendererTexture *parentTexture;
+	ResourceFormat viewFormat;
+	TextureViewType viewType;
+	uint32_t baseMip;
+	uint32_t mipCount;
+	uint32_t baseLayer;
+	uint32_t layerCount;
 } RendererTextureView;
 
 typedef struct RendererSampler

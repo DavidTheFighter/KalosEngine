@@ -19,6 +19,8 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 	mainWindow = std::unique_ptr<Window>(new Window(rendererBackendType));
 	mainWindow->initWindow(0, 0, APP_NAME);
 
+	mainWindowSize = glm::uvec2(mainWindow->getWidth(), mainWindow->getHeight());
+
 	RendererAllocInfo renderAlloc = {};
 	renderAlloc.backend = rendererBackendType;
 	renderAlloc.launchArgs = launchArgs;
@@ -33,7 +35,7 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 	{
 		triangleTest = std::unique_ptr<TriangleTest>(new TriangleTest(renderer.get()));
 
-		renderer->setSwapchainTexture(mainWindow.get(), triangleTest->renderTargetTV, triangleTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		renderer->setSwapchainTexture(mainWindow.get(), triangleTest->gfxGraph->getRenderGraphOutputTextureView(), triangleTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 }
 
@@ -90,6 +92,21 @@ void KalosEngine::update()
 
 	float delta = getTime() - lastUpdateTime;
 
+	glm::uvec2 lastMainWindowSize = mainWindowSize;
+	mainWindowSize = glm::uvec2(mainWindow->getWidth(), mainWindow->getHeight());
+
+	if (mainWindowSize != lastMainWindowSize)
+	{
+		renderer->recreateSwapchain(mainWindow.get());
+
+		if (doingTriangleTest)
+		{
+			triangleTest->gfxGraph->resizeNamedSize("swapchain", mainWindowSize);
+
+			renderer->setSwapchainTexture(mainWindow.get(), triangleTest->gfxGraph->getRenderGraphOutputTextureView(), triangleTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
+	}
+
 	if (true)
 	{
 		static double windowTitleFrametimeUpdateTimer;
@@ -118,13 +135,17 @@ void KalosEngine::render()
 	if (doingTriangleTest)
 	{
 		triangleTest->render();
+
+		renderer->presentToSwapchain(mainWindow.get(), {triangleTest->renderDoneSemaphore});
 	}
 	else if (!gameStates.empty())
+	{
 		gameStates.back()->render();
 
-	renderer->waitForQueueIdle(QUEUE_TYPE_GRAPHICS);
+		renderer->waitForQueueIdle(QUEUE_TYPE_GRAPHICS);
 
-	renderer->presentToSwapchain(mainWindow.get());
+		renderer->presentToSwapchain(mainWindow.get(), {});
+	}
 }
 
 void KalosEngine::changeState(GameState *state)

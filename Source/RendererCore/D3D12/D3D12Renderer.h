@@ -79,14 +79,8 @@ class D3D12Renderer : public Renderer
 
 	void setObjectDebugName(void *obj, RendererObjectType objType, const std::string &name);
 
-	/*
-	* Initializes the swapchain. Note that this should only be called once, in the event you
-	* want to explicitly recreate the swapchain, call recreateSwapchain(). However in most cases
-	* you should just notify the renderer that the window was resized. That's is the preferred way to
-	* do it.
-	*/
 	void initSwapchain(Window *wnd);
-	void presentToSwapchain(Window *wnd);
+	void presentToSwapchain(Window *wnd, std::vector<Semaphore> waitSemaphores);
 	void recreateSwapchain(Window *wnd);
 	void setSwapchainTexture(Window *wnd, TextureView texView, Sampler sampler, TextureLayout layout);
 
@@ -95,6 +89,7 @@ class D3D12Renderer : public Renderer
 	ID3D12Debug *debugController0;
 	ID3D12Debug1 *debugController1;
 	ID3D12InfoQueue *infoQueue;
+	ID3D12DebugDevice *debugDevice;
 
 	IDXGIFactory4 *dxgiFactory;
 

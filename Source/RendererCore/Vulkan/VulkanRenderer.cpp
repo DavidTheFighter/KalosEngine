@@ -100,7 +100,7 @@ VulkanRenderer::VulkanRenderer (const RendererAllocInfo& allocInfo)
 	appInfo.pEngineName = ENGINE_NAME;
 	appInfo.applicationVersion = VK_MAKE_VERSION(APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_REVISION);
 	appInfo.engineVersion = VK_MAKE_VERSION(ENGINE_VERSION_MAJOR, ENGINE_VERSION_MINOR, ENGINE_VERSION_REVISION);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.apiVersion = VK_API_VERSION_1_1;
 
 	VkInstanceCreateInfo instCreateInfo = {};
 	instCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -792,6 +792,12 @@ TextureView VulkanRenderer::createTextureView (Texture texture, TextureViewType 
 
 	VulkanTextureView* vkTexView = new VulkanTextureView();
 	vkTexView->parentTexture = texture;
+	vkTexView->viewFormat = viewFormat == RESOURCE_FORMAT_UNDEFINED ? vkTex->textureFormat : viewFormat;
+	vkTexView->viewType = viewType;
+	vkTexView->baseMip = subresourceRange.baseMipLevel;
+	vkTexView->mipCount = subresourceRange.levelCount;
+	vkTexView->baseLayer = subresourceRange.baseArrayLayer;
+	vkTexView->layerCount = subresourceRange.layerCount;
 
 	VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCreateInfo, nullptr, &vkTexView->imageView));
 
@@ -1157,9 +1163,14 @@ void VulkanRenderer::initSwapchain (Window *wnd)
 	swapchains->initSwapchain(wnd);
 }
 
-void VulkanRenderer::presentToSwapchain (Window *wnd)
+void VulkanRenderer::presentToSwapchain (Window *wnd, std::vector<Semaphore> waitSemaphores)
 {
-	swapchains->presentToSwapchain(wnd);
+	std::vector<VkSemaphore> vulkanWaitSems;
+
+	for (Semaphore sem : waitSemaphores)
+		vulkanWaitSems.push_back(static_cast<VulkanSemaphore*>(sem)->semHandle);
+
+	swapchains->presentToSwapchain(wnd, vulkanWaitSems);
 }
 
 void VulkanRenderer::recreateSwapchain (Window *wnd)
@@ -1195,6 +1206,9 @@ void VulkanRenderer::createLogicalDevice ()
 	std::vector<const char*> enabledDeviceExtensions;
 	enabledDeviceExtensions.insert(enabledDeviceExtensions.begin(), deviceExtensions.begin(), deviceExtensions.end());
 
+	for (const char *ext : enabledDeviceExtensions)
+		Log::get()->info("Enabling the {} extension", std::string(ext));
+
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
 	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
@@ -1213,7 +1227,7 @@ void VulkanRenderer::createLogicalDevice ()
 		{
 			enabledDeviceExtensions.push_back(VK_AMD_RASTERIZATION_ORDER_EXTENSION_NAME);
 			VulkanExtensions::enabled_VK_AMD_rasterization_order = true;
-			Log::get()->info("Enabling the VK_AMD_rasterization_order");
+			Log::get()->info("Enabling the VK_AMD_rasterization_order extension");
 		}
 	}
 
@@ -1312,7 +1326,7 @@ void VulkanRenderer::choosePhysicalDevice ()
 		score += props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? 500 : 0;
 		score += props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? 200 : 0;
 		score += props.limits.maxSamplerAnisotropy;
-		
+	
 		validDevices.insert(std::make_pair(score, std::make_pair(physDevice, queues)));
 	}
 

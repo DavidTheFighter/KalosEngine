@@ -44,6 +44,8 @@ class KalosEngine
 	std::vector<std::string> launchArgs;
 	std::vector<GameState*> gameStates;
 
+	glm::uvec2 mainWindowSize;
+
 	double lastUpdateTime;
 	float lastLoopCPUTime;
 

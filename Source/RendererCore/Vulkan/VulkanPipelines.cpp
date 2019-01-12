@@ -79,9 +79,9 @@ Pipeline VulkanPipelines::createGraphicsPipeline (const GraphicsPipelineInfo &pi
 			const Viewport &genericViewport = pipelineInfo.viewportInfo.viewports[i];
 			VkViewport viewport = {};
 			viewport.x = genericViewport.x;
-			viewport.y = genericViewport.y;
+			viewport.y = (genericViewport.height - genericViewport.y);
 			viewport.width = genericViewport.width;
-			viewport.height = genericViewport.height;
+			viewport.height = -(genericViewport.height - genericViewport.y);
 			viewport.minDepth = genericViewport.minDepth;
 			viewport.maxDepth = genericViewport.maxDepth;
 
@@ -93,7 +93,7 @@ Pipeline VulkanPipelines::createGraphicsPipeline (const GraphicsPipelineInfo &pi
 			const Scissor &genericScissor = pipelineInfo.viewportInfo.scissors[i];
 			VkRect2D scissor = {};
 			scissor.offset = {genericScissor.x, genericScissor.y};
-			scissor.extent = { genericScissor.width, genericScissor.height };
+			scissor.extent = {genericScissor.width, genericScissor.height};
 
 			scissors.push_back(scissor);
 		}
