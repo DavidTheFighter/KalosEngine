@@ -81,12 +81,10 @@ void TriangleTest::createPipeline(const RenderGraphInitFunctionData &data)
 	ShaderModule fragShader = renderer->createShaderModule("GameData/shaders/tests/triangle_test.hlsl", SHADER_STAGE_FRAGMENT_BIT, SHADER_LANGUAGE_HLSL, "TriangleTestFS");
 
 	PipelineShaderStage vertShaderStage = {};
-	vertShaderStage.entry = "TriangleTestVS"; // TODO Redundant, change to use the shader module entry point
-	vertShaderStage.module = vertShader;
+	vertShaderStage.shaderModule = vertShader;
 
 	PipelineShaderStage fragShaderStage = {};
-	fragShaderStage.entry = "TriangleTestFS"; // TODO Redundant, change to use the shader module entry point
-	fragShaderStage.module = fragShader;
+	fragShaderStage.shaderModule = fragShader;
 
 	PipelineVertexInputInfo vertexInput = {};
 	vertexInput.vertexInputAttribs = {};
@@ -96,23 +94,15 @@ void TriangleTest::createPipeline(const RenderGraphInitFunctionData &data)
 	inputAssembly.primitiveRestart = false;
 	inputAssembly.topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-	PipelineViewportInfo viewportInfo = {};
-	viewportInfo.scissors = {{0, 0, 1920, 1080}};
-	viewportInfo.viewports = {{0, 0, 1920, 1080}};
-
 	PipelineRasterizationInfo rastInfo = {};
 	rastInfo.clockwiseFrontFace = false;
-	rastInfo.cullMode = CULL_MODE_NONE;
-	rastInfo.lineWidth = 1;
+	rastInfo.cullMode = POLYGON_CULL_MODE_NONE;
 	rastInfo.polygonMode = POLYGON_MODE_FILL;
-	rastInfo.rasterizerDiscardEnable = false;
 	rastInfo.enableOutOfOrderRasterization = false;
 
 	PipelineDepthStencilInfo depthInfo = {};
 	depthInfo.enableDepthTest = false;
 	depthInfo.enableDepthWrite = false;
-	depthInfo.minDepthBounds = 0;
-	depthInfo.maxDepthBounds = 1;
 	depthInfo.depthCompareOp = COMPARE_OP_ALWAYS;
 
 	PipelineColorBlendAttachment colorBlendAttachment = {};
@@ -122,24 +112,14 @@ void TriangleTest::createPipeline(const RenderGraphInitFunctionData &data)
 	PipelineColorBlendInfo colorBlend = {};
 	colorBlend.attachments = {colorBlendAttachment};
 	colorBlend.logicOpEnable = false;
-	colorBlend.logicOp = LOGIC_OP_COPY;
-	colorBlend.blendConstants[0] = 1.0f;
-	colorBlend.blendConstants[1] = 1.0f;
-	colorBlend.blendConstants[2] = 1.0f;
-	colorBlend.blendConstants[3] = 1.0f;
-
-	PipelineDynamicStateInfo dynamicState = {};
-	dynamicState.dynamicStates = {DYNAMIC_STATE_VIEWPORT, DYNAMIC_STATE_SCISSOR};
 
 	GraphicsPipelineInfo info = {};
 	info.stages = {vertShaderStage, fragShaderStage};
 	info.vertexInputInfo = vertexInput;
 	info.inputAssemblyInfo = inputAssembly;
-	info.viewportInfo = viewportInfo;
 	info.rasterizationInfo = rastInfo;
 	info.depthStencilInfo = depthInfo;
 	info.colorBlendInfo = colorBlend;
-	info.dynamicStateInfo = dynamicState;
 
 	info.inputPushConstantRanges = {};
 	info.inputSetLayouts = {{
@@ -148,6 +128,6 @@ void TriangleTest::createPipeline(const RenderGraphInitFunctionData &data)
 
 	gfxPipeline = renderer->createGraphicsPipeline(info, data.renderPassHandle, data.baseSubpass);
 
-	renderer->destroyShaderModule(vertShaderStage.module);
-	renderer->destroyShaderModule(fragShaderStage.module);
+	renderer->destroyShaderModule(vertShaderStage.shaderModule);
+	renderer->destroyShaderModule(fragShaderStage.shaderModule);
 }

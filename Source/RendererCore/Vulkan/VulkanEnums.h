@@ -8,6 +8,20 @@
 #ifndef RENDERING_VULKAN_VULKANENUMS_H_
 #define RENDERING_VULKAN_VULKANENUMS_H_
 
+inline VkCullModeFlags PolygonCullModetoVkCullModeFlags(PolygonCullMode cullMode)
+{
+	switch (cullMode)
+	{
+		case POLYGON_CULL_MODE_FRONT:
+			return VK_CULL_MODE_FRONT_BIT;
+		case POLYGON_CULL_MODE_BACK:
+			return VK_CULL_MODE_BACK_BIT;
+		case POLYGON_CULL_MODE_NONE:
+		default:
+			return VK_CULL_MODE_NONE;
+	}
+}
+
 inline VkCommandPoolCreateFlags toVkCommandPoolCreateFlags (CommandPoolFlags flags)
 {
 	// Generic command pool flags map directly to vulkan command pool create flags
@@ -66,12 +80,6 @@ inline VkColorComponentFlags toVkColorComponentFlags (ColorComponentFlags flags)
 {
 	// Generic color component flags map directly to vulkan color component flags
 	return static_cast<VkColorComponentFlags> (flags);
-}
-
-inline VkDynamicState toVkDynamicState (DynamicState state)
-{
-	// Generic dynamic states map directly to vulkan dynamic states
-	return static_cast<VkDynamicState> (state);
 }
 
 inline VkPolygonMode toVkPolygonMode (PolygonMode mode)

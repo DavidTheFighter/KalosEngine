@@ -588,6 +588,7 @@ ShaderModule VulkanRenderer::createShaderModule (const std::string &file, Shader
 	vulkanShader->module = VulkanShaderLoader::createVkShaderModule(device, VulkanShaderLoader::compileGLSL(file, toVkShaderStageFlagBits(stage), sourceLang, entryPoint));
 #endif
 	vulkanShader->stage = stage;
+	vulkanShader->entryPoint = entryPoint;
 
 	/*
 	 * I'm formatting the debug name to trim it to the "GameData/shaders/" directory. For example:
@@ -1237,7 +1238,6 @@ void VulkanRenderer::createLogicalDevice ()
 	enabledDeviceFeatures.geometryShader = true;
 	enabledDeviceFeatures.tessellationShader = true;
 	enabledDeviceFeatures.fillModeNonSolid = true;
-	enabledDeviceFeatures.wideLines = true;
 	enabledDeviceFeatures.textureCompressionBC = true;
 	enabledDeviceFeatures.shaderImageGatherExtended = true;
 

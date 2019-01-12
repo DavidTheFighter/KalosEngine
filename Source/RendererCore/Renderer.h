@@ -67,7 +67,7 @@ class Renderer
 		virtual void destroyCommandPool (CommandPool pool) = 0;
 		virtual void destroyRenderGraph(RenderGraph &graph) = 0;
 		virtual void destroyPipeline (Pipeline pipeline) = 0;
-		virtual void destroyShaderModule (ShaderModule module) = 0;
+		virtual void destroyShaderModule (ShaderModule shaderModule) = 0;
 		virtual void destroyDescriptorPool (DescriptorPool pool) = 0;
 		virtual void destroyTexture (Texture texture) = 0;
 		virtual void destroyTextureView (TextureView textureView) = 0;

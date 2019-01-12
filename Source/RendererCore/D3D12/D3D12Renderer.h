@@ -66,7 +66,7 @@ class D3D12Renderer : public Renderer
 	void destroyCommandPool(CommandPool pool);
 	void destroyRenderGraph(RenderGraph &graph);
 	void destroyPipeline(Pipeline pipeline);
-	void destroyShaderModule(ShaderModule module);
+	void destroyShaderModule(ShaderModule shaderModule);
 	void destroyDescriptorPool(DescriptorPool pool);
 	void destroyTexture(Texture texture);
 	void destroyTextureView(TextureView textureView);

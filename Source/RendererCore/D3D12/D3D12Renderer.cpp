@@ -305,6 +305,7 @@ ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string & sou
 
 	shaderModule->shaderBytecodeLength = blob->GetBufferSize();
 	shaderModule->stage = stage;
+	shaderModule->entryPoint = entryPoint;
 
 	blob->Release();
 
@@ -592,9 +593,9 @@ void D3D12Renderer::destroyPipeline(Pipeline pipeline)
 	delete d3d12Pipeline;
 }
 
-void D3D12Renderer::destroyShaderModule(ShaderModule module)
+void D3D12Renderer::destroyShaderModule(ShaderModule shaderModule)
 {
-	delete static_cast<D3D12ShaderModule*>(module);
+	delete static_cast<D3D12ShaderModule*>(shaderModule);
 }
 
 void D3D12Renderer::destroyDescriptorPool(DescriptorPool pool)

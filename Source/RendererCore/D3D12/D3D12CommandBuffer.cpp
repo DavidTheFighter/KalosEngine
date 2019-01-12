@@ -40,7 +40,7 @@ void D3D12CommandBuffer::bindPipeline(PipelineBindPoint point, Pipeline pipeline
 	cmdList->SetGraphicsRootSignature(d3dpipeline->rootSignature);
 	cmdList->SetPipelineState(d3dpipeline->pipeline);
 
-	cmdList->IASetPrimitiveTopology(primitiveTopologyToD3DPrimitiveTopology(d3dpipeline->gfxPipelineInfo.inputAssemblyInfo.topology, d3dpipeline->gfxPipelineInfo.tessellationInfo.patchControlPoints));
+	cmdList->IASetPrimitiveTopology(primitiveTopologyToD3DPrimitiveTopology(d3dpipeline->gfxPipelineInfo.inputAssemblyInfo.topology, d3dpipeline->gfxPipelineInfo.tessellationPatchControlPoints));
 	cmdList->OMSetBlendFactor(d3dpipeline->gfxPipelineInfo.colorBlendInfo.blendConstants);
 }
 

@@ -142,16 +142,12 @@ typedef enum PolygonMode
     POLYGON_MODE_MAX_ENUM = 0x7FFFFFFF
 } PolygonMode;
 
-typedef enum CullModeFlagBits
+typedef enum PolygonCullMode
 {
-    CULL_MODE_NONE = 0,
-    CULL_MODE_FRONT_BIT = 0x00000001,
-    CULL_MODE_BACK_BIT = 0x00000002,
-    CULL_MODE_FRONT_AND_BACK = 0x00000003,
-    CULL_MODE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
-} CullModeFlagBits;
-
-typedef uint32_t CullModeFlags;
+    POLYGON_CULL_MODE_NONE = 0,
+	POLYGON_CULL_MODE_FRONT = 0x00000001,
+	POLYGON_CULL_MODE_BACK = 0x00000002
+} PolygonCullMode;
 
 typedef enum CompareOp
 {
@@ -231,20 +227,6 @@ typedef enum ColorComponentFlagBits
 } ColorComponentFlagBits;
 
 typedef uint32_t ColorComponentFlags;
-
-typedef enum DynamicState
-{
-    DYNAMIC_STATE_VIEWPORT = 0,
-    DYNAMIC_STATE_SCISSOR = 1,
-    DYNAMIC_STATE_LINE_WIDTH = 2,
-    DYNAMIC_STATE_DEPTH_BIAS = 3,
-    DYNAMIC_STATE_BLEND_CONSTANTS = 4,
-    DYNAMIC_STATE_DEPTH_BOUNDS = 5,
-    DYNAMIC_STATE_STENCIL_COMPARE_MASK = 6,
-    DYNAMIC_STATE_STENCIL_WRITE_MASK = 7,
-    DYNAMIC_STATE_STENCIL_REFERENCE = 8,
-    DYNAMIC_STATE_MAX_ENUM = 0x7FFFFFFF
-} DynamicState;
 
 typedef enum AccessFlagBits
 {

@@ -35,9 +35,7 @@ class VulkanPipelines
 		 */
 		std::vector<VkPipelineShaderStageCreateInfo> getPipelineShaderStages (const std::vector<PipelineShaderStage> &stages);
 		VkPipelineInputAssemblyStateCreateInfo getPipelineInputAssemblyInfo (const PipelineInputAssemblyInfo &info);
-		VkPipelineTessellationStateCreateInfo getPipelineTessellationInfo (const PipelineTessellationInfo &info);
 		VkPipelineRasterizationStateCreateInfo getPipelineRasterizationInfo (const PipelineRasterizationInfo &info);
-		VkPipelineMultisampleStateCreateInfo getPipelineMultisampleInfo (const PipelineMultisampleInfo &info);
 		VkPipelineDepthStencilStateCreateInfo getPipelineDepthStencilInfo (const PipelineDepthStencilInfo &info);
 };
 

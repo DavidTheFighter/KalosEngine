@@ -101,15 +101,18 @@ inline D3D12_COMPARISON_FUNC compareOpToD3D12ComparisonFunc(CompareOp op)
 	}
 }
 
-inline D3D12_CULL_MODE cullModeFlagsToD3D12CullMode(CullModeFlags mode)
+inline D3D12_CULL_MODE cullModeFlagsToD3D12CullMode(PolygonCullMode cullMode)
 {
-	if (mode & CULL_MODE_BACK_BIT)
-		return D3D12_CULL_MODE_BACK;
-	
-	if (mode & CULL_MODE_FRONT_BIT)
-		return D3D12_CULL_MODE_FRONT;
-
-	return D3D12_CULL_MODE_NONE;
+	switch (cullMode)
+	{
+		case POLYGON_CULL_MODE_FRONT:
+			return D3D12_CULL_MODE_FRONT;
+		case POLYGON_CULL_MODE_BACK:
+			return D3D12_CULL_MODE_BACK;
+		case POLYGON_CULL_MODE_NONE:
+		default:
+			return D3D12_CULL_MODE_NONE;
+	}
 }
 
 inline D3D12_FILL_MODE polygonModeToD3D12FillMode(PolygonMode mode)

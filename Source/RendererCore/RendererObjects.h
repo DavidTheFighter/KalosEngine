@@ -130,6 +130,7 @@ typedef struct RendererDescriptorSetLayout
 typedef struct RendererShaderModule
 {
 		ShaderStageFlagBits stage;
+		std::string entryPoint;
 
 } RendererShaderModule;
 
@@ -162,8 +163,7 @@ typedef struct RendererPushConstantRange
 
 typedef struct RendererPipelineShaderStage
 {
-		RendererShaderModule *module;
-		const char *entry;
+		RendererShaderModule *shaderModule;
 		// Also eventually specialization constants
 } PipelineShaderStage;
 
@@ -199,40 +199,22 @@ typedef struct RendererPipelineTessellationInfo
 		uint32_t patchControlPoints;
 } PipelineTessellationInfo;
 
-typedef struct RendererPipelineViewportInfo
-{
-		std::vector<Viewport> viewports;
-		std::vector<Scissor> scissors;
-} PipelineViewportInfo;
-
 typedef struct RendererPipelineRasterizationInfo
 {
-		bool depthClampEnable;
-		bool rasterizerDiscardEnable;
 		bool clockwiseFrontFace;
 		bool enableOutOfOrderRasterization;
 		PolygonMode polygonMode;
-		CullModeFlags cullMode;
-		float lineWidth;
+		PolygonCullMode cullMode;
 		// Also some depth bias stuff I might implement later
 
 } PipelineRasterizationInfo;
-
-typedef struct RendererPipelineMultisampleInfo
-{
-		// As of now multisampling is NOT supported
-} PipelineMultisampleInfo;
 
 typedef struct RendererPipelineDepthStencilInfo
 {
 		bool enableDepthTest;
 		bool enableDepthWrite;
 		CompareOp depthCompareOp;
-		bool depthBoundsTestEnable;
-		float minDepthBounds;
-		float maxDepthBounds;
 
-		// Note as of now I'm not supporting stencil operations
 } PipelineDepthStencilInfo;
 
 typedef struct RendererPipelineColorBlendAttachment
@@ -256,23 +238,16 @@ typedef struct RendererPipelineColorBlendInfo
 
 } PipelineColorBlendInfo;
 
-typedef struct RendererPipelineDynamicStateInfo
-{
-		std::vector<DynamicState> dynamicStates;
-} PipelineDynamicStateInfo;
-
 typedef struct RendererGraphicsPipelineInfo
 {
 		std::vector<PipelineShaderStage> stages;
 		PipelineVertexInputInfo vertexInputInfo;
 		PipelineInputAssemblyInfo inputAssemblyInfo;
-		PipelineTessellationInfo tessellationInfo;
-		PipelineViewportInfo viewportInfo;
 		PipelineRasterizationInfo rasterizationInfo;
-		PipelineMultisampleInfo multisampleInfo;
 		PipelineDepthStencilInfo depthStencilInfo;
 		PipelineColorBlendInfo colorBlendInfo;
-		PipelineDynamicStateInfo dynamicStateInfo;
+
+		uint32_t tessellationPatchControlPoints; // Only used if there is a tessellation shader in 'stages'
 
 		std::vector<PushConstantRange> inputPushConstantRanges;
 		std::vector<std::vector<DescriptorSetLayoutBinding> > inputSetLayouts;

@@ -60,7 +60,7 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	rastDesc.DepthBias = 0.0f;
 	rastDesc.DepthBiasClamp = 0.0f;
 	rastDesc.SlopeScaledDepthBias = 0.0f;
-	rastDesc.DepthClipEnable = !pipelineInfo.rasterizationInfo.depthClampEnable;
+	rastDesc.DepthClipEnable = TRUE;
 	rastDesc.MultisampleEnable = FALSE;
 	rastDesc.AntialiasedLineEnable = FALSE;
 	rastDesc.ForcedSampleCount = 0;
@@ -79,9 +79,9 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	for (size_t i = 0; i < pipelineInfo.stages.size(); i++)
 	{
 		const PipelineShaderStage &shaderStage = pipelineInfo.stages[i];
-		const D3D12ShaderModule *shaderModule = static_cast<const D3D12ShaderModule*>(shaderStage.module);
+		const D3D12ShaderModule *shaderModule = static_cast<const D3D12ShaderModule*>(shaderStage.shaderModule);
 
-		switch (shaderStage.module->stage)
+		switch (shaderStage.shaderModule->stage)
 		{
 			case SHADER_STAGE_VERTEX_BIT:
 				psoDesc.VS = {shaderModule->shaderBytecode.get(), shaderModule->shaderBytecodeLength};

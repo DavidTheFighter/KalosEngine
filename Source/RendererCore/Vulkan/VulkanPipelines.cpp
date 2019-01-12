@@ -26,9 +26,7 @@ Pipeline VulkanPipelines::createGraphicsPipeline (const GraphicsPipelineInfo &pi
 
 	std::vector<VkPipelineShaderStageCreateInfo> pipelineShaderStages = getPipelineShaderStages(pipelineInfo.stages);
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = getPipelineInputAssemblyInfo(pipelineInfo.inputAssemblyInfo);
-	VkPipelineTessellationStateCreateInfo tessellationState = getPipelineTessellationInfo(pipelineInfo.tessellationInfo);
 	VkPipelineRasterizationStateCreateInfo rastState = getPipelineRasterizationInfo(pipelineInfo.rasterizationInfo);
-	VkPipelineMultisampleStateCreateInfo multisampleState = getPipelineMultisampleInfo(pipelineInfo.multisampleInfo);
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = getPipelineDepthStencilInfo(pipelineInfo.depthStencilInfo);
 
 	// These are the create infos that rely on pointers in their data structs
@@ -67,42 +65,21 @@ Pipeline VulkanPipelines::createGraphicsPipeline (const GraphicsPipelineInfo &pi
 		vertexInputState.pVertexAttributeDescriptions = inputAttribs.data();
 	}
 
-	std::vector<VkViewport> viewports;
-	std::vector<VkRect2D> scissors;
+	std::vector<VkViewport> dummyViewports = {{0.0f, 0.0f, 512.0f, 512.0f, 0.0f, 1.0f}};
+	std::vector<VkRect2D> dummyScissors = {{{0, 0}, {512, 512}}};
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.pNext = nullptr;
+	viewportState.viewportCount = static_cast<uint32_t>(dummyViewports.size());
+	viewportState.pViewports = dummyViewports.data();
+	viewportState.scissorCount = static_cast<uint32_t>(dummyScissors.size());
+	viewportState.pScissors = dummyScissors.data();
 
-	{
-		for (size_t i = 0; i < pipelineInfo.viewportInfo.viewports.size(); i ++)
-		{
-			const Viewport &genericViewport = pipelineInfo.viewportInfo.viewports[i];
-			VkViewport viewport = {};
-			viewport.x = genericViewport.x;
-			viewport.y = (genericViewport.height - genericViewport.y);
-			viewport.width = genericViewport.width;
-			viewport.height = -(genericViewport.height - genericViewport.y);
-			viewport.minDepth = genericViewport.minDepth;
-			viewport.maxDepth = genericViewport.maxDepth;
-
-			viewports.push_back(viewport);
-		}
-
-		for (size_t i = 0; i < pipelineInfo.viewportInfo.scissors.size(); i ++)
-		{
-			const Scissor &genericScissor = pipelineInfo.viewportInfo.scissors[i];
-			VkRect2D scissor = {};
-			scissor.offset = {genericScissor.x, genericScissor.y};
-			scissor.extent = {genericScissor.width, genericScissor.height};
-
-			scissors.push_back(scissor);
-		}
-
-		viewportState.viewportCount = static_cast<uint32_t>(viewports.size());
-		viewportState.scissorCount = static_cast<uint32_t>(scissors.size());
-		viewportState.pViewports = viewports.data();
-		viewportState.pScissors = scissors.data();
-	}
+	VkPipelineMultisampleStateCreateInfo multisampleState = {};
+	multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampleState.pNext = nullptr;
+	multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
 
@@ -137,21 +114,19 @@ Pipeline VulkanPipelines::createGraphicsPipeline (const GraphicsPipelineInfo &pi
 		colorBlendState.pAttachments = colorBlendAttachments.data();
 	}
 
-	std::vector<VkDynamicState> dynamicStates;
+	VkPipelineTessellationStateCreateInfo tessellationState = {};
+	tessellationState.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+	tessellationState.pNext = nullptr;
+	tessellationState.patchControlPoints = pipelineInfo.tessellationPatchControlPoints;
+	tessellationState.flags = 0;
+
+	std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
 
 	VkPipelineDynamicStateCreateInfo dynamicState = {};
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-
-	{
-		for (size_t i = 0; i < pipelineInfo.dynamicStateInfo.dynamicStates.size(); i ++)
-		{
-			dynamicStates.push_back(toVkDynamicState(pipelineInfo.dynamicStateInfo.dynamicStates[i]));
-		}
-
-		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
-		dynamicState.pDynamicStates = dynamicStates.data();
-	}
-
+	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+	dynamicState.pDynamicStates = dynamicStates.data();
+	
 	VkPipelineRasterizationStateRasterizationOrderAMD rastOrderAMD = {};
 
 	if (VulkanExtensions::enabled_VK_AMD_rasterization_order)
@@ -228,8 +203,8 @@ Pipeline VulkanPipelines::createComputePipeline(const ComputePipelineInfo &pipel
 	computeShaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	computeShaderStage.flags = 0;
 	computeShaderStage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-	computeShaderStage.module = static_cast<VulkanShaderModule*>(pipelineInfo.shader.module)->module;
-	computeShaderStage.pName = pipelineInfo.shader.entry;
+	computeShaderStage.module = static_cast<VulkanShaderModule*>(pipelineInfo.shader.shaderModule)->module;
+	computeShaderStage.pName = pipelineInfo.shader.shaderModule->entryPoint.c_str();
 	computeShaderStage.pSpecializationInfo = nullptr;
 
 	pipelineCreateInfo.stage = computeShaderStage;
@@ -347,10 +322,10 @@ std::vector<VkPipelineShaderStageCreateInfo> VulkanPipelines::getPipelineShaderS
 
 	for (size_t i = 0; i < stages.size(); i ++)
 	{
-		const VulkanShaderModule *shaderModule = static_cast<VulkanShaderModule*>(stages[i].module);
+		const VulkanShaderModule *shaderModule = static_cast<VulkanShaderModule*>(stages[i].shaderModule);
 		VkPipelineShaderStageCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		createInfo.pName = stages[i].entry;
+		createInfo.pName = stages[i].shaderModule->entryPoint.c_str();
 		createInfo.module = shaderModule->module;
 		createInfo.stage = toVkShaderStageFlagBits(shaderModule->stage);
 
@@ -370,39 +345,19 @@ VkPipelineInputAssemblyStateCreateInfo VulkanPipelines::getPipelineInputAssembly
 	return inputCreateInfo;
 }
 
-VkPipelineTessellationStateCreateInfo VulkanPipelines::getPipelineTessellationInfo (const PipelineTessellationInfo &info)
-{
-	VkPipelineTessellationStateCreateInfo tessellationCreateInfo = {};
-	tessellationCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-	tessellationCreateInfo.patchControlPoints = info.patchControlPoints;
-
-	return tessellationCreateInfo;
-}
-
 VkPipelineRasterizationStateCreateInfo VulkanPipelines::getPipelineRasterizationInfo (const PipelineRasterizationInfo &info)
 {
 	VkPipelineRasterizationStateCreateInfo rastCreateInfo = {};
 	rastCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	rastCreateInfo.depthClampEnable = static_cast<VkBool32>(info.depthClampEnable);
-	rastCreateInfo.rasterizerDiscardEnable = static_cast<VkBool32>(info.rasterizerDiscardEnable);
+	rastCreateInfo.depthClampEnable = VK_FALSE;
+	rastCreateInfo.rasterizerDiscardEnable = VK_FALSE;
 	rastCreateInfo.polygonMode = toVkPolygonMode(info.polygonMode);
-	rastCreateInfo.cullMode = static_cast<VkCullModeFlags>(info.cullMode);
+	rastCreateInfo.cullMode = PolygonCullModetoVkCullModeFlags(info.cullMode);
 	rastCreateInfo.frontFace = info.clockwiseFrontFace ? VK_FRONT_FACE_CLOCKWISE : VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	// The depth bias info will go here when (if) I implement it
-	rastCreateInfo.lineWidth = info.lineWidth;
+	rastCreateInfo.lineWidth = 1;
 
 	return rastCreateInfo;
-}
-
-VkPipelineMultisampleStateCreateInfo VulkanPipelines::getPipelineMultisampleInfo (const PipelineMultisampleInfo &info)
-{
-	VkPipelineMultisampleStateCreateInfo msCreateInfo = {};
-	msCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	msCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-
-	// Later if I add msaa, the rest will go here
-
-	return msCreateInfo;
 }
 
 VkPipelineDepthStencilStateCreateInfo VulkanPipelines::getPipelineDepthStencilInfo (const PipelineDepthStencilInfo &info)
@@ -412,10 +367,10 @@ VkPipelineDepthStencilStateCreateInfo VulkanPipelines::getPipelineDepthStencilIn
 	depthStencilCreateInfo.depthTestEnable = static_cast<VkBool32>(info.enableDepthTest);
 	depthStencilCreateInfo.depthWriteEnable = static_cast<VkBool32>(info.enableDepthWrite);
 	depthStencilCreateInfo.depthCompareOp = toVkCompareOp(info.depthCompareOp);
-	depthStencilCreateInfo.depthBoundsTestEnable = static_cast<VkBool32>(info.depthBoundsTestEnable);
+	depthStencilCreateInfo.depthBoundsTestEnable = VK_TRUE;
 	// The stencil stuff will go here when (if) I implement it
-	depthStencilCreateInfo.minDepthBounds = info.minDepthBounds;
-	depthStencilCreateInfo.maxDepthBounds = info.maxDepthBounds;
+	depthStencilCreateInfo.minDepthBounds = 0.0f;
+	depthStencilCreateInfo.maxDepthBounds = 1.0f;
 
 	return depthStencilCreateInfo;
 }
