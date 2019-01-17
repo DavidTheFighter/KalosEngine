@@ -121,7 +121,7 @@ Semaphore VulkanRenderGraph::execute()
 	renderer->submitToQueue(QUEUE_TYPE_GRAPHICS, {cmdBuffer}, waitSems, waitSemStages, {});
 	renderer->waitForQueueIdle(QUEUE_TYPE_GRAPHICS);
 
-	gfxCommandPools[execCounter % gfxCommandPools.size()]->freeCommandBuffer(cmdBuffer);
+	gfxCommandPools[execCounter % gfxCommandPools.size()]->resetCommandPoolAndFreeCommandBuffer(cmdBuffer);
 
 	execCounter++;
 

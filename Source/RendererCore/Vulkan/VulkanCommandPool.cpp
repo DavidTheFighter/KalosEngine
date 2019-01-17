@@ -28,6 +28,7 @@ std::vector<RendererCommandBuffer*> VulkanCommandPool::allocateCommandBuffers (C
 	VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &allocInfo, vkCommandBuffers.data()));
 
 	std::vector<CommandBuffer> commandBuffers;
+	std::vector<VulkanCommandBuffer*> vulkanAllocatedComamnds;
 
 	for (uint32_t i = 0; i < commandBufferCount; i ++)
 	{
@@ -36,18 +37,23 @@ std::vector<RendererCommandBuffer*> VulkanCommandPool::allocateCommandBuffers (C
 		vkCmdBuffer->bufferHandle = vkCommandBuffers[i];
 
 		commandBuffers.push_back(vkCmdBuffer);
+		vulkanAllocatedComamnds.push_back(vkCmdBuffer);
 	}
+
+	allocatedCmdLists.insert(allocatedCmdLists.end(), vulkanAllocatedComamnds.begin(), vulkanAllocatedComamnds.end());
 
 	return commandBuffers;
 }
 
-void VulkanCommandPool::freeCommandBuffer (RendererCommandBuffer *commandBuffer)
+void VulkanCommandPool::resetCommandPoolAndFreeCommandBuffer (RendererCommandBuffer *commandBuffer)
 {
-	freeCommandBuffers({commandBuffer});
+	resetCommandPoolAndFreeCommandBuffers({commandBuffer});
 }
 
-void VulkanCommandPool::freeCommandBuffers (const std::vector<RendererCommandBuffer*> &commandBuffers)
+void VulkanCommandPool::resetCommandPoolAndFreeCommandBuffers (const std::vector<RendererCommandBuffer*> &commandBuffers)
 {
+	resetCommandPool();
+
 	std::vector<VkCommandBuffer> vkCmdBuffers;
 
 	for (size_t i = 0; i < commandBuffers.size(); i ++)
@@ -56,6 +62,11 @@ void VulkanCommandPool::freeCommandBuffers (const std::vector<RendererCommandBuf
 
 		vkCmdBuffers.push_back(cmdBuffer->bufferHandle);
 
+		auto it = std::find(allocatedCmdLists.begin(), allocatedCmdLists.end(), cmdBuffer);
+
+		if (it != allocatedCmdLists.end())
+			allocatedCmdLists.erase(it);
+
 		// We can delete these here because the rest of the function only relies on the vulkan handles
 		delete cmdBuffer;
 	}
@@ -63,7 +74,7 @@ void VulkanCommandPool::freeCommandBuffers (const std::vector<RendererCommandBuf
 	vkFreeCommandBuffers(device, poolHandle, static_cast<uint32_t>(vkCmdBuffers.size()), vkCmdBuffers.data());
 }
 
-void VulkanCommandPool::resetCommandPool (bool releaseResources)
+void VulkanCommandPool::resetCommandPool ()
 {
-	VK_CHECK_RESULT(vkResetCommandPool(device, poolHandle, releaseResources ? VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT : 0))
+	VK_CHECK_RESULT(vkResetCommandPool(device, poolHandle, 0));
 }

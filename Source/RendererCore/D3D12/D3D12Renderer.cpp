@@ -95,7 +95,7 @@ D3D12Renderer::~D3D12Renderer()
 	graphicsQueue->Release();
 	computeQueue->Release();
 	transferQueue->Release();
-
+	
 	debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
 
 	if (debugLayersEnabled)

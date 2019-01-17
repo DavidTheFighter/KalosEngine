@@ -6,6 +6,8 @@
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
+class VulkanCommandBuffer;
+
 class VulkanCommandPool : public RendererCommandPool
 {
 	public:
@@ -17,12 +19,15 @@ class VulkanCommandPool : public RendererCommandPool
 		RendererCommandBuffer *allocateCommandBuffer (CommandBufferLevel level);
 		std::vector<RendererCommandBuffer*> allocateCommandBuffers (CommandBufferLevel level, uint32_t commandBufferCount);
 
-		void freeCommandBuffer (RendererCommandBuffer *commandBuffer);
-		void freeCommandBuffers (const std::vector<RendererCommandBuffer*> &commandBuffers);
+		void resetCommandPoolAndFreeCommandBuffer (RendererCommandBuffer *commandBuffer);
+		void resetCommandPoolAndFreeCommandBuffers (const std::vector<RendererCommandBuffer*> &commandBuffers);
 
-		void resetCommandPool (bool releaseResources);
+		void resetCommandPool ();
 
 	private:
+
+	std::vector<VulkanCommandBuffer*> allocatedCmdLists;
+
 };
 
 #endif /* RENDERING_VULKAN_VULKANCOMMANDPOOL_H_ */

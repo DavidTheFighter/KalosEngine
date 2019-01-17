@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 		launchArgs.push_back(argv[i]);
 	}
 
-	if (false)
+	if (true)
 	{
 		launchArgs.push_back("-force_vulkan");
 		launchArgs.push_back("-enable_vulkan_layers");
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 		//launchArgs.push_back("-enable_d3d12_hw_debug");
 	}
 
-	launchArgs.push_back("-triangle_test");
+	launchArgs.push_back("-cube_test");
 
 	Log::setInstance(new Log());
 

@@ -10,6 +10,8 @@ D3D12CommandBuffer::D3D12CommandBuffer(D3D12CommandPool *parentCommandPoolPtr, D
 	cmdListType = commandListType;
 
 	cmdList = nullptr;
+
+	startedRecording = false;
 }
 
 D3D12CommandBuffer::~D3D12CommandBuffer()
@@ -20,7 +22,23 @@ D3D12CommandBuffer::~D3D12CommandBuffer()
 
 void D3D12CommandBuffer::beginCommands(CommandBufferUsageFlags flags)
 {
-	DX_CHECK_RESULT(parentCmdPool->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, parentCmdPool->cmdAlloc, nullptr, IID_PPV_ARGS(&cmdList)));
+	if (startedRecording)
+	{
+		Log::get()->error("D3D12CommandBuffer: Cannot record to a command buffer that has already been recorded too. Reset it first or allocate a new one");
+
+		return;
+	}
+
+	if (cmdList == nullptr)
+	{
+		DX_CHECK_RESULT(parentCmdPool->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, parentCmdPool->cmdAlloc, nullptr, IID_PPV_ARGS(&cmdList)));
+	}
+	else
+	{
+		cmdList->Reset(parentCmdPool->cmdAlloc, nullptr);
+	}
+
+	startedRecording = true;
 }
 
 void D3D12CommandBuffer::endCommands()
@@ -28,9 +46,10 @@ void D3D12CommandBuffer::endCommands()
 	DX_CHECK_RESULT(cmdList->Close());
 }
 
-void D3D12CommandBuffer::resetCommands()
+void D3D12CommandBuffer::d3d12_reset()
 {
-	
+	if (cmdList != nullptr)
+		DX_CHECK_RESULT(cmdList->Reset(parentCmdPool->cmdAlloc, nullptr));
 }
 
 void D3D12CommandBuffer::bindPipeline(PipelineBindPoint point, Pipeline pipeline)

@@ -11,6 +11,7 @@
 #include <RendererCore/Renderer.h>
 
 class TriangleTest;
+class CubeTest;
 
 class KalosEngine
 {
@@ -56,6 +57,9 @@ class KalosEngine
 
 	bool doingTriangleTest;
 	std::unique_ptr<TriangleTest> triangleTest;
+
+	bool doingCubeTest;
+	std::unique_ptr<CubeTest> cubeTest;
 };
 
 #endif /* GAME_KALOSENGINE_H_ */

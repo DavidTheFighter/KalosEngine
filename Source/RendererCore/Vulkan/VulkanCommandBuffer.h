@@ -17,7 +17,6 @@ class VulkanCommandBuffer : public RendererCommandBuffer
 
 		void beginCommands (CommandBufferUsageFlags flags);
 		void endCommands ();
-		void resetCommands ();
 
 		void bindPipeline (PipelineBindPoint point, Pipeline pipeline);
 
@@ -49,10 +48,15 @@ class VulkanCommandBuffer : public RendererCommandBuffer
 		void vulkan_beginRenderPass(VkRenderPass renderPass, VkFramebuffer framebuffer, const VkRect2D &renderArea, const std::vector<VkClearValue> &clearValues, VkSubpassContents contents);
 		void vulkan_endRenderPass();
 		void vulkan_nextSubpass(VkSubpassContents contents);
+		void vulkan_resetCommands();
 
 	private:
 
 		Pipeline context_currentBoundPipeline;
+
+		bool startedRecording;
+
+		friend class VulkanRenderer;
 };
 
 #endif /* RENDERING_VULKAN_VULKANCOMMANDBUFFER_H_ */

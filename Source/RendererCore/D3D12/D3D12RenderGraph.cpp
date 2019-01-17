@@ -17,11 +17,14 @@ D3D12RenderGraph::D3D12RenderGraph(D3D12Renderer *rendererPtr)
 
 	enableSubpassMerging = false;
 
-	for (size_t i = 0; i < 3; i++)
-		gfxCommandPools.push_back(renderer->createCommandPool(QUEUE_TYPE_GRAPHICS, COMMAND_POOL_TRANSIENT_BIT));
+	for (size_t i = 0; i < 3; i ++)
+		gfxCommandPools.push_back(renderer->createCommandPool(QUEUE_TYPE_GRAPHICS, COMMAND_POOL_TRANSIENT_BIT | COMMAND_POOL_RESET_COMMAND_BUFFER_BIT));
 
 	for (size_t i = 0; i < 3; i++)
 		executionDoneSemaphores.push_back(renderer->createSemaphore());
+
+	for (size_t i = 0; i < 3; i++)
+		gfxCommandBuffers.push_back(gfxCommandPools[i]->allocateCommandBuffer());
 
 	rtvDescriptorSize = d3drenderer->device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 }
@@ -33,7 +36,9 @@ D3D12RenderGraph::~D3D12RenderGraph()
 
 Semaphore D3D12RenderGraph::execute()
 {
-	D3D12CommandBuffer *cmdBuffer = static_cast<D3D12CommandBuffer*>(gfxCommandPools[execCounter % gfxCommandPools.size()]->allocateCommandBuffer());
+	D3D12CommandBuffer *cmdBuffer = static_cast<D3D12CommandBuffer*>(gfxCommandBuffers[execCounter % gfxCommandBuffers.size()]);
+	gfxCommandPools[execCounter % gfxCommandPools.size()]->resetCommandPool();
+
 	cmdBuffer->beginCommands(COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	for (size_t i = 0; i < finalPassStack.size(); i++)
@@ -140,11 +145,9 @@ Semaphore D3D12RenderGraph::execute()
 
 	std::vector<Semaphore> waitSems = {};
 	std::vector<PipelineStageFlags> waitSemStages = {};
-	std::vector<Semaphore> signalSems = {executionDoneSemaphores[execCounter & executionDoneSemaphores.size()]};
+	std::vector<Semaphore> signalSems = {executionDoneSemaphores[execCounter % executionDoneSemaphores.size()]};
 
 	renderer->submitToQueue(QUEUE_TYPE_GRAPHICS, {cmdBuffer}, waitSems, waitSemStages, {});
-
-	gfxCommandPools[execCounter % gfxCommandPools.size()]->freeCommandBuffer(cmdBuffer);
 
 	execCounter++;
 
@@ -162,7 +165,10 @@ void D3D12RenderGraph::resizeNamedSize(const std::string &sizeName, glm::uvec2 n
 	execCounter = 0;
 
 	for (size_t i = 0; i < 3; i++)
-		gfxCommandPools.push_back(renderer->createCommandPool(QUEUE_TYPE_GRAPHICS, COMMAND_POOL_TRANSIENT_BIT));
+		gfxCommandPools.push_back(renderer->createCommandPool(QUEUE_TYPE_GRAPHICS, COMMAND_POOL_TRANSIENT_BIT | COMMAND_POOL_RESET_COMMAND_BUFFER_BIT));
+
+	for (size_t i = 0; i < 3; i++)
+		gfxCommandBuffers.push_back(gfxCommandPools[i]->allocateCommandBuffer());
 
 	for (size_t i = 0; i < 3; i++)
 		executionDoneSemaphores.push_back(renderer->createSemaphore());
@@ -193,8 +199,9 @@ void D3D12RenderGraph::cleanupResources()
 		renderer->destroySemaphore(sem);
 
 	finalPassStack.clear();
-	gfxCommandPools.clear();
 	executionDoneSemaphores.clear();
+	gfxCommandPools.clear();
+	gfxCommandBuffers.clear();
 	graphTextures.clear();
 	allAttachments.clear();
 	graphTextureViews.clear();

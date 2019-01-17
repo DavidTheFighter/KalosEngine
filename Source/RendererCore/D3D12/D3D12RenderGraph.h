@@ -31,8 +31,10 @@ private:
 	D3D12Renderer *d3drenderer;
 
 	std::vector<size_t> finalPassStack;
-	std::vector<CommandPool> gfxCommandPools;
 	std::vector<Semaphore> executionDoneSemaphores;
+
+	std::vector<CommandPool> gfxCommandPools;
+	std::vector<CommandBuffer> gfxCommandBuffers;
 
 	void cleanupResources();
 

@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 
 #include <RendererCore/Tests/TriangleTest.h>
+#include <RendererCore/Tests/CubeTest.h>
 
 KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBackend rendererBackendType, uint32_t engineUpdateFrequencyCap)
 {
@@ -31,11 +32,20 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 	doingTriangleTest = std::find(launchArgs.begin(), launchArgs.end(), "-triangle_test") != launchArgs.end();
 	triangleTest = nullptr;
 
+	doingCubeTest = !doingTriangleTest && std::find(launchArgs.begin(), launchArgs.end(), "-cube_test") != launchArgs.end();
+	cubeTest = nullptr;
+
 	if (doingTriangleTest)
 	{
 		triangleTest = std::unique_ptr<TriangleTest>(new TriangleTest(renderer.get()));
 
 		renderer->setSwapchainTexture(mainWindow.get(), triangleTest->gfxGraph->getRenderGraphOutputTextureView(), triangleTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
+	else if (doingCubeTest)
+	{
+		cubeTest = std::unique_ptr<CubeTest>(new CubeTest(renderer.get()));
+
+		renderer->setSwapchainTexture(mainWindow.get(), cubeTest->gfxGraph->getRenderGraphOutputTextureView(), cubeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 }
 
@@ -105,6 +115,12 @@ void KalosEngine::update()
 
 			renderer->setSwapchainTexture(mainWindow.get(), triangleTest->gfxGraph->getRenderGraphOutputTextureView(), triangleTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
+		else if (doingCubeTest)
+		{
+			cubeTest->gfxGraph->resizeNamedSize("swapchain", mainWindowSize);
+
+			renderer->setSwapchainTexture(mainWindow.get(), cubeTest->gfxGraph->getRenderGraphOutputTextureView(), cubeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
 	}
 
 	if (true)
@@ -137,6 +153,12 @@ void KalosEngine::render()
 		triangleTest->render();
 
 		renderer->presentToSwapchain(mainWindow.get(), {triangleTest->renderDoneSemaphore});
+	}
+	else if (doingCubeTest)
+	{
+		cubeTest->render();
+
+		renderer->presentToSwapchain(mainWindow.get(), {});
 	}
 	else if (!gameStates.empty())
 	{

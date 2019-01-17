@@ -25,8 +25,6 @@ class RendererCommandBuffer
 		 */
 		virtual void endCommands () = 0;
 
-		virtual void resetCommands () = 0;
-
 		//virtual void beginRenderPass (RenderPass renderPass, Framebuffer framebuffer, const Scissor &renderArea, const std::vector<ClearValue> &clearValues, SubpassContents contents) = 0;
 		//virtual void endRenderPass () = 0;
 		//virtual void nextSubpass (SubpassContents contents) = 0;

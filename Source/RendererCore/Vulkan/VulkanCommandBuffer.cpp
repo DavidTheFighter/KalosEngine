@@ -7,6 +7,8 @@ VulkanCommandBuffer::VulkanCommandBuffer()
 {
 	bufferHandle = nullptr;
 	context_currentBoundPipeline = nullptr;
+
+	startedRecording = false;
 }
 
 VulkanCommandBuffer::~VulkanCommandBuffer ()
@@ -16,11 +18,20 @@ VulkanCommandBuffer::~VulkanCommandBuffer ()
 
 void VulkanCommandBuffer::beginCommands (CommandBufferUsageFlags flags)
 {
+	if (startedRecording)
+	{
+		Log::get()->error("VulkanCommandBuffer: Cannot record to a command buffer that has already been recorded too. Reset it first or allocate a new one");
+
+		return;
+	}
+
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = toVkCommandBufferUsageFlags(flags);
 
 	VK_CHECK_RESULT(vkBeginCommandBuffer(bufferHandle, &beginInfo));
+
+	startedRecording = true;
 }
 
 void VulkanCommandBuffer::endCommands ()
@@ -28,7 +39,7 @@ void VulkanCommandBuffer::endCommands ()
 	VK_CHECK_RESULT(vkEndCommandBuffer(bufferHandle));
 }
 
-void VulkanCommandBuffer::resetCommands ()
+void VulkanCommandBuffer::vulkan_resetCommands ()
 {
 	VK_CHECK_RESULT(vkResetCommandBuffer(bufferHandle, 0));
 }

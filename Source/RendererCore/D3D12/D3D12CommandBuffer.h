@@ -16,7 +16,6 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 
 	void beginCommands(CommandBufferUsageFlags flags);
 	void endCommands();
-	void resetCommands();
 
 	void bindPipeline(PipelineBindPoint point, Pipeline pipeline);
 
@@ -49,6 +48,7 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 	void d3d12_clearDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView, float depthClearValue, uint8_t stencilClearValue);
 	void d3d12_OMSetRenderTargets(const std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> &rtvDescriptors, bool singleHandle, const D3D12_CPU_DESCRIPTOR_HANDLE *dsvDescriptor);
 	void d3d12_resourceBarrier(const std::vector<D3D12_RESOURCE_BARRIER> &barriers);
+	void d3d12_reset();
 
 	private:
 
@@ -56,6 +56,8 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 	D3D12_COMMAND_LIST_TYPE cmdListType;
 
 	ID3D12GraphicsCommandList *cmdList;
+
+	bool startedRecording;
 
 	friend class D3D12CommandPool;
 	friend class D3D12Renderer;

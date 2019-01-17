@@ -118,9 +118,14 @@ void D3D12SwapchainHandler::prerecordSwapchainCommandList(D3D12SwapchainData *sw
 	cmdList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 	cmdList->SetGraphicsRootSignature(swapchainRootSig);
 	
-	ID3D12DescriptorHeap *descHeaps[] = {swapchainDescHeap};
-	cmdList->SetDescriptorHeaps(1, descHeaps);
+	size_t testSize = renderer->device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	cmdList->SetDescriptorHeaps(1, &swapchainDescHeap);
 	cmdList->SetGraphicsRootDescriptorTable(0, swapchainDescHeap->GetGPUDescriptorHandleForHeapStart());
+
+	cmdList->SetDescriptorHeaps(1, &swapchainDescHeap1);
+	cmdList->SetGraphicsRootDescriptorTable(1, swapchainDescHeap1->GetGPUDescriptorHandleForHeapStart());
+
 	cmdList->SetPipelineState(swapchainPSO);
 	cmdList->RSSetScissorRects(1, &scissor);
 	cmdList->RSSetViewports(1, &viewport);
@@ -268,6 +273,7 @@ void D3D12SwapchainHandler::recreateSwapchain(Window *wnd)
 
 	swapchain->backBuffers.clear();
 	swapchain->cmdLists.clear();
+	swapchain->cmdAllocator->Reset();
 
 	DXGI_SWAP_CHAIN_DESC swapchainDesc = {};
 	DX_CHECK_RESULT(swapchain->dxgiSwapchain4->GetDesc(&swapchainDesc));
@@ -302,22 +308,32 @@ void D3D12SwapchainHandler::recreateSwapchain(Window *wnd)
 
 void D3D12SwapchainHandler::createRootSignature()
 {
-	D3D12_DESCRIPTOR_RANGE descRanges[1];
+	D3D12_DESCRIPTOR_RANGE descRanges[2];
 	descRanges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	descRanges[0].NumDescriptors = 1;
 	descRanges[0].BaseShaderRegister = 0;
 	descRanges[0].RegisterSpace = 0;
 	descRanges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+	descRanges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	descRanges[1].NumDescriptors = 1;
+	descRanges[1].BaseShaderRegister = 1;
+	descRanges[1].RegisterSpace = 0;
+	descRanges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-	D3D12_ROOT_DESCRIPTOR_TABLE descTable = {};
-	descTable.NumDescriptorRanges = sizeof(descRanges) / sizeof(descRanges[0]);
-	descTable.pDescriptorRanges = descRanges;
+	D3D12_ROOT_DESCRIPTOR_TABLE descTable0 = {}, descTable1 = {};
+	descTable0.NumDescriptorRanges = 1;
+	descTable0.pDescriptorRanges = &descRanges[0];
+	descTable1.NumDescriptorRanges = 1;
+	descTable1.pDescriptorRanges = &descRanges[1];
 
-	std::vector<D3D12_ROOT_PARAMETER> rootParams(1);
+	std::vector<D3D12_ROOT_PARAMETER> rootParams(2);
 	rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	rootParams[0].DescriptorTable = descTable;
+	rootParams[0].DescriptorTable = descTable0;
 	rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	
+	rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootParams[1].DescriptorTable = descTable1;
+	rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 	D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
 	samplerDesc.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
 	samplerDesc.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
@@ -329,7 +345,7 @@ void D3D12SwapchainHandler::createRootSignature()
 	samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 	samplerDesc.MinLOD = 0;
 	samplerDesc.MaxLOD = 1;
-	samplerDesc.ShaderRegister = 1;
+	samplerDesc.ShaderRegister = 0;
 	samplerDesc.RegisterSpace = 0;
 	samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
@@ -350,12 +366,13 @@ void D3D12SwapchainHandler::createRootSignature()
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
 	DX_CHECK_RESULT(renderer->device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&swapchainDescHeap)));
+	DX_CHECK_RESULT(renderer->device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&swapchainDescHeap1)));
 }
 
 void D3D12SwapchainHandler::setSwapchainSourceTexture(D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc, ID3D12Resource *textureResource)
 {
 	uint32_t srvUavDescriptorSize = renderer->device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(swapchainDescHeap->GetCPUDescriptorHandleForHeapStart(), 0, srvUavDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(swapchainDescHeap1->GetCPUDescriptorHandleForHeapStart(), 0, srvUavDescriptorSize);
 
 	renderer->device->CreateShaderResourceView(textureResource, &srvDesc, srvHandle);
 }

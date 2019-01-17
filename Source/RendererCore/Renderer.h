@@ -61,9 +61,6 @@ class Renderer
 		virtual void *mapStagingBuffer(StagingBuffer stagingBuffer) = 0;
 		virtual void unmapStagingBuffer(StagingBuffer stagingBuffer) = 0;
 
-		virtual CommandBuffer beginSingleTimeCommand (CommandPool pool);
-		virtual void endSingleTimeCommand (CommandBuffer cmdBuffer, CommandPool pool, QueueType queue);
-
 		virtual void destroyCommandPool (CommandPool pool) = 0;
 		virtual void destroyRenderGraph(RenderGraph &graph) = 0;
 		virtual void destroyPipeline (Pipeline pipeline) = 0;

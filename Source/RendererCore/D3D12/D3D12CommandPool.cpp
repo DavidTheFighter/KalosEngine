@@ -14,11 +14,11 @@ D3D12CommandPool::D3D12CommandPool(ID3D12Device2 *devicePtr, QueueType queueType
 
 D3D12CommandPool::~D3D12CommandPool()
 {
-	cmdAlloc->Release();
-	bundleCmdAlloc->Release();
-
 	for (size_t i = 0; i < allocatedCmdLists.size(); i++)
 		delete allocatedCmdLists[i];
+
+	cmdAlloc->Release();
+	bundleCmdAlloc->Release();
 }
 
 RendererCommandBuffer *D3D12CommandPool::allocateCommandBuffer(CommandBufferLevel level)
@@ -41,12 +41,12 @@ std::vector<RendererCommandBuffer*> D3D12CommandPool::allocateCommandBuffers(Com
 	return cmdBuffers;
 }
 
-void D3D12CommandPool::freeCommandBuffer(RendererCommandBuffer *commandBuffer)
+void D3D12CommandPool::resetCommandPoolAndFreeCommandBuffer(RendererCommandBuffer *commandBuffer)
 {
-	freeCommandBuffers({commandBuffer});
+	resetCommandPoolAndFreeCommandBuffers({commandBuffer});
 }
 
-void D3D12CommandPool::freeCommandBuffers(const std::vector<RendererCommandBuffer*> &commandBuffers)
+void D3D12CommandPool::resetCommandPoolAndFreeCommandBuffers(const std::vector<RendererCommandBuffer*> &commandBuffers)
 {
 	for (size_t i = 0; i < commandBuffers.size(); i++)
 	{
@@ -59,7 +59,11 @@ void D3D12CommandPool::freeCommandBuffers(const std::vector<RendererCommandBuffe
 	}
 }
 
-void D3D12CommandPool::resetCommandPool(bool releaseResources)
+void D3D12CommandPool::resetCommandPool()
 {
+	for (size_t i = 0; i < allocatedCmdLists.size(); i++)
+		static_cast<D3D12CommandBuffer*>(allocatedCmdLists[i])->startedRecording = false;
 
+	cmdAlloc->Reset();
+	bundleCmdAlloc->Reset();
 }
