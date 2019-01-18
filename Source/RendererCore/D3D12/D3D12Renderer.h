@@ -5,7 +5,7 @@
 
 #include <RendererCore/D3D12/d3d12_common.h>
 
-class D3D12SwapchainHandler;
+class D3D12Swapchain;
 class D3D12PipelineHelper;
 
 class D3D12Renderer : public Renderer
@@ -95,7 +95,7 @@ class D3D12Renderer : public Renderer
 
 	RendererAllocInfo allocInfo;
 
-	D3D12SwapchainHandler *swapchainHandler;
+	D3D12Swapchain *swapchainHandler;
 	std::unique_ptr<D3D12PipelineHelper> pipelineHelper;
 
 	char *temp_mapBuffer;

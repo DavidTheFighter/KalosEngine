@@ -78,6 +78,17 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	PipelineShaderStage fragShaderStage = {};
 	fragShaderStage.shaderModule = fragShader;
 
+	std::vector<VertexInputBinding> bindingDesc = std::vector<VertexInputBinding>(1);
+	bindingDesc[0].binding = 0;
+	bindingDesc[0].stride = sizeof(glm::vec3);
+	bindingDesc[0].inputRate = VERTEX_INPUT_RATE_VERTEX;
+
+	std::vector<VertexInputAttribute> attribDesc = std::vector<VertexInputAttribute>(1);
+	attribDesc[0].binding = 0;
+	attribDesc[0].location = 0;
+	attribDesc[0].format = RESOURCE_FORMAT_R32G32B32_SFLOAT;
+	attribDesc[0].offset = 0;
+
 	PipelineVertexInputInfo vertexInput = {};
 	vertexInput.vertexInputAttribs = {};
 	vertexInput.vertexInputBindings = {};

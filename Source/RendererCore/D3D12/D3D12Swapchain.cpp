@@ -1,4 +1,4 @@
-#include "RendererCore/D3D12/D3D12SwapchainHandler.h"
+#include "RendererCore/D3D12/D3D12Swapchain.h"
 
 #include <RendererCore/D3D12/D3D12Renderer.h>
 
@@ -10,7 +10,7 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
-D3D12SwapchainHandler::D3D12SwapchainHandler(D3D12Renderer *rendererPtr)
+D3D12Swapchain::D3D12Swapchain(D3D12Renderer *rendererPtr)
 {
 	renderer = rendererPtr;
 	swapchainUtilFenceValue = 0;
@@ -43,7 +43,7 @@ D3D12SwapchainHandler::D3D12SwapchainHandler(D3D12Renderer *rendererPtr)
 	createTexture();
 }
 
-D3D12SwapchainHandler::~D3D12SwapchainHandler()
+D3D12Swapchain::~D3D12Swapchain()
 {
 	for (auto swapIt = swapchains.begin(); swapIt != swapchains.end(); swapIt++)
 	{
@@ -87,7 +87,7 @@ D3D12SwapchainHandler::~D3D12SwapchainHandler()
 
 const uint32_t swapchainBufferCount = 3;
 
-void D3D12SwapchainHandler::initSwapchain(Window *wnd)
+void D3D12Swapchain::initSwapchain(Window *wnd)
 {
 	D3D12SwapchainData *swapchain = new D3D12SwapchainData();
 	swapchain->parentWindow = wnd;
@@ -98,7 +98,7 @@ void D3D12SwapchainHandler::initSwapchain(Window *wnd)
 	createSwapchain(wnd);
 }
 
-void D3D12SwapchainHandler::prerecordSwapchainCommandList(D3D12SwapchainData *swapchain, ID3D12GraphicsCommandList *cmdList, uint32_t bufferIndex)
+void D3D12Swapchain::prerecordSwapchainCommandList(D3D12SwapchainData *swapchain, ID3D12GraphicsCommandList *cmdList, uint32_t bufferIndex)
 {
 	CD3DX12_RESOURCE_BARRIER barrier[] = {
 		CD3DX12_RESOURCE_BARRIER::Transition(swapchain->backBuffers[bufferIndex], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET)
@@ -138,7 +138,7 @@ void D3D12SwapchainHandler::prerecordSwapchainCommandList(D3D12SwapchainData *sw
 	DX_CHECK_RESULT(cmdList->Close());
 }
 
-void D3D12SwapchainHandler::presentToSwapchain(Window *wnd)
+void D3D12Swapchain::presentToSwapchain(Window *wnd)
 {
 	D3D12SwapchainData *swapchain = swapchains[wnd];
 
@@ -163,7 +163,7 @@ void D3D12SwapchainHandler::presentToSwapchain(Window *wnd)
 	}
 }
 
-void D3D12SwapchainHandler::createSwapchain(Window *wnd)
+void D3D12Swapchain::createSwapchain(Window *wnd)
 {
 	D3D12SwapchainData *swapchain = swapchains[wnd];
 
@@ -231,7 +231,7 @@ void D3D12SwapchainHandler::createSwapchain(Window *wnd)
 	DX_CHECK_RESULT(renderer->device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&swapchain->swapchainFence)));
 }
 
-void D3D12SwapchainHandler::destroySwapchain(Window *wnd)
+void D3D12Swapchain::destroySwapchain(Window *wnd)
 {
 	D3D12SwapchainData *swapchain = swapchains[wnd];
 
@@ -260,7 +260,7 @@ void D3D12SwapchainHandler::destroySwapchain(Window *wnd)
 		swapchain->backBuffers[bb]->Release();
 }
 
-void D3D12SwapchainHandler::recreateSwapchain(Window *wnd)
+void D3D12Swapchain::recreateSwapchain(Window *wnd)
 {
 	D3D12SwapchainData *swapchain = swapchains[wnd];
 
@@ -306,7 +306,7 @@ void D3D12SwapchainHandler::recreateSwapchain(Window *wnd)
 	}
 }
 
-void D3D12SwapchainHandler::createRootSignature()
+void D3D12Swapchain::createRootSignature()
 {
 	D3D12_DESCRIPTOR_RANGE descRanges[2];
 	descRanges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -369,7 +369,7 @@ void D3D12SwapchainHandler::createRootSignature()
 	DX_CHECK_RESULT(renderer->device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&swapchainDescHeap1)));
 }
 
-void D3D12SwapchainHandler::setSwapchainSourceTexture(D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc, ID3D12Resource *textureResource)
+void D3D12Swapchain::setSwapchainSourceTexture(D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc, ID3D12Resource *textureResource)
 {
 	uint32_t srvUavDescriptorSize = renderer->device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(swapchainDescHeap1->GetCPUDescriptorHandleForHeapStart(), 0, srvUavDescriptorSize);
@@ -377,7 +377,7 @@ void D3D12SwapchainHandler::setSwapchainSourceTexture(D3D12_SHADER_RESOURCE_VIEW
 	renderer->device->CreateShaderResourceView(textureResource, &srvDesc, srvHandle);
 }
 
-void D3D12SwapchainHandler::createTexture()
+void D3D12Swapchain::createTexture()
 {
 	//swapchainTextureHeap
 	const uint32_t texWidth = 16, texHeight = 16;
@@ -459,7 +459,7 @@ void D3D12SwapchainHandler::createTexture()
 	renderer->device->CreateShaderResourceView(swapchainTextureHeap, &srvDesc, srvHandle);
 }
 
-void D3D12SwapchainHandler::createPSO()
+void D3D12Swapchain::createPSO()
 {
 	ID3DBlob *vertexShader = nullptr, *pixelShader = nullptr;
 	ID3DBlob *errorBuf = nullptr;

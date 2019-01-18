@@ -8,7 +8,7 @@
 #include <RendererCore/Vulkan/VulkanObjects.h>
 
 class VulkanSwapchain;
-class VulkanPipelines;
+class VulkanPipelineHelper;
 
 class VulkanRenderer : public Renderer
 {
@@ -34,7 +34,7 @@ class VulkanRenderer : public Renderer
 		shaderc::Compiler *defaultCompiler;
 #endif
 		VulkanSwapchain *swapchains;
-		VulkanPipelines *pipelineHandler; // Does all the pipeline handling (creation, caching, etc)
+		VulkanPipelineHelper *pipelineHandler; // Does all the pipeline handling (creation, caching, etc)
 
 		VulkanRenderer (const RendererAllocInfo& allocInfo);
 		virtual ~VulkanRenderer ();

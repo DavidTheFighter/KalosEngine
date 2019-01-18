@@ -180,12 +180,12 @@ typedef struct RendererVertexInputAttrib
 		uint32_t location;
 		ResourceFormat format;
 		uint32_t offset;
-} VertexInputAttrib;
+} VertexInputAttribute;
 
 typedef struct RendererPipelineVertexInputInfo
 {
 		std::vector<VertexInputBinding> vertexInputBindings;
-		std::vector<VertexInputAttrib> vertexInputAttribs;
+		std::vector<VertexInputAttribute> vertexInputAttribs;
 } PipelineVertexInputInfo;
 
 typedef struct RendererPipelineInputAssemblyInfo

@@ -3,7 +3,7 @@
 
 #include <Peripherals/Window.h>
 #include <RendererCore/Vulkan/VulkanSwapchain.h>
-#include <RendererCore/Vulkan/VulkanPipelines.h>
+#include <RendererCore/Vulkan/VulkanPipelineHelper.h>
 #include <RendererCore/Vulkan/VulkanEnums.h>
 #include <RendererCore/Vulkan/VulkanShaderLoader.h>
 #include <RendererCore/Vulkan/VulkanRenderGraph.h>
@@ -128,7 +128,7 @@ VulkanRenderer::VulkanRenderer (const RendererAllocInfo& allocInfo)
 
 	// Note the swapchain renderer is initialized here because choosePhysicalDevices() relies on querying swapchain support
 	swapchains = new VulkanSwapchain(this);
-	pipelineHandler = new VulkanPipelines(this);
+	pipelineHandler = new VulkanPipelineHelper(this);
 
 	choosePhysicalDevice();
 	createLogicalDevice();
@@ -1293,7 +1293,7 @@ void VulkanRenderer::choosePhysicalDevice ()
 		// Print out the device & it's basic properties for debugging purposes
 		VkPhysicalDeviceProperties props = {};
 		vkGetPhysicalDeviceProperties(physDevice, &props);
-
+		
 		Log::get()->info("\tDevice: {}, Vendor: {}, Type: {}", props.deviceName, getVkVendorString(props.vendorID).c_str(), props.deviceType);
 
 		DeviceQueues queues = findQueueFamilies(physDevice);

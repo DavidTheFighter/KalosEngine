@@ -28,12 +28,12 @@ typedef struct
 
 } D3D12SwapchainData;
 
-class D3D12SwapchainHandler
+class D3D12Swapchain
 {
 	public:
 
-	D3D12SwapchainHandler(D3D12Renderer *rendererPtr);
-	virtual ~D3D12SwapchainHandler();
+	D3D12Swapchain(D3D12Renderer *rendererPtr);
+	virtual ~D3D12Swapchain();
 
 	void initSwapchain(Window *wnd);
 	void presentToSwapchain(Window *wnd);

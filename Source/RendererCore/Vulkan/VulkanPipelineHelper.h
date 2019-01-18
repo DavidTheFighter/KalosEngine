@@ -1,6 +1,5 @@
-
-#ifndef RENDERING_VULKAN_VULKANPIPELINES_H_
-#define RENDERING_VULKAN_VULKANPIPELINES_H_
+#ifndef RENDERING_VULKAN_VULKANPIPELINEHELPER_H_
+#define RENDERING_VULKAN_VULKANPIPELINEHELPER_H_
 
 #include <RendererCore/Renderer.h>
 #include <RendererCore/Vulkan/vulkan_common.h>
@@ -8,13 +7,13 @@
 
 class VulkanRenderer;
 
-class VulkanPipelines
+class VulkanPipelineHelper
 {
 	public:
 
 
-		VulkanPipelines (VulkanRenderer *parentVulkanRenderer);
-		virtual ~VulkanPipelines ();
+		VulkanPipelineHelper (VulkanRenderer *parentVulkanRenderer);
+		virtual ~VulkanPipelineHelper ();
 
 		Pipeline createGraphicsPipeline (const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass);
 		Pipeline createComputePipeline(const ComputePipelineInfo &pipelineInfo);

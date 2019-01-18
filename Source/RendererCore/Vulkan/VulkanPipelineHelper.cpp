@@ -1,15 +1,15 @@
 
-#include "RendererCore/Vulkan/VulkanPipelines.h"
+#include "RendererCore/Vulkan/VulkanPipelineHelper.h"
 
 #include <RendererCore/Vulkan/VulkanRenderer.h>
 #include <RendererCore/Vulkan/VulkanEnums.h>
 
-VulkanPipelines::VulkanPipelines (VulkanRenderer *parentVulkanRenderer)
+VulkanPipelineHelper::VulkanPipelineHelper (VulkanRenderer *parentVulkanRenderer)
 {
 	renderer = parentVulkanRenderer;
 }
 
-VulkanPipelines::~VulkanPipelines ()
+VulkanPipelineHelper::~VulkanPipelineHelper ()
 {
 	for (auto descriptorSetLayout : descriptorSetLayoutCache)
 	{
@@ -17,7 +17,7 @@ VulkanPipelines::~VulkanPipelines ()
 	}
 }
 
-Pipeline VulkanPipelines::createGraphicsPipeline (const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass)
+Pipeline VulkanPipelineHelper::createGraphicsPipeline (const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass)
 {
 	VulkanPipeline *vulkanPipeline = new VulkanPipeline();
 
@@ -49,7 +49,7 @@ Pipeline VulkanPipelines::createGraphicsPipeline (const GraphicsPipelineInfo &pi
 
 		for (size_t i = 0; i < pipelineInfo.vertexInputInfo.vertexInputAttribs.size(); i ++)
 		{
-			const VertexInputAttrib &genericAttrib = pipelineInfo.vertexInputInfo.vertexInputAttribs[i];
+			const VertexInputAttribute &genericAttrib = pipelineInfo.vertexInputInfo.vertexInputAttribs[i];
 			VkVertexInputAttributeDescription attrib = {};
 			attrib.location = genericAttrib.location;
 			attrib.binding = genericAttrib.binding;
@@ -189,7 +189,7 @@ Pipeline VulkanPipelines::createGraphicsPipeline (const GraphicsPipelineInfo &pi
 	return vulkanPipeline;
 }
 
-Pipeline VulkanPipelines::createComputePipeline(const ComputePipelineInfo &pipelineInfo)
+Pipeline VulkanPipelineHelper::createComputePipeline(const ComputePipelineInfo &pipelineInfo)
 {
 	VulkanPipeline *vulkanPipeline = new VulkanPipeline();
 
@@ -244,7 +244,7 @@ Pipeline VulkanPipelines::createComputePipeline(const ComputePipelineInfo &pipel
 	return vulkanPipeline;
 }
 
-VkDescriptorSetLayout VulkanPipelines::createDescriptorSetLayout (const std::vector<DescriptorSetLayoutBinding> &layoutBindings)
+VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const std::vector<DescriptorSetLayoutBinding> &layoutBindings)
 {
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
 
@@ -290,7 +290,7 @@ inline bool compareDescSetLayoutCacheInfos(const VulkanDescriptorSetLayoutCacheI
 /*
  * Attempts to reuse a descriptor set layout object from the cache, but will make a new one if needed.
  */
-VkDescriptorSetLayout VulkanPipelines::createDescriptorSetLayout (const VkDescriptorSetLayoutCreateInfo &setLayoutInfo)
+VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const VkDescriptorSetLayoutCreateInfo &setLayoutInfo)
 {
 	VulkanDescriptorSetLayoutCacheInfo cacheInfo = {};
 	cacheInfo.flags = setLayoutInfo.flags;
@@ -316,7 +316,7 @@ VkDescriptorSetLayout VulkanPipelines::createDescriptorSetLayout (const VkDescri
 	return setLayout;
 }
 
-std::vector<VkPipelineShaderStageCreateInfo> VulkanPipelines::getPipelineShaderStages (const std::vector<PipelineShaderStage> &stages)
+std::vector<VkPipelineShaderStageCreateInfo> VulkanPipelineHelper::getPipelineShaderStages (const std::vector<PipelineShaderStage> &stages)
 {
 	std::vector<VkPipelineShaderStageCreateInfo> vulkanStageInfo;
 
@@ -335,7 +335,7 @@ std::vector<VkPipelineShaderStageCreateInfo> VulkanPipelines::getPipelineShaderS
 	return vulkanStageInfo;
 }
 
-VkPipelineInputAssemblyStateCreateInfo VulkanPipelines::getPipelineInputAssemblyInfo (const PipelineInputAssemblyInfo &info)
+VkPipelineInputAssemblyStateCreateInfo VulkanPipelineHelper::getPipelineInputAssemblyInfo (const PipelineInputAssemblyInfo &info)
 {
 	VkPipelineInputAssemblyStateCreateInfo inputCreateInfo = {};
 	inputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -345,7 +345,7 @@ VkPipelineInputAssemblyStateCreateInfo VulkanPipelines::getPipelineInputAssembly
 	return inputCreateInfo;
 }
 
-VkPipelineRasterizationStateCreateInfo VulkanPipelines::getPipelineRasterizationInfo (const PipelineRasterizationInfo &info)
+VkPipelineRasterizationStateCreateInfo VulkanPipelineHelper::getPipelineRasterizationInfo (const PipelineRasterizationInfo &info)
 {
 	VkPipelineRasterizationStateCreateInfo rastCreateInfo = {};
 	rastCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -360,7 +360,7 @@ VkPipelineRasterizationStateCreateInfo VulkanPipelines::getPipelineRasterization
 	return rastCreateInfo;
 }
 
-VkPipelineDepthStencilStateCreateInfo VulkanPipelines::getPipelineDepthStencilInfo (const PipelineDepthStencilInfo &info)
+VkPipelineDepthStencilStateCreateInfo VulkanPipelineHelper::getPipelineDepthStencilInfo (const PipelineDepthStencilInfo &info)
 {
 	VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo = {};
 	depthStencilCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;

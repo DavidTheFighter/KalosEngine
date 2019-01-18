@@ -5,7 +5,7 @@
 #include <RendererCore/D3D12/D3D12Objects.h>
 #include <RendererCore/D3D12/D3D12Enums.h>
 
-#include <RendererCore/D3D12/D3D12SwapchainHandler.h>
+#include <RendererCore/D3D12/D3D12Swapchain.h>
 #include <RendererCore/D3D12/D3D12PipelineHelper.h>
 #include <RendererCore/D3D12/D3D12RenderGraph.h>
 
@@ -82,7 +82,7 @@ D3D12Renderer::D3D12Renderer(const RendererAllocInfo& allocInfo)
 		DX_CHECK_RESULT(infoQueue->PushStorageFilter(&dbgFilter));
 	}
 
-	swapchainHandler = new D3D12SwapchainHandler(this);
+	swapchainHandler = new D3D12Swapchain(this);
 	initSwapchain(allocInfo.mainWindow);
 
 	pipelineHelper = std::unique_ptr<D3D12PipelineHelper>(new D3D12PipelineHelper(this));

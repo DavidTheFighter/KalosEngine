@@ -4,7 +4,7 @@
 #include <RendererCore/Vulkan/VulkanEnums.h>
 #include <RendererCore/Vulkan/VulkanObjects.h>
 #include <RendererCore/Vulkan/VulkanRenderer.h>
-#include <RendererCore/Vulkan/VulkanPipelines.h>
+#include <RendererCore/Vulkan/VulkanPipelineHelper.h>
 
 DescriptorSet VulkanDescriptorPool::allocateDescriptorSet ()
 {
