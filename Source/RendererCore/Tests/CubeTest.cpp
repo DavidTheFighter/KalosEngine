@@ -47,6 +47,7 @@ CubeTest::~CubeTest()
 {
 	renderer->destroyBuffer(cubeBuffer0);
 	renderer->destroyBuffer(cubeBuffer1);
+	renderer->destroyBuffer(cubeIndexBuffer);
 
 	renderer->destroySampler(renderTargetSampler);
 
@@ -68,8 +69,9 @@ void CubeTest::passInit(const RenderGraphInitFunctionData &data)
 void CubeTest::passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData &data)
 {
 	cmdBuffer->bindPipeline(PIPELINE_BIND_POINT_GRAPHICS, gfxPipeline);
+	cmdBuffer->bindIndexBuffer(cubeIndexBuffer, 0);
 	cmdBuffer->bindVertexBuffers(0, {cubeBuffer0, cubeBuffer1}, {0, 0});
-	cmdBuffer->draw(3);
+	cmdBuffer->drawIndexed(3);
 }
 
 void CubeTest::render()
@@ -91,11 +93,17 @@ void CubeTest::createBuffers()
 		glm::vec4(-0.8f, -0.8f, 0.0f, 0.0f)
 	};
 
+	uint16_t indexBufferData[] = {
+		0, 1, 2
+	};
+
 	cubeBuffer0 = renderer->createBuffer(sizeof(buffer0), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
 	cubeBuffer1 = renderer->createBuffer(sizeof(buffer1), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
+	cubeIndexBuffer = renderer->createBuffer(sizeof(indexBufferData), BUFFER_USAGE_INDEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
 
 	StagingBuffer stagingBuffer0 = renderer->createAndFillStagingBuffer(sizeof(buffer0), buffer0);
 	StagingBuffer stagingBuffer1 = renderer->createAndFillStagingBuffer(sizeof(buffer1), buffer1);
+	StagingBuffer stagingIndexBuffer = renderer->createAndFillStagingBuffer(sizeof(indexBufferData), indexBufferData);
 
 	Fence tempFence = renderer->createFence();
 
@@ -104,6 +112,7 @@ void CubeTest::createBuffers()
 
 	cmdBuffer->stageBuffer(stagingBuffer0, cubeBuffer0);
 	cmdBuffer->stageBuffer(stagingBuffer1, cubeBuffer1);
+	cmdBuffer->stageBuffer(stagingIndexBuffer, cubeIndexBuffer);
 
 	cmdBuffer->endCommands();
 
@@ -114,6 +123,7 @@ void CubeTest::createBuffers()
 	cmdPool->resetCommandPoolAndFreeCommandBuffer(cmdBuffer);
 	renderer->destroyStagingBuffer(stagingBuffer0);
 	renderer->destroyStagingBuffer(stagingBuffer1);
+	renderer->destroyStagingBuffer(stagingIndexBuffer);
 	renderer->destroyFence(tempFence);
 }
 

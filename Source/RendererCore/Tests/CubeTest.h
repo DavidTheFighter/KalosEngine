@@ -28,6 +28,7 @@ class CubeTest
 
 	Buffer cubeBuffer0;
 	Buffer cubeBuffer1;
+	Buffer cubeIndexBuffer;
 
 	CommandPool cmdPool;
 

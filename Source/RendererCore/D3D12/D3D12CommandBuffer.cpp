@@ -66,6 +66,12 @@ void D3D12CommandBuffer::bindPipeline(PipelineBindPoint point, Pipeline pipeline
 
 void D3D12CommandBuffer::bindIndexBuffer(Buffer buffer, size_t offset, bool uses32BitIndices)
 {
+	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
+	indexBufferView.BufferLocation = static_cast<D3D12Buffer*>(buffer)->bufferResource->GetGPUVirtualAddress() + offset;
+	indexBufferView.Format = uses32BitIndices ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT;
+	indexBufferView.SizeInBytes = static_cast<D3D12Buffer*>(buffer)->bufferSize;
+
+	cmdList->IASetIndexBuffer(&indexBufferView);
 }
 
 void D3D12CommandBuffer::bindVertexBuffers(uint32_t firstBinding, const std::vector<Buffer>& buffers, const std::vector<size_t>& offsets)
