@@ -1,6 +1,18 @@
 #ifndef RENDERING_D3D12_D3D12ENUMS_H_
 #define RENDERING_D3D12_D3D12ENUMS_H_
 
+inline D3D12_INPUT_CLASSIFICATION vertexInputRateToD3D12InputClassification(VertexInputRate rate)
+{
+	switch (rate)
+	{
+		case VERTEX_INPUT_RATE_INSTANCE:
+			return D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+		case VERTEX_INPUT_RATE_VERTEX:
+		default:
+			return D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+	}
+}
+
 inline D3D12_SRV_DIMENSION textureViewTypeToD3D12SRVDimension(TextureViewType type)
 {
 	switch (type)

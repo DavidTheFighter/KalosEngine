@@ -231,6 +231,22 @@ void D3D12Renderer::submitToQueue(QueueType queueType, const std::vector<Command
 		if (d3dsem->semFence->GetCompletedValue() < d3dsemWaitValue)
 			DX_CHECK_RESULT(d3dsem->semFence->SetEventOnCompletion(d3dsemWaitValue, d3dsem->semFenceWaitEvent));
 	}
+
+	if (fence != nullptr)
+	{
+		D3D12Fence *d3dfence = static_cast<D3D12Fence*>(fence);
+
+		DEBUG_ASSERT(d3dfence->unsignaled);
+
+		UINT64 d3dfenceWaitValue = ++d3dfence->fenceValue;
+
+		cmdQueue->Signal(d3dfence->fence, d3dfenceWaitValue);
+
+		if (d3dfence->fence->GetCompletedValue() < d3dfenceWaitValue)
+			DX_CHECK_RESULT(d3dfence->fence->SetEventOnCompletion(d3dfenceWaitValue, d3dfence->fenceEvent));
+
+		d3dfence->unsignaled = false;
+	}
 }
 
 void D3D12Renderer::waitForQueueIdle(QueueType queue)
@@ -256,10 +272,37 @@ void D3D12Renderer::resetFences(const std::vector<Fence>& fences)
 
 void D3D12Renderer::waitForFence(Fence fence, double timeoutInSeconds)
 {
+	D3D12Fence *d3dfence = static_cast<D3D12Fence*>(fence);
+
+	if (d3dfence->unsignaled)
+	{
+		Log::get()->error("D3D12Renderer: Cannot wait on an unsignaled fence");
+
+		return;
+	}
+
+	WaitForSingleObject(d3dfence->fenceEvent, static_cast<DWORD>(timeoutInSeconds * 1000.0));
 }
 
 void D3D12Renderer::waitForFences(const std::vector<Fence>& fences, bool waitForAll, double timeoutInSeconds)
 {
+	std::vector<HANDLE> waitHandles;
+
+	for (size_t i = 0; i < fences.size(); i++)
+	{
+		D3D12Fence *d3dfence = static_cast<D3D12Fence*>(fences[i]);
+
+		if (d3dfence->unsignaled)
+		{
+			Log::get()->error("D3D12Renderer: Cannot wait on an unsignaled fence");
+
+			 continue;
+		}
+
+		waitHandles.push_back(d3dfence->fenceEvent);
+	}
+
+	WaitForMultipleObjects((DWORD)waitHandles.size(), waitHandles.data(), waitForAll, static_cast<DWORD>(timeoutInSeconds * 1000.0));
 }
 
 void D3D12Renderer::writeDescriptorSets(const std::vector<DescriptorWriteInfo>& writes)
@@ -339,6 +382,11 @@ DescriptorPool D3D12Renderer::createDescriptorPool(const std::vector<DescriptorS
 Fence D3D12Renderer::createFence(bool createAsSignaled)
 {
 	D3D12Fence *fence = new D3D12Fence();
+	fence->fenceValue = 0;
+	fence->fenceEvent = createEventHandle();
+	fence->unsignaled = true;
+
+	DX_CHECK_RESULT(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence->fence)));
 
 	return fence;
 }
@@ -479,7 +527,7 @@ Buffer D3D12Renderer::createBuffer(size_t size, BufferUsageType usage, bool canB
 
 	D3D12_RESOURCE_STATES initialState;
 
-	if (heapType = D3D12_HEAP_TYPE_UPLOAD)
+	if (heapType == D3D12_HEAP_TYPE_UPLOAD)
 	{
 		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
 	}
@@ -649,6 +697,9 @@ void D3D12Renderer::destroyStagingBuffer(StagingBuffer stagingBuffer)
 void D3D12Renderer::destroyFence(Fence fence)
 {
 	D3D12Fence *d3d12Fence = static_cast<D3D12Fence*>(fence);
+
+	d3d12Fence->fence->Release();
+	CloseHandle(d3d12Fence->fenceEvent);
 
 	delete d3d12Fence;
 }

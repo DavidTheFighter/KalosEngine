@@ -6,6 +6,7 @@
 #include <RendererCore/RendererObjects.h>
 
 class D3D12CommandPool;
+class D3D12Pipeline;
 
 class D3D12CommandBuffer : public RendererCommandBuffer
 {
@@ -56,6 +57,8 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 	D3D12_COMMAND_LIST_TYPE cmdListType;
 
 	ID3D12GraphicsCommandList *cmdList;
+
+	D3D12Pipeline *cxt_currentGraphicsPipeline;
 
 	bool startedRecording;
 

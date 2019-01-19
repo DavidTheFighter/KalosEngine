@@ -59,7 +59,6 @@ class D3D12Swapchain
 	ID3D12RootSignature *swapchainRootSig;
 
 	ID3D12DescriptorHeap *swapchainDescHeap;
-	ID3D12DescriptorHeap *swapchainDescHeap1;
 
 	ID3D12Resource *swapchainTextureHeap;
 

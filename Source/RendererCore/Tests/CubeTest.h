@@ -26,7 +26,14 @@ class CubeTest
 
 	Pipeline gfxPipeline;
 
+	Buffer cubeBuffer0;
+	Buffer cubeBuffer1;
+
+	CommandPool cmdPool;
+
 	void createPipeline(const RenderGraphInitFunctionData &data);
+
+	void createBuffers();
 
 	void passInit(const RenderGraphInitFunctionData &data);
 	void passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData &data);

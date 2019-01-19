@@ -56,7 +56,11 @@ struct D3D12Buffer : public RendererBuffer
 
 struct D3D12Fence : public RendererFence
 {
-	ID3D12Fence1 *fence;
+	ID3D12Fence *fence;
+	UINT64 fenceValue;
+	HANDLE fenceEvent;
+
+	std::atomic<bool> unsignaled; // Can be unsignaled, pending, or signaled
 };
 
 struct D3D12Semaphore : public RendererSemaphore

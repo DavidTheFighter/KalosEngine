@@ -3,7 +3,6 @@
 #include <RendererCore/D3D12/D3D12Enums.h>
 #include <RendererCore/D3D12/D3D12Objects.h>
 
-
 D3D12CommandBuffer::D3D12CommandBuffer(D3D12CommandPool *parentCommandPoolPtr, D3D12_COMMAND_LIST_TYPE commandListType)
 {
 	parentCmdPool = parentCommandPoolPtr;
@@ -39,6 +38,7 @@ void D3D12CommandBuffer::beginCommands(CommandBufferUsageFlags flags)
 	}
 
 	startedRecording = true;
+	cxt_currentGraphicsPipeline = nullptr;
 }
 
 void D3D12CommandBuffer::endCommands()
@@ -55,6 +55,7 @@ void D3D12CommandBuffer::d3d12_reset()
 void D3D12CommandBuffer::bindPipeline(PipelineBindPoint point, Pipeline pipeline)
 {
 	D3D12Pipeline *d3dpipeline = static_cast<D3D12Pipeline*>(pipeline);
+	cxt_currentGraphicsPipeline = d3dpipeline;
 
 	cmdList->SetGraphicsRootSignature(d3dpipeline->rootSignature);
 	cmdList->SetPipelineState(d3dpipeline->pipeline);
@@ -69,6 +70,51 @@ void D3D12CommandBuffer::bindIndexBuffer(Buffer buffer, size_t offset, bool uses
 
 void D3D12CommandBuffer::bindVertexBuffers(uint32_t firstBinding, const std::vector<Buffer>& buffers, const std::vector<size_t>& offsets)
 {
+	DEBUG_ASSERT(buffers.size() == offsets.size());
+
+	std::map<uint32_t, D3D12_VERTEX_BUFFER_VIEW> bufferViews;
+
+	for (size_t i = 0; i < buffers.size(); i++)
+	{
+		D3D12Buffer *d3dbuffer = static_cast<D3D12Buffer*>(buffers[i]);
+		const VertexInputBinding &binding = cxt_currentGraphicsPipeline->gfxPipelineInfo.vertexInputInfo.vertexInputBindings[firstBinding + i];
+
+		for (size_t l = 0; l < cxt_currentGraphicsPipeline->gfxPipelineInfo.vertexInputInfo.vertexInputAttribs.size(); l++)
+		{
+			const VertexInputAttribute &attrib = cxt_currentGraphicsPipeline->gfxPipelineInfo.vertexInputInfo.vertexInputAttribs[l];
+			
+			if (attrib.binding == firstBinding + i)
+			{
+				D3D12_VERTEX_BUFFER_VIEW view = {};
+				view.BufferLocation = d3dbuffer->bufferResource->GetGPUVirtualAddress() + offsets[i];
+				view.SizeInBytes = d3dbuffer->bufferSize;
+				view.StrideInBytes = binding.stride;
+
+				bufferViews[attrib.location] = view;
+			}
+		}
+	}
+
+	for (auto bufferViewsIt = bufferViews.begin(); bufferViewsIt != bufferViews.end();)
+	{
+		std::vector<D3D12_VERTEX_BUFFER_VIEW> locationBufferViews;
+
+		uint32_t firstLocation = bufferViewsIt->first;
+		uint32_t currentLocation = firstLocation;
+		
+		locationBufferViews.push_back(bufferViewsIt->second);
+		bufferViewsIt++;
+
+		while (bufferViewsIt != bufferViews.end() && bufferViewsIt->first == currentLocation - 1)
+		{
+			currentLocation = bufferViewsIt->first;
+
+			locationBufferViews.push_back(bufferViewsIt->second);
+			bufferViewsIt++;
+		}
+
+		cmdList->IASetVertexBuffers(firstLocation, (UINT)locationBufferViews.size(), locationBufferViews.data());
+	}
 }
 
 void D3D12CommandBuffer::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
@@ -107,6 +153,54 @@ void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Texture dstTex
 
 void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Buffer dstBuffer)
 {
+	D3D12StagingBuffer *d3dstagingBuffer = static_cast<D3D12StagingBuffer*>(stagingBuffer);
+	D3D12Buffer *d3ddstBuffer = static_cast<D3D12Buffer*>(dstBuffer);
+
+	DEBUG_ASSERT(d3ddstBuffer->canBeTransferDst);
+
+	D3D12_RESOURCE_STATES stateBefore;
+
+	switch (d3ddstBuffer->usage)
+	{
+		case BUFFER_USAGE_UNIFORM_BUFFER:
+		case BUFFER_USAGE_VERTEX_BUFFER:
+			stateBefore = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+			break;
+		case BUFFER_USAGE_INDEX_BUFFER:
+			stateBefore = D3D12_RESOURCE_STATE_INDEX_BUFFER;
+			break;
+		case BUFFER_USAGE_INDIRECT_BUFFER:
+			stateBefore = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+			break;
+		default:
+			stateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
+	}
+
+	D3D12_RESOURCE_TRANSITION_BARRIER tbarrier0 = {};
+	tbarrier0.pResource = d3ddstBuffer->bufferResource;
+	tbarrier0.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	tbarrier0.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
+	tbarrier0.StateBefore = stateBefore;
+
+	D3D12_RESOURCE_BARRIER barrier0 = {};
+	barrier0.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier0.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier0.Transition = tbarrier0;
+	
+	D3D12_RESOURCE_TRANSITION_BARRIER tbarrier1 = {};
+	tbarrier1.pResource = d3ddstBuffer->bufferResource;
+	tbarrier1.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+	tbarrier1.StateAfter = stateBefore;
+	tbarrier1.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+
+	D3D12_RESOURCE_BARRIER barrier1 = {};
+	barrier1.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+	barrier1.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+	barrier1.Transition = tbarrier1;
+
+	cmdList->ResourceBarrier(1, &barrier0);
+	cmdList->CopyBufferRegion(d3ddstBuffer->bufferResource, 0, d3dstagingBuffer->bufferResource, 0, std::min<uint32_t>(d3dstagingBuffer->bufferSize, d3ddstBuffer->bufferSize));
+	cmdList->ResourceBarrier(1, &barrier1);
 }
 
 void D3D12CommandBuffer::setViewports(uint32_t firstViewport, const std::vector<Viewport>& viewports)

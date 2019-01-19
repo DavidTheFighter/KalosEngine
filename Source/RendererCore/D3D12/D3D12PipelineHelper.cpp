@@ -21,8 +21,6 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 
-	// root sig stuff
-
 	D3D12_BLEND_DESC blendDesc = {};
 	blendDesc.AlphaToCoverageEnable = FALSE;
 	blendDesc.IndependentBlendEnable = FALSE;
@@ -72,9 +70,27 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	depthStencilDesc.DepthFunc = compareOpToD3D12ComparisonFunc(pipelineInfo.depthStencilInfo.depthCompareOp);
 	depthStencilDesc.StencilEnable = FALSE;
 
+	std::vector<D3D12_INPUT_ELEMENT_DESC> inputElements;
+
+	for (size_t i = 0; i < pipelineInfo.vertexInputInfo.vertexInputAttribs.size(); i++)
+	{
+		const VertexInputAttribute &attrib = pipelineInfo.vertexInputInfo.vertexInputAttribs[i];
+
+		D3D12_INPUT_ELEMENT_DESC elemDesc = {};
+		elemDesc.SemanticName = "VSIN";
+		elemDesc.SemanticIndex = attrib.location;
+		elemDesc.Format = ResourceFormatToDXGIFormat(attrib.format);
+		elemDesc.InputSlot = (UINT) attrib.location;
+		elemDesc.AlignedByteOffset = attrib.offset;
+		elemDesc.InputSlotClass = vertexInputRateToD3D12InputClassification(pipelineInfo.vertexInputInfo.vertexInputBindings[attrib.binding].inputRate);
+		elemDesc.InstanceDataStepRate = elemDesc.InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA ? 1 : 0;
+
+		inputElements.push_back(elemDesc);
+	}
+
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc = {};
-	inputLayoutDesc.NumElements = 0;
-	inputLayoutDesc.pInputElementDescs = nullptr;
+	inputLayoutDesc.NumElements = (UINT) inputElements.size();
+	inputLayoutDesc.pInputElementDescs = inputElements.data();
 
 	for (size_t i = 0; i < pipelineInfo.stages.size(); i++)
 	{
@@ -101,6 +117,7 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 		}
 	}
 
+	psoDesc.InputLayout = inputLayoutDesc;
 	psoDesc.BlendState = blendDesc;
 	psoDesc.SampleMask = 0xFFFFFF; // TODO Figure out what this actually does xD
 	psoDesc.RasterizerState = rastDesc;
@@ -126,6 +143,9 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	rootSigDesc.NumStaticSamplers = 0;
 	rootSigDesc.pStaticSamplers = nullptr;
 	rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+	if (pipelineInfo.vertexInputInfo.vertexInputAttribs.size() > 0)
+		rootSigDesc.Flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
 	ID3DBlob* signature = nullptr;
 	DX_CHECK_RESULT(D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr));
