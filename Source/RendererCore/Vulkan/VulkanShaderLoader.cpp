@@ -85,7 +85,7 @@ std::vector<uint32_t> VulkanShaderLoader::compileGLSLFromSource (const std::vect
 
 	std::vector<std::string> macroDefines;
 	macroDefines.push_back(getShaderStageMacroString(stages));
-	macroDefines.push_back("PushConstantBuffer=\"[[vk::push_constant]] cbuffer TestPushConstants : register(b0, space42)\"");
+	macroDefines.push_back("PushConstantBuffer=\"[[vk::push_constant]] cbuffer __VK_PushConstantsUniformBuffer_42 : register(b0, space42)\"");
 
 	std::string macroDefinesStr;
 

@@ -26,8 +26,13 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 		testOut.format = RESOURCE_FORMAT_R8G8B8A8_UNORM;
 		testOut.namedRelativeSize = "swapchain";
 
+		RenderPassAttachment testOutDepth;
+		testOutDepth.format = RESOURCE_FORMAT_D16_UNORM;
+		testOutDepth.namedRelativeSize = "swapchain";
+
 		auto &test = gfxGraph->addRenderPass("test", RG_PIPELINE_GRAPHICS);
 		test.addColorOutput("testOut", testOut, true, {0.75, 0.75, 0.1, 1});
+		test.setDepthStencilOutput("testOutDepth", testOutDepth, true, {1, 0});
 
 		test.setInitFunction(std::bind(&CubeTest::passInit, this, std::placeholders::_1));
 		test.setRenderFunction(std::bind(&CubeTest::passRender, this, std::placeholders::_1, std::placeholders::_2));
@@ -72,7 +77,7 @@ void CubeTest::passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFuncti
 {
 	glm::mat4 camModlMat = glm::rotate(glm::mat4(1), rotateCounter, glm::vec3(0, 1, 0));
 	glm::mat4 camViewMat = glm::lookAt(glm::vec3(7.5f, 3.0f, 0.0f), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-	glm::mat4 camProjMat = glm::perspective<float>(60.0f * (M_PI / 180.0f), 16 / 9.0f, 0.01f, 10000.0f);
+	glm::mat4 camProjMat = glm::perspective<float>(60.0f * (M_PI / 180.0f), 16 / 9.0f, 0.1f, 100.0f);
 	glm::mat4 camMVPMat = camProjMat * camViewMat * camModlMat;
 
 	cmdBuffer->bindPipeline(PIPELINE_BIND_POINT_GRAPHICS, gfxPipeline);
@@ -80,7 +85,7 @@ void CubeTest::passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFuncti
 	cmdBuffer->bindVertexBuffers(0, {cubeBuffer0, cubeBuffer1}, {0, 0});
 	cmdBuffer->pushConstants(0, sizeof(camMVPMat), &camMVPMat[0][0]);
 
-	cmdBuffer->drawIndexed(3);
+	cmdBuffer->drawIndexed(36);
 }
 
 void CubeTest::render()
@@ -93,19 +98,112 @@ void CubeTest::render()
 void CubeTest::createBuffers()
 {
 	glm::vec4 buffer0[] = {
-		glm::vec4(0.0f, 0.8f, 0.0f, 0.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(0.8f, -0.8f, 0.0f, 0.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(-0.8f, -0.8f, 0.0f, 0.0f), glm::vec4(0, 0, 1, 0.0f)
+		// -x side
+		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+
+		// -z side
+		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+
+		// -y side
+		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+
+		// +y side
+		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+
+		// +x side
+		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+
+		// +z side
+		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
+		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f)
 	};
 
 	glm::vec4 buffer1[] = {
-		glm::vec4(0.0f, -0.8f, 0.0f, 0.0f),
-		glm::vec4(0.8f, 0.8f, 0.0f, 0.0f),
-		glm::vec4(-0.8f, -0.8f, 0.0f, 0.0f)
+		// -x side
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+
+		// -z side
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+
+		// -y side
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+
+		// +y side
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+
+		// +x side
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+
+		// +z side
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)
 	};
 
 	uint16_t indexBufferData[] = {
-		0, 1, 2
+		0, 1, 2, 3, 4, 5,
+		6, 7, 8, 9, 10, 11,
+		12, 13, 14, 15, 16, 17,
+		18, 19, 20, 21, 22, 23,
+		24, 25, 26, 27, 28, 29,
+		30, 31, 32, 33, 34, 35
 	};
 
 	cubeBuffer0 = renderer->createBuffer(sizeof(buffer0), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
@@ -184,14 +282,14 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 
 	PipelineRasterizationInfo rastInfo = {};
 	rastInfo.clockwiseFrontFace = false;
-	rastInfo.cullMode = POLYGON_CULL_MODE_NONE;
+	rastInfo.cullMode = POLYGON_CULL_MODE_BACK;
 	rastInfo.polygonMode = POLYGON_MODE_FILL;
 	rastInfo.enableOutOfOrderRasterization = false;
 
 	PipelineDepthStencilInfo depthInfo = {};
-	depthInfo.enableDepthTest = false;
-	depthInfo.enableDepthWrite = false;
-	depthInfo.depthCompareOp = COMPARE_OP_ALWAYS;
+	depthInfo.enableDepthTest = true;
+	depthInfo.enableDepthWrite = true;
+	depthInfo.depthCompareOp = COMPARE_OP_LESS;
 
 	PipelineColorBlendAttachment colorBlendAttachment = {};
 	colorBlendAttachment.blendEnable = false;

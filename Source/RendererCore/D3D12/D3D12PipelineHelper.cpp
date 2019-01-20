@@ -140,7 +140,9 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 		psoDesc.RTVFormats[i] = ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].colorAttachments[i].attachment].format);
 	
 	if (renderPass->subpasses[subpass].hasDepthAttachment)
+	{
 		psoDesc.DSVFormat = ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].depthStencilAttachment.attachment].format);
+	}
 
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 

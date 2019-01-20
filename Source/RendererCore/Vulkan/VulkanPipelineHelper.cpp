@@ -375,7 +375,7 @@ VkPipelineDepthStencilStateCreateInfo VulkanPipelineHelper::getPipelineDepthSten
 	depthStencilCreateInfo.depthTestEnable = static_cast<VkBool32>(info.enableDepthTest);
 	depthStencilCreateInfo.depthWriteEnable = static_cast<VkBool32>(info.enableDepthWrite);
 	depthStencilCreateInfo.depthCompareOp = toVkCompareOp(info.depthCompareOp);
-	depthStencilCreateInfo.depthBoundsTestEnable = VK_TRUE;
+	depthStencilCreateInfo.depthBoundsTestEnable = VK_FALSE;
 	// The stencil stuff will go here when (if) I implement it
 	depthStencilCreateInfo.minDepthBounds = 0.0f;
 	depthStencilCreateInfo.maxDepthBounds = 1.0f;

@@ -336,7 +336,7 @@ ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string & sou
 	ID3DBlob *blob = nullptr, *errorBuf = nullptr;
 
 	const D3D_SHADER_MACRO macroDefines[] = {
-		{"PushConstantBuffer", "cbuffer TestPushConstants : register(b0, space42)"},
+		{"PushConstantBuffer", "cbuffer __D3D12_PushConstantsUniformBuffer_42 : register(b0, space42)"},
 		{nullptr, nullptr}
 	};
 

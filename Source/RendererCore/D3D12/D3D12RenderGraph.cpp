@@ -238,10 +238,12 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 		uint32_t sizeX = it->second.attachment.namedRelativeSize == "" ? uint32_t(it->second.attachment.sizeX) : uint32_t(namedSizes[it->second.attachment.namedRelativeSize].x * it->second.attachment.sizeX);
 		uint32_t sizeY = it->second.attachment.namedRelativeSize == "" ? uint32_t(it->second.attachment.sizeY) : uint32_t(namedSizes[it->second.attachment.namedRelativeSize].y * it->second.attachment.sizeY);
 
-		D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+		D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE;
 
 		if (isDepthFormat(it->second.attachment.format))
 			flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		else
+			flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 
 		D3D12_RESOURCE_DESC texDesc = {};
 		texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -254,8 +256,6 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 		texDesc.SampleDesc = {1, 0};
 		texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		texDesc.Flags = flags;
-
-		printf("rg is %u\n", ResourceFormatToDXGIFormat(it->second.attachment.format));
 
 		D3D12RenderGraphTexture graphTexture = {};
 		graphTexture.attachment = it->second.attachment;
@@ -364,8 +364,25 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			tempAttRefs.push_back(ref);
 		}
 
+		if (pass.hasDepthStencilOutput())
+		{
+			AttachmentDescription desc = {};
+			desc.format = pass.getDepthStencilOutput().second.attachment.format;
+
+			tempAttDesc.push_back(desc);
+		}
+
 		SubpassDescription tempSubpassDesc = {};
 		tempSubpassDesc.colorAttachments = tempAttRefs;
+		tempSubpassDesc.hasDepthAttachment = pass.hasDepthStencilOutput();
+
+		if (pass.hasDepthStencilOutput())
+		{
+			AttachmentReference ref = {};
+			ref.attachment = tempAttDesc.size() - 1;
+
+			tempSubpassDesc.depthStencilAttachment = ref;
+		}
 
 		std::unique_ptr<RendererRenderPass> tempRenderPass(new RendererRenderPass());
 		tempRenderPass->attachments = tempAttDesc;
