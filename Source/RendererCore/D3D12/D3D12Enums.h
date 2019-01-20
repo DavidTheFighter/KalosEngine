@@ -206,19 +206,19 @@ inline std::string shaderStageFlagBitsToD3D12CompilerTargetStr(ShaderStageFlagBi
 	switch (stage)
 	{
 		case SHADER_STAGE_VERTEX_BIT:
-			return "vs_5_0";
+			return "vs_5_1";
 		case SHADER_STAGE_TESSELLATION_CONTROL_BIT:
-			return "hs_5_0";
+			return "hs_5_1";
 		case SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-			return "ds_5_0";
+			return "ds_5_1";
 		case SHADER_STAGE_GEOMETRY_BIT:
-			return "gs_5_0";
+			return "gs_5_1";
 		case SHADER_STAGE_FRAGMENT_BIT:
-			return "ps_5_0";
+			return "ps_5_1";
 		case SHADER_STAGE_COMPUTE_BIT:
-			return "cs_5_0";
+			return "cs_5_1";
 		default:
-			return "vs_5_0";
+			return "vs_5_1";
 	}
 }
 

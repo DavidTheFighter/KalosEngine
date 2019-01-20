@@ -32,6 +32,8 @@ class CubeTest
 
 	CommandPool cmdPool;
 
+	float rotateCounter;
+
 	void createPipeline(const RenderGraphInitFunctionData &data);
 
 	void createBuffers();

@@ -83,8 +83,20 @@ std::vector<uint32_t> VulkanShaderLoader::compileGLSLFromSource (const std::vect
 
 	writeFileCharData(tempShaderSourceFile, source);
 
-	char cmd[512];
-	sprintf(cmd, "glslangValidator -V %s -e %s -D%s -S %s -o %s %s", (lang == SHADER_LANGUAGE_HLSL ? "-D" : ""), entryPoint.c_str(), getShaderStageMacroString(stages).c_str(), stage.c_str(), tempShaderOutputFile.c_str(), tempShaderSourceFile.c_str());
+	std::vector<std::string> macroDefines;
+	macroDefines.push_back(getShaderStageMacroString(stages));
+	macroDefines.push_back("PushConstantBuffer=\"[[vk::push_constant]] cbuffer TestPushConstants : register(b0, space42)\"");
+
+	std::string macroDefinesStr;
+
+	for (size_t i = 0; i < macroDefines.size(); i++)
+	{
+		macroDefinesStr += " -D";
+		macroDefinesStr += macroDefines[i];
+	}
+
+	char cmd[4096];
+	sprintf(cmd, "glslangValidator -V %s -e %s %s -S %s -o %s %s", (lang == SHADER_LANGUAGE_HLSL ? "-D" : ""), entryPoint.c_str(), macroDefinesStr.c_str(), stage.c_str(), tempShaderOutputFile.c_str(), tempShaderSourceFile.c_str());
 
 	system(cmd);
 

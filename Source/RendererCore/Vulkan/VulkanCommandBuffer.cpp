@@ -87,9 +87,9 @@ void VulkanCommandBuffer::dispatch(uint32_t groupCountX, uint32_t groupCountY, u
 	vkCmdDispatch(bufferHandle, groupCountX, groupCountY, groupCountZ);
 }
 
-void VulkanCommandBuffer::pushConstants (ShaderStageFlags stages, uint32_t offset, uint32_t size, const void *data)
+void VulkanCommandBuffer::pushConstants (uint32_t offset, uint32_t size, const void *data)
 {
-	vkCmdPushConstants(bufferHandle, static_cast<VulkanPipeline*>(context_currentBoundPipeline)->pipelineLayoutHandle, toVkShaderStageFlags(stages), offset, size, data);
+	vkCmdPushConstants(bufferHandle, static_cast<VulkanPipeline*>(context_currentBoundPipeline)->pipelineLayoutHandle, toVkShaderStageFlags(context_currentBoundPipeline->gfxPipelineInfo.inputPushConstants.stageAccessFlags), offset, size, data);
 }
 
 void VulkanCommandBuffer::bindDescriptorSets (PipelineBindPoint point, uint32_t firstSet, std::vector<DescriptorSet> sets)

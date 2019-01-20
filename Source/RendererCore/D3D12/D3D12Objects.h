@@ -29,7 +29,6 @@ struct D3D12Pipeline : public RendererPipeline
 {
 	ID3D12PipelineState *pipeline;
 	ID3D12RootSignature *rootSignature;
-	GraphicsPipelineInfo gfxPipelineInfo;
 
 	RenderPass renderPass;
 };

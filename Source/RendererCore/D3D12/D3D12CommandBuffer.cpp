@@ -137,8 +137,9 @@ void D3D12CommandBuffer::dispatch(uint32_t groupCountX, uint32_t groupCountY, ui
 {
 }
 
-void D3D12CommandBuffer::pushConstants(ShaderStageFlags stages, uint32_t offset, uint32_t size, const void * data)
+void D3D12CommandBuffer::pushConstants(uint32_t offset, uint32_t size, const void *data)
 {
+	cmdList->SetGraphicsRoot32BitConstants(0, (uint32_t) std::ceil(size / 4.0), data, (uint32_t) std::ceil(offset / 4.0));
 }
 
 void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t firstSet, std::vector<DescriptorSet> sets)

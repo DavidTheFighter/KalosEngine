@@ -121,7 +121,7 @@ void TriangleTest::createPipeline(const RenderGraphInitFunctionData &data)
 	info.depthStencilInfo = depthInfo;
 	info.colorBlendInfo = colorBlend;
 
-	info.inputPushConstantRanges = {};
+	info.inputPushConstants = {0, 0};
 	info.inputSetLayouts = {{
 		//{0, DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, SHADER_STAGE_FRAGMENT_BIT},
 	}};

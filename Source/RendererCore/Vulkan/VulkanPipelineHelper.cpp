@@ -20,6 +20,14 @@ VulkanPipelineHelper::~VulkanPipelineHelper ()
 Pipeline VulkanPipelineHelper::createGraphicsPipeline (const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass)
 {
 	VulkanPipeline *vulkanPipeline = new VulkanPipeline();
+	vulkanPipeline->gfxPipelineInfo = pipelineInfo;
+
+	if (pipelineInfo.inputPushConstants.size > 128)
+	{
+		Log::get()->error("VulkanPipelineHelper: Cannot create a pipeline with more than 128 bytes of push constants");
+
+		throw std::runtime_error("vulkan error, inputPushConstants.size > 128");
+	}
 
 	// Note that only the create infos that don't rely on pointers have been separated into other functions for clarity
 	// Many of the vulkan structures do C-style arrays, and so we have to be careful about pointers
@@ -157,13 +165,13 @@ Pipeline VulkanPipelineHelper::createGraphicsPipeline (const GraphicsPipelineInf
 	std::vector<VkPushConstantRange> vulkanPushConstantRanges;
 	std::vector<VkDescriptorSetLayout> vulkanDescSetLayouts;
 
-	for (size_t i = 0; i < pipelineInfo.inputPushConstantRanges.size(); i ++)
+	if (pipelineInfo.inputPushConstants.size > 0)
 	{
-		const PushConstantRange &genericPushRange = pipelineInfo.inputPushConstantRanges[i];
+		const PushConstantRange &genericPushRange = pipelineInfo.inputPushConstants;
 		VkPushConstantRange vulkanPushRange = {};
-		vulkanPushRange.stageFlags = genericPushRange.stageFlags;
+		vulkanPushRange.stageFlags = genericPushRange.stageAccessFlags;
 		vulkanPushRange.size = genericPushRange.size;
-		vulkanPushRange.offset = genericPushRange.offset;
+		vulkanPushRange.offset = 0;
 
 		vulkanPushConstantRanges.push_back(vulkanPushRange);
 	}
@@ -175,9 +183,9 @@ Pipeline VulkanPipelineHelper::createGraphicsPipeline (const GraphicsPipelineInf
 
 	VkPipelineLayoutCreateInfo layoutCreateInfo = {};
 	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	layoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(pipelineInfo.inputPushConstantRanges.size());
-	layoutCreateInfo.setLayoutCount = static_cast<uint32_t>(pipelineInfo.inputSetLayouts.size());
+	layoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(vulkanPushConstantRanges.size());
 	layoutCreateInfo.pPushConstantRanges = vulkanPushConstantRanges.data();
+	layoutCreateInfo.setLayoutCount = static_cast<uint32_t>(pipelineInfo.inputSetLayouts.size());
 	layoutCreateInfo.pSetLayouts = vulkanDescSetLayouts.data();
 
 	VK_CHECK_RESULT(vkCreatePipelineLayout(renderer->device, &layoutCreateInfo, nullptr, &vulkanPipeline->pipelineLayoutHandle));
@@ -216,9 +224,9 @@ Pipeline VulkanPipelineHelper::createComputePipeline(const ComputePipelineInfo &
 	{
 		const PushConstantRange &genericPushRange = pipelineInfo.inputPushConstantRanges[i];
 		VkPushConstantRange vulkanPushRange = {};
-		vulkanPushRange.stageFlags = genericPushRange.stageFlags;
+		vulkanPushRange.stageFlags = genericPushRange.stageAccessFlags;
 		vulkanPushRange.size = genericPushRange.size;
-		vulkanPushRange.offset = genericPushRange.offset;
+		vulkanPushRange.offset = 0;
 
 		vulkanPushConstantRanges.push_back(vulkanPushRange);
 	}

@@ -42,7 +42,7 @@ class RendererCommandBuffer
 		/*
 		 * Sets the push constants to the currently bound pipeline.
 		 */
-		virtual void pushConstants (ShaderStageFlags stages, uint32_t offset, uint32_t size, const void *data) = 0;
+		virtual void pushConstants (uint32_t offset, uint32_t size, const void *data) = 0;
 
 		/*
 		 * Binds one or more descriptor sets to the currently bound pipeline.

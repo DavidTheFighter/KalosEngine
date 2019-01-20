@@ -156,9 +156,8 @@ typedef struct RendererScissor
 
 typedef struct RendererPushConstantRange
 {
-		size_t offset;
 		size_t size;
-		PipelineStageFlags stageFlags;
+		ShaderStageFlags stageAccessFlags;
 } PushConstantRange;
 
 typedef struct RendererPipelineShaderStage
@@ -249,7 +248,7 @@ typedef struct RendererGraphicsPipelineInfo
 
 		uint32_t tessellationPatchControlPoints; // Only used if there is a tessellation shader in 'stages'
 
-		std::vector<PushConstantRange> inputPushConstantRanges;
+		PushConstantRange inputPushConstants;
 		std::vector<std::vector<DescriptorSetLayoutBinding> > inputSetLayouts;
 
 		//PipelineInputLayout inputLayout;
@@ -274,7 +273,7 @@ typedef struct RendererDescriptorSet
 
 typedef struct RendererPipeline
 {
-
+	GraphicsPipelineInfo gfxPipelineInfo;
 } RendererPipeline;
 
 typedef struct RendererFramebuffer

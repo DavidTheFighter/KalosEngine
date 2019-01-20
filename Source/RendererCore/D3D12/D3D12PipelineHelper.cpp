@@ -19,6 +19,13 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	D3D12Pipeline *pipeline = new D3D12Pipeline();
 	pipeline->gfxPipelineInfo = pipelineInfo;
 
+	if (pipelineInfo.inputPushConstants.size > 128)
+	{
+		Log::get()->error("D3D12PipelineHelper: Cannot create a pipeline with more than 128 bytes of push constants");
+
+		throw std::runtime_error("d3d12 error, inputPushConstants.size > 128");
+	}
+
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 
 	D3D12_BLEND_DESC blendDesc = {};
@@ -129,17 +136,54 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	psoDesc.NodeMask = 0;
 	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
-	printf("ph is %u\n", ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].colorAttachments[0].attachment].format));
-
 	for (UINT i = 0; i < psoDesc.NumRenderTargets; i++)
 		psoDesc.RTVFormats[i] = ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].colorAttachments[i].attachment].format);
 	
 	if (renderPass->subpasses[subpass].hasDepthAttachment)
 		psoDesc.DSVFormat = ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].depthStencilAttachment.attachment].format);
 
+	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+
+	if (pipelineInfo.inputPushConstants.size > 0)
+	{
+		D3D12_ROOT_CONSTANTS rootConstants = {};
+		rootConstants.ShaderRegister = 0;
+		rootConstants.RegisterSpace = 42;
+		rootConstants.Num32BitValues = (uint32_t) std::ceil(pipelineInfo.inputPushConstants.size / 4.0);
+
+		D3D12_ROOT_PARAMETER rootConstantsParam = {};
+		rootConstantsParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		rootConstantsParam.Constants = rootConstants;
+		
+		switch (pipelineInfo.inputPushConstants.stageAccessFlags)
+		{
+			case SHADER_STAGE_VERTEX_BIT:
+				rootConstantsParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+				break;
+			case SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+				rootConstantsParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_HULL;
+				break;
+			case SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+				rootConstantsParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN;
+				break;
+			case SHADER_STAGE_GEOMETRY_BIT:
+				rootConstantsParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+				break;
+			case SHADER_STAGE_FRAGMENT_BIT:
+				rootConstantsParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				break;
+			case SHADER_STAGE_ALL_GRAPHICS:
+			case SHADER_STAGE_ALL:
+			default:
+				rootConstantsParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		}
+
+		rootParams.push_back(rootConstantsParam);
+	}
+
 	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
-	rootSigDesc.NumParameters = 0;
-	rootSigDesc.pParameters = nullptr;
+	rootSigDesc.NumParameters = (UINT) rootParams.size();;
+	rootSigDesc.pParameters = rootParams.data();
 	rootSigDesc.NumStaticSamplers = 0;
 	rootSigDesc.pStaticSamplers = nullptr;
 	rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;

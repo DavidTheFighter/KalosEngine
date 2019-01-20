@@ -41,6 +41,8 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 	}
 
 	createBuffers();
+
+	rotateCounter = 0.0f;
 }
 
 CubeTest::~CubeTest()
@@ -68,14 +70,23 @@ void CubeTest::passInit(const RenderGraphInitFunctionData &data)
 
 void CubeTest::passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData &data)
 {
+	glm::mat4 camModlMat = glm::rotate(glm::mat4(1), rotateCounter, glm::vec3(0, 1, 0));
+	glm::mat4 camViewMat = glm::lookAt(glm::vec3(7.5f, 3.0f, 0.0f), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+	glm::mat4 camProjMat = glm::perspective<float>(60.0f * (M_PI / 180.0f), 16 / 9.0f, 0.01f, 10000.0f);
+	glm::mat4 camMVPMat = camProjMat * camViewMat * camModlMat;
+
 	cmdBuffer->bindPipeline(PIPELINE_BIND_POINT_GRAPHICS, gfxPipeline);
 	cmdBuffer->bindIndexBuffer(cubeIndexBuffer, 0);
 	cmdBuffer->bindVertexBuffers(0, {cubeBuffer0, cubeBuffer1}, {0, 0});
+	cmdBuffer->pushConstants(0, sizeof(camMVPMat), &camMVPMat[0][0]);
+
 	cmdBuffer->drawIndexed(3);
 }
 
 void CubeTest::render()
 {
+	rotateCounter += 1 / 60.0f;
+
 	renderDoneSemaphore = gfxGraph->execute();
 }
 
@@ -198,7 +209,7 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	info.depthStencilInfo = depthInfo;
 	info.colorBlendInfo = colorBlend;
 
-	info.inputPushConstantRanges = {};
+	info.inputPushConstants = {sizeof(glm::mat4), SHADER_STAGE_VERTEX_BIT};
 	info.inputSetLayouts = {{
 			//{0, DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, SHADER_STAGE_FRAGMENT_BIT},
 		}};
