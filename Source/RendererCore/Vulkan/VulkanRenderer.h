@@ -51,7 +51,7 @@ class VulkanRenderer : public Renderer
 		void waitForFence (Fence fence, double timeoutInSeconds);
 		void waitForFences (const std::vector<Fence> &fences, bool waitForAll, double timeoutInSeconds);
 
-		void writeDescriptorSets (const std::vector<DescriptorWriteInfo> &writes);
+		void writeDescriptorSets (DescriptorSet dstSet, const std::vector<DescriptorWriteInfo> &writes);
 
 		RenderPass createRenderPass(const std::vector<AttachmentDescription> &attachments, const std::vector<SubpassDescription> &subpasses, const std::vector<SubpassDependency> &dependencies);
 		RenderGraph createRenderGraph();
@@ -60,7 +60,7 @@ class VulkanRenderer : public Renderer
 		ShaderModule createShaderModuleFromSource (const std::string &source, const std::string &referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint);
 		Pipeline createGraphicsPipeline (const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass);
 		Pipeline createComputePipeline(const ComputePipelineInfo &pipelineInfo);
-		DescriptorPool createDescriptorPool (const std::vector<DescriptorSetLayoutBinding> &layoutBindings, uint32_t poolBlockAllocSize);
+		DescriptorPool createDescriptorPool (const DescriptorSetLayoutDescription &descriptorSetLayout, uint32_t poolBlockAllocSize);
 
 		Fence createFence (bool createAsSignaled);
 		Semaphore createSemaphore ();
@@ -104,8 +104,6 @@ class VulkanRenderer : public Renderer
 		bool areValidationLayersEnabled ();
 
 		bool checkExtraSurfacePresentSupport(VkSurfaceKHR surface);
-
-		VulkanDescriptorPoolObject createDescPoolObject (const std::vector<VkDescriptorPoolSize> &poolSizes, uint32_t maxSets);
 
 	private:
 

@@ -124,7 +124,7 @@ void D3D12Renderer::chooseDeviceAdapter()
 	{
 		DXGI_ADAPTER_DESC1 dxgiAdapterDesc;
 		adapter1->GetDesc1(&dxgiAdapterDesc);
-
+				
 		bool isNotSoftware = (dxgiAdapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0;
 		
 		if (isNotSoftware && SUCCEEDED(D3D12CreateDevice(adapter1, D3D_FEATURE_LEVEL_11_0, __uuidof(ID3D12Device), nullptr)) && dxgiAdapterDesc.DedicatedVideoMemory > maxDedicatedVideoMemory)
@@ -305,7 +305,7 @@ void D3D12Renderer::waitForFences(const std::vector<Fence>& fences, bool waitFor
 	WaitForMultipleObjects((DWORD)waitHandles.size(), waitHandles.data(), waitForAll, static_cast<DWORD>(timeoutInSeconds * 1000.0));
 }
 
-void D3D12Renderer::writeDescriptorSets(const std::vector<DescriptorWriteInfo>& writes)
+void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<DescriptorWriteInfo>& writes)
 {
 }
 
@@ -330,13 +330,15 @@ ShaderModule D3D12Renderer::createShaderModule(const std::string &file, ShaderSt
 	return createShaderModuleFromSource(source, debugMarkerName, stage, sourceLang, entryPoint);
 }
 
+const std::string D3D12Renderer_PushConstantBufferPreprocessorValue = "cbuffer __D3D12_PushConstantsUniformBuffer_" + toString(ROOT_CONSTANT_REGISTER_SPACE) + " : register(b0, space" + toString(ROOT_CONSTANT_REGISTER_SPACE) + ")";
+
 ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string & source, const std::string & referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint)
 {
 	D3D12ShaderModule *shaderModule = new D3D12ShaderModule();
 	ID3DBlob *blob = nullptr, *errorBuf = nullptr;
 
 	const D3D_SHADER_MACRO macroDefines[] = {
-		{"PushConstantBuffer", "cbuffer __D3D12_PushConstantsUniformBuffer_42 : register(b0, space42)"},
+		{"PushConstantBuffer", D3D12_PUSHCONSTANTBUFFER_PREPROCESSOR_STR},
 		{nullptr, nullptr}
 	};
 
@@ -377,7 +379,7 @@ Pipeline D3D12Renderer::createComputePipeline(const ComputePipelineInfo &pipelin
 	return pipeline;
 }
 
-DescriptorPool D3D12Renderer::createDescriptorPool(const std::vector<DescriptorSetLayoutBinding>& layoutBindings, uint32_t poolBlockAllocSize)
+DescriptorPool D3D12Renderer::createDescriptorPool(const DescriptorSetLayoutDescription &descriptorSetLayout, uint32_t poolBlockAllocSize)
 {
 	D3D12DescriptorPool *pool = new D3D12DescriptorPool();
 

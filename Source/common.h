@@ -42,6 +42,17 @@
 #define DEBUG_ASSERT(x) if (!(x)) { Log::get()->error("Assertion \"{}\" failed @ file \"{}\", line {}", #x, __FILE__, __LINE__); system("pause"); }
 
 /*
+ * Turn A into a string literal without expanding macro definitions
+ * (however, if invoked from a macro, macro arguments are expanded).
+ */
+#define STRINGIZE_NX(A) #A
+
+ /*
+  * Turn A into a string literal after macro-expanding it.
+  */
+#define STRINGIZE(A) STRINGIZE_NX(A)
+
+/*
 Converts a UTF8 string into a UTF16 string (std::string to std::wstring)
 */
 inline std::wstring utf8_to_utf16(const std::string& utf8)
@@ -114,6 +125,36 @@ inline std::wstring utf8_to_utf16(const std::string& utf8)
 		}
 	}
 	return utf16;
+}
+
+inline std::string utf16_to_utf8(const std::wstring &utf16)
+{
+	std::string retStr;
+	if (!utf16.empty())
+	{
+		int sizeRequired = WideCharToMultiByte(CP_UTF8, 0, utf16.c_str(), -1, NULL, 0, NULL, NULL);
+
+		if (sizeRequired > 0)
+		{
+			std::vector<char> utf8String(sizeRequired);
+			int bytesConverted = WideCharToMultiByte(CP_UTF8, 0, utf16.c_str(),
+				-1, &utf8String[0], utf8String.size(), NULL,
+				NULL);
+			if (bytesConverted != 0)
+			{
+				retStr = &utf8String[0];
+			}
+			else
+			{
+				std::stringstream err;
+				err << __FUNCTION__
+					<< " std::string WstrToUtf8Str failed to convert wstring '"
+					<< utf16.c_str() << L"'";
+				throw std::runtime_error(err.str());
+			}
+		}
+	}
+	return retStr;
 }
 
 inline size_t stringHash(const std::string &str)

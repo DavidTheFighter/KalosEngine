@@ -46,8 +46,62 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 	}
 
 	createBuffers();
+	createTextures();
+
+	for (uint32_t i = 0; i < 4; i++)
+		testSamplers[i] = renderer->createSampler();
 
 	rotateCounter = 0.0f;
+
+	descSet0 = cubeDescPool->allocateDescriptorSet();
+	descSet1 = cubeDescPool->allocateDescriptorSet();
+
+	std::vector<DescriptorWriteInfo> writes(6);
+	writes[0].dstBinding = 0;
+	writes[0].descriptorType = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	writes[0].bufferInfo = {testBuffers[0], 0, sizeof(glm::mat4)};
+	writes[1].dstBinding = 1;
+	writes[1].descriptorType = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	writes[1].bufferInfo = {testBuffers[1], 0, sizeof(glm::mat4)};
+
+	writes[2].dstBinding = 0;
+	writes[2].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+	writes[2].samplerInfo = {testSamplers[0]};
+	writes[3].dstBinding = 1;
+	writes[3].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+	writes[3].samplerInfo = {testSamplers[1]};
+
+	writes[4].dstBinding = 0;
+	writes[4].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	writes[4].samledImageInfo = {testTextureViews[0], TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+	writes[5].dstBinding = 1;
+	writes[5].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	writes[5].samledImageInfo = {testTextureViews[1], TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+
+	renderer->writeDescriptorSets(descSet0, writes);
+
+	writes[0].dstBinding = 0;
+	writes[0].descriptorType = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	writes[0].bufferInfo = {testBuffers[2], 0, sizeof(glm::mat4)};
+	writes[1].dstBinding = 1;
+	writes[1].descriptorType = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	writes[1].bufferInfo = {testBuffers[3], 0, sizeof(glm::mat4)};
+
+	writes[2].dstBinding = 0;
+	writes[2].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+	writes[2].samplerInfo = {testSamplers[2]};
+	writes[3].dstBinding = 1;
+	writes[3].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+	writes[3].samplerInfo = {testSamplers[3]};
+
+	writes[4].dstBinding = 0;
+	writes[4].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	writes[4].samledImageInfo = {testTextureViews[2], TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+	writes[5].dstBinding = 1;
+	writes[5].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	writes[5].samledImageInfo = {testTextureViews[3], TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+
+	renderer->writeDescriptorSets(descSet1, writes);
 }
 
 CubeTest::~CubeTest()
@@ -60,6 +114,7 @@ CubeTest::~CubeTest()
 
 	renderer->destroyPipeline(gfxPipeline);
 
+	renderer->destroyDescriptorPool(cubeDescPool);
 	renderer->destroyCommandPool(cmdPool);
 
 	renderer->destroyRenderGraph(gfxGraph);
@@ -84,6 +139,7 @@ void CubeTest::passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFuncti
 	cmdBuffer->bindIndexBuffer(cubeIndexBuffer, 0);
 	cmdBuffer->bindVertexBuffers(0, {cubeBuffer0, cubeBuffer1}, {0, 0});
 	cmdBuffer->pushConstants(0, sizeof(camMVPMat), &camMVPMat[0][0]);
+	cmdBuffer->bindDescriptorSets(PIPELINE_BIND_POINT_GRAPHICS, 0, {descSet0, descSet1});
 
 	cmdBuffer->drawIndexed(36);
 }
@@ -206,13 +262,27 @@ void CubeTest::createBuffers()
 		30, 31, 32, 33, 34, 35
 	};
 
+	glm::mat4 testBufferData[] = {
+		glm::mat4(1),
+		glm::mat4(1),
+		glm::mat4(1),
+		glm::mat4(1)
+	};
+
 	cubeBuffer0 = renderer->createBuffer(sizeof(buffer0), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
 	cubeBuffer1 = renderer->createBuffer(sizeof(buffer1), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
 	cubeIndexBuffer = renderer->createBuffer(sizeof(indexBufferData), BUFFER_USAGE_INDEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
 
+	for (uint32_t i = 0; i < 4; i++)
+		testBuffers[i] = renderer->createBuffer(sizeof(glm::mat4), BUFFER_USAGE_UNIFORM_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
+
 	StagingBuffer stagingBuffer0 = renderer->createAndFillStagingBuffer(sizeof(buffer0), buffer0);
 	StagingBuffer stagingBuffer1 = renderer->createAndFillStagingBuffer(sizeof(buffer1), buffer1);
 	StagingBuffer stagingIndexBuffer = renderer->createAndFillStagingBuffer(sizeof(indexBufferData), indexBufferData);
+	StagingBuffer testStagingBuffers[4];
+
+	for (uint32_t i = 0; i < 4; i++)
+		testStagingBuffers[i] = renderer->createAndFillStagingBuffer(sizeof(glm::mat4), &testBufferData[i][0][0]);
 
 	Fence tempFence = renderer->createFence();
 
@@ -222,6 +292,9 @@ void CubeTest::createBuffers()
 	cmdBuffer->stageBuffer(stagingBuffer0, cubeBuffer0);
 	cmdBuffer->stageBuffer(stagingBuffer1, cubeBuffer1);
 	cmdBuffer->stageBuffer(stagingIndexBuffer, cubeIndexBuffer);
+
+	for (uint32_t i = 0; i < 4; i++)
+		cmdBuffer->stageBuffer(testStagingBuffers[i], testBuffers[i]);
 
 	cmdBuffer->endCommands();
 
@@ -234,6 +307,18 @@ void CubeTest::createBuffers()
 	renderer->destroyStagingBuffer(stagingBuffer1);
 	renderer->destroyStagingBuffer(stagingIndexBuffer);
 	renderer->destroyFence(tempFence);
+
+	for (uint32_t i = 0; i < 4; i++)
+		renderer->destroyStagingBuffer(testStagingBuffers[i]);
+}
+
+void CubeTest::createTextures()
+{
+	for (uint32_t i = 0; i < 4; i++)
+		testTextures[i] = renderer->createTexture({4, 4, 1}, RESOURCE_FORMAT_R8G8B8A8_UNORM, TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT, MEMORY_USAGE_GPU_ONLY);
+
+	for (uint32_t i = 0; i < 4; i++)
+		testTextureViews[i] = renderer->createTextureView(testTextures[i]);
 }
 
 void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
@@ -307,13 +392,33 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	info.depthStencilInfo = depthInfo;
 	info.colorBlendInfo = colorBlend;
 
+	DescriptorSetLayoutDescription set0 = {};
+	set0.samplerDescriptorCount = 2;
+	set0.constantBufferDescriptorCount = 2;
+	set0.inputAttachmentDescriptorCount = 0;
+	set0.sampledTextureDescriptorCount = 2;
+	set0.samplerBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT, SHADER_STAGE_FRAGMENT_BIT};
+	set0.constantBufferBindingsShaderStageAccess = {SHADER_STAGE_VERTEX_BIT, SHADER_STAGE_VERTEX_BIT};
+	set0.inputAttachmentBindingsShaderStageAccess = {};
+	set0.sampledTextureBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT, SHADER_STAGE_FRAGMENT_BIT};
+
+	DescriptorSetLayoutDescription set1 = {};
+	set1.samplerDescriptorCount = 2;
+	set1.constantBufferDescriptorCount = 2;
+	set1.inputAttachmentDescriptorCount = 0;
+	set1.sampledTextureDescriptorCount = 2;
+	set1.samplerBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT, SHADER_STAGE_FRAGMENT_BIT};
+	set1.constantBufferBindingsShaderStageAccess = {SHADER_STAGE_VERTEX_BIT, SHADER_STAGE_VERTEX_BIT};
+	set1.inputAttachmentBindingsShaderStageAccess = {};
+	set1.sampledTextureBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT, SHADER_STAGE_FRAGMENT_BIT};
+
 	info.inputPushConstants = {sizeof(glm::mat4), SHADER_STAGE_VERTEX_BIT};
-	info.inputSetLayouts = {{
-			//{0, DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, SHADER_STAGE_FRAGMENT_BIT},
-		}};
+	info.inputSetLayouts = {set0, set1};
 
 	gfxPipeline = renderer->createGraphicsPipeline(info, data.renderPassHandle, data.baseSubpass);
 
 	renderer->destroyShaderModule(vertShaderStage.shaderModule);
 	renderer->destroyShaderModule(fragShaderStage.shaderModule);
+
+	cubeDescPool = renderer->createDescriptorPool(set0, 2);
 }

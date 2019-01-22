@@ -1,7 +1,7 @@
 #ifndef RENDERING_RENDERER_RENDERER_H_
 #define RENDERING_RENDERER_RENDERER_H_
 
-#include <common.h>
+#include <RendererCore/renderer_common.h>
 #include <RendererCore/RendererBackends.h>
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
@@ -34,14 +34,14 @@ class Renderer
 		virtual void waitForFence (Fence fence, double timeoutInSeconds) = 0;
 		virtual void waitForFences (const std::vector<Fence> &fences, bool waitForAll, double timeoutInSeconds) = 0;
 
-		virtual void writeDescriptorSets (const std::vector<DescriptorWriteInfo> &writes) = 0;
+		virtual void writeDescriptorSets (DescriptorSet dstSet, const std::vector<DescriptorWriteInfo> &writes) = 0;
 
 		virtual RenderGraph createRenderGraph() = 0;
 		virtual ShaderModule createShaderModule (const std::string &file, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint = "main") = 0;
 		virtual ShaderModule createShaderModuleFromSource (const std::string &source, const std::string &referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint = "main") = 0;
 		virtual Pipeline createGraphicsPipeline (const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass) = 0;
 		virtual Pipeline createComputePipeline(const ComputePipelineInfo &pipelineInfo) = 0;
-		virtual DescriptorPool createDescriptorPool (const std::vector<DescriptorSetLayoutBinding> &layoutBindings, uint32_t poolBlockAllocSize) = 0;
+		virtual DescriptorPool createDescriptorPool (const DescriptorSetLayoutDescription &descriptorSetLayout, uint32_t poolBlockAllocSize) = 0;
 
 		virtual Fence createFence (bool createAsSignaled = false) = 0;
 		virtual Semaphore createSemaphore () = 0;

@@ -18,15 +18,14 @@ class VulkanPipelineHelper
 		Pipeline createGraphicsPipeline (const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass);
 		Pipeline createComputePipeline(const ComputePipelineInfo &pipelineInfo);
 
-		VkDescriptorSetLayout createDescriptorSetLayout (const std::vector<DescriptorSetLayoutBinding> &layoutBindings);
-		VkDescriptorSetLayout createDescriptorSetLayout (const VkDescriptorSetLayoutCreateInfo &setLayoutInfo);
+		VkDescriptorSetLayout createDescriptorSetLayout (const DescriptorSetLayoutDescription &setDescription);
 
 	private:
 
 		VulkanRenderer *renderer;
 
 		// I'm also letting the renderer backend handle descriptor set layout caches, so the front end only gives the layout info and gets it easy
-		std::vector<std::pair<VulkanDescriptorSetLayoutCacheInfo, VkDescriptorSetLayout> > descriptorSetLayoutCache;
+		std::vector<std::pair<DescriptorSetLayoutDescription, VkDescriptorSetLayout> > descriptorSetLayoutCache;
 
 		/*
 		 * All of these functions are converter functions for the generic renderer data to vulkan renderer data. Note that

@@ -140,9 +140,7 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 		psoDesc.RTVFormats[i] = ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].colorAttachments[i].attachment].format);
 	
 	if (renderPass->subpasses[subpass].hasDepthAttachment)
-	{
 		psoDesc.DSVFormat = ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].depthStencilAttachment.attachment].format);
-	}
 
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 
@@ -150,7 +148,7 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	{
 		D3D12_ROOT_CONSTANTS rootConstants = {};
 		rootConstants.ShaderRegister = 0;
-		rootConstants.RegisterSpace = 42;
+		rootConstants.RegisterSpace = ROOT_CONSTANT_REGISTER_SPACE;
 		rootConstants.Num32BitValues = (uint32_t) std::ceil(pipelineInfo.inputPushConstants.size / 4.0);
 
 		D3D12_ROOT_PARAMETER rootConstantsParam = {};

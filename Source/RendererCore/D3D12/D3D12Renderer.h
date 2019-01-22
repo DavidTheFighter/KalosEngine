@@ -36,14 +36,14 @@ class D3D12Renderer : public Renderer
 	void waitForFence(Fence fence, double timeoutInSeconds);
 	void waitForFences(const std::vector<Fence> &fences, bool waitForAll, double timeoutInSeconds);
 
-	void writeDescriptorSets(const std::vector<DescriptorWriteInfo> &writes);
+	void writeDescriptorSets(DescriptorSet dstSet, const std::vector<DescriptorWriteInfo> &writes);
 
 	RenderGraph createRenderGraph();
 	ShaderModule createShaderModule(const std::string &file, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint);
 	ShaderModule createShaderModuleFromSource(const std::string &source, const std::string &referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint);
 	Pipeline createGraphicsPipeline(const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass);
 	Pipeline createComputePipeline(const ComputePipelineInfo &pipelineInfo);
-	DescriptorPool createDescriptorPool(const std::vector<DescriptorSetLayoutBinding> &layoutBindings, uint32_t poolBlockAllocSize);
+	DescriptorPool createDescriptorPool(const DescriptorSetLayoutDescription &descriptorSetLayout, uint32_t poolBlockAllocSize);
 
 	Fence createFence(bool createAsSignaled);
 	Semaphore createSemaphore();

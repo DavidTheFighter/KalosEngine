@@ -22,22 +22,30 @@ class VulkanDescriptorPool : public RendererDescriptorPool
 {
 	public:
 
-		bool canFreeSetFromPool; // If individual sets can be freed, i.e. the pool was created w/ VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
-		uint32_t poolBlockAllocSize; // The .maxSets value for each pool created, should not exceed 1024 (arbitrary, but usefully arbitrary :D)
+	VulkanDescriptorPool(VulkanRenderer *rendererPtr, const DescriptorSetLayoutDescription &descriptorSetLayout, uint32_t poolBlockAllocSize);
+	virtual ~VulkanDescriptorPool();
 
-		std::vector<DescriptorSetLayoutBinding> layoutBindings; // The layout bindings of each set the pool allocates
-		std::vector<VkDescriptorPoolSize> vulkanPoolSizes; // Just so that it's faster/easier to create new vulkan descriptor pool objects
+	DescriptorSet allocateDescriptorSet ();
+	std::vector<DescriptorSet> allocateDescriptorSets (uint32_t setCount);
 
-		// A list of all the local pool/blocks that have been created & their own allocation data
-		std::vector<VulkanDescriptorPoolObject> descriptorPools;
+	void freeDescriptorSet (DescriptorSet set);
+	void freeDescriptorSets (const std::vector<DescriptorSet> sets);
 
-		VulkanRenderer *renderer;
+	private:
 
-		DescriptorSet allocateDescriptorSet ();
-		std::vector<DescriptorSet> allocateDescriptorSets (uint32_t setCount);
+	VulkanRenderer *renderer;
 
-		void freeDescriptorSet (DescriptorSet set);
-		void freeDescriptorSets (const std::vector<DescriptorSet> sets);
+	DescriptorSetLayoutDescription descriptorSetDescription;
+
+	uint32_t poolBlockAllocSize; // The .maxSets value for each pool created
+	std::vector<VkDescriptorPoolSize> vulkanPoolSizes; // Just so that it's faster/easier to create new vulkan descriptor pool objects
+
+	// A list of all the local pool/blocks that have been created & their own allocation data
+	std::vector<VulkanDescriptorPoolObject> descriptorPools;
+
+	VulkanDescriptorPoolObject createDescPoolObject();
+
+	bool tryAllocFromDescriptorPoolObject(uint32_t poolObjIndex, VulkanDescriptorSet* &outSet);
 };
 
 #endif /* RENDERING_VULKAN_VULKANDESCRIPTORPOOL_H_ */

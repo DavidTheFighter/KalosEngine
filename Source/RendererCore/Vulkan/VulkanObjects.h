@@ -95,13 +95,6 @@ typedef struct VulkanPipelineLayoutCacheInfo
 		std::vector<VkPushConstantRange> pushConstantRanges;
 } VulkanPipelineLayoutCacheInfo;
 
-// Data store for each VkDescriptorSetLayout object in the cache to compare others against
-typedef struct VulkanDescriptorSetLayoutCacheInfo
-{
-		VkDescriptorSetLayoutCreateFlags flags;
-		std::vector<VkDescriptorSetLayoutBinding> bindings;
-} VulkanDescriptorSetLayoutCacheInfo;
-
 class DeviceQueues
 {
 	public:

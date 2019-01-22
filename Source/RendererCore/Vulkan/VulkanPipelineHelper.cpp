@@ -233,7 +233,7 @@ Pipeline VulkanPipelineHelper::createComputePipeline(const ComputePipelineInfo &
 
 	for (size_t i = 0; i < pipelineInfo.inputSetLayouts.size(); i++)
 	{
-		vulkanDescSetLayouts.push_back(createDescriptorSetLayout(pipelineInfo.inputSetLayouts[i]));
+		//vulkanDescSetLayouts.push_back(createDescriptorSetLayout(pipelineInfo.inputSetLayouts[i]));
 	}
 
 	VkPipelineLayoutCreateInfo layoutCreateInfo = {};
@@ -252,18 +252,60 @@ Pipeline VulkanPipelineHelper::createComputePipeline(const ComputePipelineInfo &
 	return vulkanPipeline;
 }
 
-VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const std::vector<DescriptorSetLayoutBinding> &layoutBindings)
+VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const DescriptorSetLayoutDescription &setDescription)
 {
+	DEBUG_ASSERT(setDescription.samplerDescriptorCount == setDescription.samplerBindingsShaderStageAccess.size());
+	DEBUG_ASSERT(setDescription.constantBufferDescriptorCount == setDescription.constantBufferBindingsShaderStageAccess.size());
+	DEBUG_ASSERT(setDescription.inputAttachmentDescriptorCount == setDescription.inputAttachmentBindingsShaderStageAccess.size());
+	DEBUG_ASSERT(setDescription.sampledTextureDescriptorCount == setDescription.sampledTextureBindingsShaderStageAccess.size());
+
+	// Search the cache and see if we have an existing descriptor set layout to use
+	for (size_t i = 0; i < descriptorSetLayoutCache.size(); i++)
+		if (descriptorSetLayoutCache[i].first == setDescription)
+			return descriptorSetLayoutCache[i].second;
+
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
 
-	for (size_t i = 0; i < layoutBindings.size(); i ++)
+	for (uint32_t i = 0; i < setDescription.samplerDescriptorCount; i++)
 	{
-		const DescriptorSetLayoutBinding &genericBinding = layoutBindings[i];
 		VkDescriptorSetLayoutBinding vulkanBinding = {};
-		vulkanBinding.stageFlags = genericBinding.stageFlags;
-		vulkanBinding.binding = genericBinding.binding;
-		vulkanBinding.descriptorCount = genericBinding.descriptorCount;
-		vulkanBinding.descriptorType = toVkDescriptorType(genericBinding.descriptorType);
+		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.samplerBindingsShaderStageAccess[i]);
+		vulkanBinding.binding = HLSL_SPV_SAMPLER_OFFSET + i;
+		vulkanBinding.descriptorCount = 1;
+		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+
+		bindings.push_back(vulkanBinding);
+	}
+
+	for (uint32_t i = 0; i < setDescription.constantBufferDescriptorCount; i++)
+	{
+		VkDescriptorSetLayoutBinding vulkanBinding = {};
+		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.constantBufferBindingsShaderStageAccess[i]);
+		vulkanBinding.binding = HLSL_SPV_CONSTANT_BUFFER_OFFSET + i;
+		vulkanBinding.descriptorCount = 1;
+		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+		bindings.push_back(vulkanBinding);
+	}
+
+	for (uint32_t i = 0; i < setDescription.inputAttachmentDescriptorCount; i++)
+	{
+		VkDescriptorSetLayoutBinding vulkanBinding = {};
+		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.inputAttachmentBindingsShaderStageAccess[i]);
+		vulkanBinding.binding = HLSL_SPV_INPUT_ATTACHMENT_OFFSET + i;
+		vulkanBinding.descriptorCount = 1;
+		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+
+		bindings.push_back(vulkanBinding);
+	}
+
+	for (uint32_t i = 0; i < setDescription.sampledTextureDescriptorCount; i++)
+	{
+		VkDescriptorSetLayoutBinding vulkanBinding = {};
+		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.sampledTextureBindingsShaderStageAccess[i]);
+		vulkanBinding.binding = HLSL_SPV_SAMPLED_TEXTURE_OFFSET + i;
+		vulkanBinding.descriptorCount = 1;
+		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
 		bindings.push_back(vulkanBinding);
 	}
@@ -273,53 +315,11 @@ VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const std
 	setLayoutCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 	setLayoutCreateInfo.pBindings = bindings.data();
 
-	return createDescriptorSetLayout(setLayoutCreateInfo);
-}
-
-inline bool compareDescSetLayoutCacheInfos(const VulkanDescriptorSetLayoutCacheInfo &c0, const VulkanDescriptorSetLayoutCacheInfo &c1)
-{
-	// Check the obvious first
-	if (c0.bindings.size() != c1.bindings.size() || c0.flags != c1.flags)
-		return false;
-
-	// Check to make sure each binding is the same
-	for (size_t i = 0; i < c0.bindings.size(); i++)
-	{
-		const VkDescriptorSetLayoutBinding& bind0 = c0.bindings[i];
-		const VkDescriptorSetLayoutBinding& bind1 = c1.bindings[i];
-
-		if ((bind0.binding != bind1.binding) || (bind0.descriptorCount != bind1.descriptorCount) || (bind0.descriptorType != bind1.descriptorType) || (bind0.stageFlags != bind1.stageFlags))
-			return false;
-	}
-
-	return true;
-}
-
-/*
- * Attempts to reuse a descriptor set layout object from the cache, but will make a new one if needed.
- */
-VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const VkDescriptorSetLayoutCreateInfo &setLayoutInfo)
-{
-	VulkanDescriptorSetLayoutCacheInfo cacheInfo = {};
-	cacheInfo.flags = setLayoutInfo.flags;
-	cacheInfo.bindings = std::vector<VkDescriptorSetLayoutBinding>(setLayoutInfo.pBindings, setLayoutInfo.pBindings + setLayoutInfo.bindingCount);
-
-	// Try and find a matching cached set layout to use if possible
-	for (size_t i = 0; i < descriptorSetLayoutCache.size(); i++)
-	{
-		const VulkanDescriptorSetLayoutCacheInfo &candCacheInfo = descriptorSetLayoutCache[i].first;
-
-		if (compareDescSetLayoutCacheInfos(cacheInfo, candCacheInfo))
-			return descriptorSetLayoutCache[i].second;
-	}
-
-	// If there's no matchign cached set layout, make a new one and add it
-
 	VkDescriptorSetLayout setLayout;
 
-	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(renderer->device, &setLayoutInfo, nullptr, &setLayout));
+	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(renderer->device, &setLayoutCreateInfo, nullptr, &setLayout));
 
-	descriptorSetLayoutCache.push_back(std::make_pair(cacheInfo, setLayout));
+	descriptorSetLayoutCache.push_back(std::make_pair(setDescription, setLayout));
 
 	return setLayout;
 }

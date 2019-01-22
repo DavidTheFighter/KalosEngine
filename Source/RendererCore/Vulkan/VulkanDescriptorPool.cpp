@@ -6,14 +6,74 @@
 #include <RendererCore/Vulkan/VulkanRenderer.h>
 #include <RendererCore/Vulkan/VulkanPipelineHelper.h>
 
+VulkanDescriptorPool::VulkanDescriptorPool(VulkanRenderer *rendererPtr, const DescriptorSetLayoutDescription &descriptorSetLayout, uint32_t poolBlockAllocSize)
+{
+	renderer = rendererPtr;
+	descriptorSetDescription = descriptorSetLayout;
+	this->poolBlockAllocSize = poolBlockAllocSize;
+
+	if (descriptorSetLayout.samplerDescriptorCount > 0)
+	{
+		VkDescriptorPoolSize poolSize = {};
+		poolSize.descriptorCount = descriptorSetLayout.samplerDescriptorCount * poolBlockAllocSize;
+		poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+
+		vulkanPoolSizes.push_back(poolSize);
+	}
+
+	if (descriptorSetLayout.constantBufferDescriptorCount > 0)
+	{
+		VkDescriptorPoolSize poolSize = {};
+		poolSize.descriptorCount = descriptorSetLayout.constantBufferDescriptorCount * poolBlockAllocSize;
+		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+		vulkanPoolSizes.push_back(poolSize);
+	}
+
+	if (descriptorSetLayout.inputAttachmentDescriptorCount > 0)
+	{
+		VkDescriptorPoolSize poolSize = {};
+		poolSize.descriptorCount = descriptorSetLayout.inputAttachmentDescriptorCount * poolBlockAllocSize;
+		poolSize.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+
+		vulkanPoolSizes.push_back(poolSize);
+	}
+
+	if (descriptorSetLayout.sampledTextureDescriptorCount > 0)
+	{
+		VkDescriptorPoolSize poolSize = {};
+		poolSize.descriptorCount = descriptorSetLayout.sampledTextureDescriptorCount * poolBlockAllocSize;
+		poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+		vulkanPoolSizes.push_back(poolSize);
+	}
+
+	descriptorPools.push_back(createDescPoolObject());
+}
+
+VulkanDescriptorPool::~VulkanDescriptorPool()
+{
+	for (size_t i = 0; i < descriptorPools.size(); i++)
+	{
+		vkDestroyDescriptorPool(renderer->device, descriptorPools[i].pool, nullptr);
+
+		for (VulkanDescriptorSet *set : descriptorPools[i].usedPoolSets)
+			delete set;
+
+		for (std::pair<VulkanDescriptorSet*, bool> set : descriptorPools[i].unusedPoolSets)
+			if (set.second && set.first != nullptr)
+				delete set.first;
+	}
+}
+
 DescriptorSet VulkanDescriptorPool::allocateDescriptorSet ()
 {
 	return allocateDescriptorSets(1)[0];
 }
 
-bool VulkanRenderer_tryAllocFromDescriptorPoolObject (VulkanRenderer *renderer, VulkanDescriptorPool *pool, uint32_t poolObjIndex, VulkanDescriptorSet* &outSet)
+bool VulkanDescriptorPool::tryAllocFromDescriptorPoolObject (uint32_t poolObjIndex, VulkanDescriptorSet* &outSet)
 {
-	VulkanDescriptorPoolObject &poolObj = pool->descriptorPools[poolObjIndex];
+	VulkanDescriptorPoolObject &poolObj = descriptorPools[poolObjIndex];
 
 	if (poolObj.unusedPoolSets.size() == 0)
 		return false;
@@ -36,7 +96,7 @@ bool VulkanRenderer_tryAllocFromDescriptorPoolObject (VulkanRenderer *renderer, 
 		VulkanDescriptorSet *vulkanDescSet = new VulkanDescriptorSet();
 		vulkanDescSet->descriptorPoolObjectIndex = poolObjIndex;
 
-		VkDescriptorSetLayout descLayout = renderer->pipelineHandler->createDescriptorSetLayout(pool->layoutBindings);
+		VkDescriptorSetLayout descLayout = renderer->pipelineHandler->createDescriptorSetLayout(descriptorSetDescription);
 
 		VkDescriptorSetAllocateInfo descSetAllocInfo = {};
 		descSetAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -55,7 +115,6 @@ bool VulkanRenderer_tryAllocFromDescriptorPoolObject (VulkanRenderer *renderer, 
 	return true;
 }
 
-
 std::vector<DescriptorSet> VulkanDescriptorPool::allocateDescriptorSets (uint32_t setCount)
 {
 	DEBUG_ASSERT(setCount > 0);
@@ -70,7 +129,7 @@ std::vector<DescriptorSet> VulkanDescriptorPool::allocateDescriptorSets (uint32_
 		// Iterate over each pool object to see if there's one we can alloc from
 		for (size_t p = 0; p < descriptorPools.size(); p ++)
 		{
-			if (VulkanRenderer_tryAllocFromDescriptorPoolObject(renderer, this, p, vulkanSet))
+			if (!tryAllocFromDescriptorPoolObject(p, vulkanSet))
 			{
 				break;
 			}
@@ -79,9 +138,9 @@ std::vector<DescriptorSet> VulkanDescriptorPool::allocateDescriptorSets (uint32_
 		// If the set is still nullptr, then we'll have to create a new pool to allocate from
 		if (vulkanSet == nullptr)
 		{
-			descriptorPools.push_back(renderer->createDescPoolObject(vulkanPoolSizes, poolBlockAllocSize));
+			descriptorPools.push_back(createDescPoolObject());
 
-			VulkanRenderer_tryAllocFromDescriptorPoolObject(renderer, this, descriptorPools.size() - 1, vulkanSet);
+			tryAllocFromDescriptorPoolObject(descriptorPools.size() - 1, vulkanSet);
 		}
 
 		vulkanSets[i] = vulkanSet;
@@ -112,3 +171,24 @@ void VulkanDescriptorPool::freeDescriptorSets (const std::vector<DescriptorSet> 
 	}
 }
 
+VulkanDescriptorPoolObject VulkanDescriptorPool::createDescPoolObject()
+{
+	VkDescriptorPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = static_cast<uint32_t>(vulkanPoolSizes.size());
+	poolInfo.pPoolSizes = vulkanPoolSizes.data();
+	poolInfo.maxSets = poolBlockAllocSize;
+
+	VulkanDescriptorPoolObject poolObject = {};
+	poolObject.usedPoolSets.reserve(poolBlockAllocSize);
+	poolObject.unusedPoolSets.reserve(poolBlockAllocSize);
+
+	VK_CHECK_RESULT(vkCreateDescriptorPool(renderer->device, &poolInfo, nullptr, &poolObject.pool));
+
+	for (uint32_t i = 0; i < poolBlockAllocSize; i++)
+	{
+		poolObject.unusedPoolSets.push_back(std::make_pair((VulkanDescriptorSet*) nullptr, false));
+	}
+
+	return poolObject;
+}

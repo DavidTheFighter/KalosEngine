@@ -364,10 +364,10 @@ void VulkanRenderer::waitForFences (const std::vector<Fence> &fences, bool waitF
 	}
 }
 
-void VulkanRenderer::writeDescriptorSets (const std::vector<DescriptorWriteInfo> &writes)
+void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vector<DescriptorWriteInfo> &writes)
 {
 	std::vector<VkDescriptorImageInfo> imageInfos; // To make sure pointers have the correct life-time
-	std::vector<VkDescriptorBufferInfo> bufferInfos; // same ^
+	std::vector<VkDescriptorBufferInfo> bufferInfos; // To make sure pointers have the correct life-time
 	std::vector<VkWriteDescriptorSet> vkWrites;
 
 	size_t im = 0, bf = 0;
@@ -376,8 +376,17 @@ void VulkanRenderer::writeDescriptorSets (const std::vector<DescriptorWriteInfo>
 	{
 		const DescriptorWriteInfo &writeInfo = writes[i];
 
-		im += writeInfo.imageInfo.size();
-		bf += writeInfo.bufferInfo.size();
+		switch (writeInfo.descriptorType)
+		{
+			case DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				bf++;
+				break;
+			case DESCRIPTOR_TYPE_SAMPLER:
+			case DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			case DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+				im++;
+				break;
+		}
 	}
 
 	imageInfos.reserve(im);
@@ -388,46 +397,59 @@ void VulkanRenderer::writeDescriptorSets (const std::vector<DescriptorWriteInfo>
 		const DescriptorWriteInfo &writeInfo = writes[i];
 		VkWriteDescriptorSet write = {};
 		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		write.dstSet = static_cast<VulkanDescriptorSet*>(writeInfo.dstSet)->setHandle;
-		write.descriptorCount = writeInfo.descriptorCount;
+		write.pNext = nullptr;
+		write.dstSet = static_cast<VulkanDescriptorSet*>(dstSet)->setHandle;
+		write.dstArrayElement = 0;
+		write.descriptorCount = 1;
 		write.descriptorType = toVkDescriptorType(writeInfo.descriptorType);
-		write.dstArrayElement = writeInfo.dstArrayElement;
-		write.dstBinding = writeInfo.dstBinding;
 
-		if (writeInfo.imageInfo.size() > 0)
+		switch (writeInfo.descriptorType)
 		{
-			for (uint32_t t = 0; t < writeInfo.imageInfo.size(); t ++)
+			case DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 			{
-				const DescriptorImageInfo &writeImageInfo = writeInfo.imageInfo[t];
-				VkDescriptorImageInfo imageInfo = {};
-				imageInfo.sampler = writeImageInfo.sampler != nullptr ? static_cast<VulkanSampler*>(writeImageInfo.sampler)->samplerHandle : VK_NULL_HANDLE;
-				imageInfo.imageView = writeImageInfo.view != nullptr ? static_cast<VulkanTextureView*>(writeImageInfo.view)->imageView : VK_NULL_HANDLE;
-				imageInfo.imageLayout = toVkImageLayout(writeImageInfo.layout);
-
-				imageInfos.push_back(imageInfo);
-			}
-
-			write.pImageInfo = imageInfos.data() + (imageInfos.size() - writeInfo.imageInfo.size());
-		}
-
-		if (writeInfo.bufferInfo.size() > 0)
-		{
-			for (uint32_t t = 0; t < writeInfo.bufferInfo.size(); t ++)
-			{
-				const DescriptorBufferInfo &writeBufferInfo = writeInfo.bufferInfo[t];
 				VkDescriptorBufferInfo bufferInfo = {};
-				bufferInfo.buffer = static_cast<VulkanBuffer*>(writeBufferInfo.buffer)->bufferHandle;
-				bufferInfo.offset = static_cast<VkDeviceSize>(writeBufferInfo.offset);
-				bufferInfo.range = static_cast<VkDeviceSize>(writeBufferInfo.range);
+				bufferInfo.buffer = static_cast<VulkanBuffer*>(writeInfo.bufferInfo.buffer)->bufferHandle;
+				bufferInfo.offset = static_cast<VkDeviceSize>(writeInfo.bufferInfo.offset);
+				bufferInfo.range = static_cast<VkDeviceSize>(writeInfo.bufferInfo.range);
 
 				bufferInfos.push_back(bufferInfo);
-			}
 
-			write.pBufferInfo = bufferInfos.data() + (bufferInfos.size() - writeInfo.bufferInfo.size());
+				write.pBufferInfo = &bufferInfos[bufferInfos.size() - 1];
+				write.dstBinding = HLSL_SPV_CONSTANT_BUFFER_OFFSET + writeInfo.dstBinding;
+
+				break;
+			}
+			case DESCRIPTOR_TYPE_SAMPLER:
+			{
+				VkDescriptorImageInfo imageInfo = {};
+				imageInfo.sampler = static_cast<VulkanSampler*>(writeInfo.samplerInfo.sampler)->samplerHandle;
+
+				imageInfos.push_back(imageInfo);
+
+				write.pImageInfo = &imageInfos[imageInfos.size() - 1];
+				write.dstBinding = HLSL_SPV_SAMPLER_OFFSET + writeInfo.dstBinding;
+
+				break;
+			}
+			case DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			{
+				VkDescriptorImageInfo imageInfo = {};
+				imageInfo.imageView = static_cast<VulkanTextureView*>(writeInfo.samledImageInfo.view)->imageView;
+				imageInfo.imageLayout = toVkImageLayout(writeInfo.samledImageInfo.layout);
+
+				imageInfos.push_back(imageInfo);
+
+				write.pImageInfo = &imageInfos[imageInfos.size() - 1];
+				write.dstBinding = HLSL_SPV_SAMPLED_TEXTURE_OFFSET + writeInfo.dstBinding;
+
+				break;
+			}
 		}
 
 		vkWrites.push_back(write);
 	}
+
+	printf("%u - %u, %u - %u\n", im, imageInfos.size(), bf, bufferInfos.size());
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(vkWrites.size()), vkWrites.data(), 0, nullptr);
 }
@@ -646,49 +668,9 @@ Pipeline VulkanRenderer::createComputePipeline(const ComputePipelineInfo &pipeli
 	return pipelineHandler->createComputePipeline(pipelineInfo);
 }
 
-VulkanDescriptorPoolObject VulkanRenderer::createDescPoolObject (const std::vector<VkDescriptorPoolSize> &poolSizes, uint32_t maxSets)
+DescriptorPool VulkanRenderer::createDescriptorPool (const DescriptorSetLayoutDescription &descriptorSetLayout, uint32_t poolBlockAllocSize)
 {
-	VkDescriptorPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-	poolInfo.pPoolSizes = poolSizes.data();
-	poolInfo.maxSets = maxSets;
-
-	VulkanDescriptorPoolObject poolObject = {};
-	poolObject.usedPoolSets.reserve(maxSets);
-	poolObject.unusedPoolSets.reserve(maxSets);
-
-	VK_CHECK_RESULT(vkCreateDescriptorPool(device, &poolInfo, nullptr, &poolObject.pool));
-
-	for (uint32_t i = 0; i < maxSets; i ++)
-	{
-		poolObject.unusedPoolSets.push_back(std::make_pair((VulkanDescriptorSet*) nullptr, false));
-	}
-
-	return poolObject;
-}
-
-DescriptorPool VulkanRenderer::createDescriptorPool (const std::vector<DescriptorSetLayoutBinding> &layoutBindings, uint32_t poolBlockAllocSize)
-{
-	VulkanDescriptorPool *vulkanDescPool = new VulkanDescriptorPool();
-	vulkanDescPool->canFreeSetFromPool = false;
-	vulkanDescPool->poolBlockAllocSize = poolBlockAllocSize;
-	vulkanDescPool->layoutBindings = layoutBindings;
-	vulkanDescPool->renderer = this;
-
-	for (size_t i = 0; i < layoutBindings.size(); i ++)
-	{
-		VkDescriptorPoolSize poolSize = {};
-		poolSize.descriptorCount = layoutBindings[i].descriptorCount * poolBlockAllocSize;
-		poolSize.type = toVkDescriptorType(layoutBindings[i].descriptorType);
-
-		vulkanDescPool->vulkanPoolSizes.push_back(poolSize);
-	}
-
-	// Start out by creating one vulkan pool for the full pool object
-	vulkanDescPool->descriptorPools.push_back(createDescPoolObject(vulkanDescPool->vulkanPoolSizes, vulkanDescPool->poolBlockAllocSize));
-
-	return vulkanDescPool;
+	return new VulkanDescriptorPool(this, descriptorSetLayout, poolBlockAllocSize);
 }
 
 Fence VulkanRenderer::createFence (bool createAsSignaled)
@@ -1003,14 +985,7 @@ void VulkanRenderer::destroyShaderModule (ShaderModule module)
 
 void VulkanRenderer::destroyDescriptorPool (DescriptorPool pool)
 {
-	VulkanDescriptorPool *vulkanDescPool = static_cast<VulkanDescriptorPool*>(pool);
-
-	for (size_t i = 0; i < vulkanDescPool->descriptorPools.size(); i ++)
-	{
-		vkDestroyDescriptorPool(device, vulkanDescPool->descriptorPools[i].pool, nullptr);
-	}
-
-	delete vulkanDescPool;
+	delete pool;
 }
 
 /*
