@@ -222,15 +222,24 @@ const std::string viewSelectLayerPostfix = "_fg_layer";
 
 void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passStack)
 {
+	std::map<std::string, ClearValue> allAttachmentsClearColors;
+
 	for (size_t i = 0; i < passStack.size(); i++)
 	{
 		RendererGraphRenderPass &pass = *passes[passStack[i]];
 
 		for (size_t o = 0; o < pass.getColorOutputs().size(); o++)
+		{
 			allAttachments.emplace(pass.getColorOutputs()[o]);
+			allAttachmentsClearColors[pass.getColorOutputs()[o].first] = pass.getColorOutputs()[o].second.attachmentClearValue;
+		}
 
 		if (pass.hasDepthStencilOutput())
+		{
 			allAttachments.emplace(pass.getDepthStencilOutput());
+
+			allAttachmentsClearColors[pass.getDepthStencilOutput().first] = pass.getDepthStencilOutput().second.attachmentClearValue;
+		}
 	}
 
 	for (auto it = allAttachments.begin(); it != allAttachments.end(); it++)
@@ -265,7 +274,11 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 		if (isDepthFormat(it->second.attachment.format))
 			textureState |= D3D12_RESOURCE_STATE_DEPTH_READ;
 
-		DX_CHECK_RESULT(d3drenderer->device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &texDesc, textureState, nullptr, IID_PPV_ARGS(&graphTexture.textureHeap)));
+		D3D12_CLEAR_VALUE optClearValue = {};
+		optClearValue.Format = texDesc.Format;
+		memcpy(optClearValue.Color, allAttachmentsClearColors[it->first].color.float32, sizeof(optClearValue.Color));
+
+		DX_CHECK_RESULT(d3drenderer->device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &texDesc, textureState, &optClearValue, IID_PPV_ARGS(&graphTexture.textureHeap)));
 
 		graphTextures.push_back(graphTexture);
 

@@ -2,8 +2,6 @@
 
 #include <RendererCore/Renderer.h>
 
-#include <GLFW/glfw3.h>
-
 /*
 
 This is the most basic test, just rendering a triangle with a specific clear color. It tests the proper operation of:
@@ -41,9 +39,7 @@ TriangleTest::TriangleTest(Renderer *rendererPtr)
 		gfxGraph->addNamedSize("swapchain", glm::uvec3(1920, 1080, 1));
 		gfxGraph->setFrameGraphOutput("testOut");
 
-		double sT = glfwGetTime();
 		gfxGraph->build();
-		Log::get()->info("RenderGraph build took {} ms", (glfwGetTime() - sT) * 1000.0);
 	}
 }
 
@@ -122,9 +118,7 @@ void TriangleTest::createPipeline(const RenderGraphInitFunctionData &data)
 	info.colorBlendInfo = colorBlend;
 
 	info.inputPushConstants = {0, 0};
-	info.inputSetLayouts = {{
-		//{0, DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, SHADER_STAGE_FRAGMENT_BIT},
-	}};
+	info.inputSetLayouts = {};
 
 	gfxPipeline = renderer->createGraphicsPipeline(info, data.renderPassHandle, data.baseSubpass);
 

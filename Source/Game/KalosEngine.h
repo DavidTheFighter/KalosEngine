@@ -11,7 +11,17 @@
 #include <RendererCore/Renderer.h>
 
 class TriangleTest;
+class VertexIndexBufferTest;
 class CubeTest;
+
+typedef enum
+{
+	RENDERER_TEST_TRIANGLE, // Tests the bare basics, as little as possible to get something rendered to the screen
+	RENDERER_TEST_VERTEX_INDEX_BUFFER, // Tests vertex and index buffers by drawing two triangles
+	RENDERER_TEST_PUSH_CONSTANTS, // Tests push constants by making a 3D rotating triangle
+	RENDERER_TEST_CUBE, // Combines vertex/index buffer, push constants, depth buffer + more to make a rotating cube like the vkcube.exe demo
+	RENDERER_TEST_DESCRIPTORS // Tests resource binding of static samplers, dynamic samplers, constant buffers, and textures
+} RendererTest;
 
 class KalosEngine
 {
@@ -55,10 +65,11 @@ class KalosEngine
 	// Defines an upper limit to the frequency at which the game is allowed to update. Can be pretty high without causing any trouble. Defined in Hertz
 	uint32_t updateFrequencyCap;
 
-	bool doingTriangleTest;
-	std::unique_ptr<TriangleTest> triangleTest;
+	bool doingRenderingTest;
+	RendererTest currentRenderingTest;
 
-	bool doingCubeTest;
+	std::unique_ptr<TriangleTest> triangleTest;
+	std::unique_ptr<VertexIndexBufferTest> vertexIndexBufferTest;
 	std::unique_ptr<CubeTest> cubeTest;
 };
 
