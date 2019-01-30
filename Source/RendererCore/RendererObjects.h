@@ -7,6 +7,8 @@ typedef struct RendererTexture
 {
 		uint32_t width, height, depth;
 		ResourceFormat textureFormat;
+		uint32_t layerCount;
+		uint32_t mipCount;
 } RendererTexture;
 
 typedef struct RendererTextureView

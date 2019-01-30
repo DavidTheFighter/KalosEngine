@@ -12,6 +12,7 @@
 
 class TriangleTest;
 class VertexIndexBufferTest;
+class PushConstantsTest;
 class CubeTest;
 
 typedef enum
@@ -70,6 +71,7 @@ class KalosEngine
 
 	std::unique_ptr<TriangleTest> triangleTest;
 	std::unique_ptr<VertexIndexBufferTest> vertexIndexBufferTest;
+	std::unique_ptr<PushConstantsTest> pushConstantsTest;
 	std::unique_ptr<CubeTest> cubeTest;
 };
 

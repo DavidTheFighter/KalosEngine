@@ -15,6 +15,7 @@ struct D3D12TextureView : public RendererTextureView
 
 struct D3D12Sampler : public RendererSampler
 {
+	D3D12_SAMPLER_DESC samplerDesc;
 };
 
 struct D3D12RenderPass : public RendererRenderPass
@@ -35,6 +36,24 @@ struct D3D12Pipeline : public RendererPipeline
 
 struct D3D12DescriptorSet : public RendererDescriptorSet
 {
+	ID3D12DescriptorHeap *srvUavCbvHeap;
+	ID3D12DescriptorHeap *samplerHeap;
+
+	uint32_t srvUavCbvMassHeapIndex;
+	uint32_t samplerMassHeapIndex;
+
+	uint32_t srvUavCbvStartDescriptorSlot;
+	uint32_t samplerStartDescriptorSlot;
+
+	uint32_t srvUavCbvDescriptorCount;
+	uint32_t samplerDescriptorCount;
+
+	uint32_t samplerCount;
+	uint32_t constantBufferCount;
+	uint32_t inputAtttachmentCount;
+	uint32_t sampledTextureCount;
+
+	DescriptorPool parentPool;
 };
 
 struct D3D12ShaderModule : public RendererShaderModule

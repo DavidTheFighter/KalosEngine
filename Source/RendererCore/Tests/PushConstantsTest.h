@@ -1,12 +1,14 @@
-#ifndef RENDERERCORE_TESTS_CUBETEST_H_
-#define RENDERERCORE_TESTS_CUBETEST_H_
+#ifndef RENDERERCORE_TESTS_PUSHCONSTANTSEST_H_
+#define RENDERERCORE_TESTS_PUSHCONSTANTSEST_H_
 
 #include <common.h>
 
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
-class CubeTest
+class Renderer;
+
+class PushConstantsTest
 {
 	public:
 
@@ -15,8 +17,8 @@ class CubeTest
 
 	Semaphore renderDoneSemaphore;
 
-	CubeTest(Renderer *rendererPtr);
-	virtual ~CubeTest();
+	PushConstantsTest(Renderer *rendererPtr);
+	virtual ~PushConstantsTest();
 
 	void render();
 
@@ -26,28 +28,12 @@ class CubeTest
 
 	Pipeline gfxPipeline;
 
-	Buffer cubeBuffer;
-	Buffer cubeIndexBuffer;
-
-	Buffer cubeCBuffer;
-	Sampler cubeTexSampler;
-	Texture cubeTestTexture;
-	TextureView cubeTestTextureView;
-
-	CommandPool cmdPool;
-
-	DescriptorPool cubeDescPool;
-	DescriptorSet descSet;
-
 	float rotateCounter;
 
 	void createPipeline(const RenderGraphInitFunctionData &data);
-
-	void createBuffers();
-	void createTextures();
 
 	void passInit(const RenderGraphInitFunctionData &data);
 	void passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData &data);
 };
 
-#endif /* RENDERERCORE_TESTS_CUBETEST_H_ */
+#endif /* RENDERERCORE_TESTS_TRIANGLETEST_H_ */

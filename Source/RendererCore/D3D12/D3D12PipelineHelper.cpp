@@ -181,8 +181,154 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 		rootParams.push_back(rootConstantsParam);
 	}
 
+	std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> allSamplerRanges(pipelineInfo.inputSetLayouts.size());
+	std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> allRanges(pipelineInfo.inputSetLayouts.size());
+
+	for (size_t s = 0; s < pipelineInfo.inputSetLayouts.size(); s++)
+	{
+		const DescriptorSetLayoutDescription &setDesc = pipelineInfo.inputSetLayouts[s];
+		
+		std::vector<D3D12_DESCRIPTOR_RANGE> &samplerRanges = allSamplerRanges[s];
+		ShaderStageFlags samplerDescriptorStages = 0;
+
+		std::vector<D3D12_DESCRIPTOR_RANGE> &ranges = allRanges[s];
+		ShaderStageFlags allDescriptorStages = 0;
+
+		if (setDesc.samplerDescriptorCount > 0)
+		{
+			D3D12_DESCRIPTOR_RANGE descRange = {};
+			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+			descRange.NumDescriptors = setDesc.samplerDescriptorCount;
+			descRange.BaseShaderRegister = 0;
+			descRange.RegisterSpace = (UINT) s;
+			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			samplerRanges.push_back(descRange);
+
+			for (size_t d = 0; d < setDesc.samplerDescriptorCount; d++)
+				samplerDescriptorStages |= setDesc.samplerBindingsShaderStageAccess[d];
+		}
+
+		if (setDesc.constantBufferDescriptorCount > 0)
+		{
+			D3D12_DESCRIPTOR_RANGE descRange = {};
+			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+			descRange.NumDescriptors = setDesc.constantBufferDescriptorCount;
+			descRange.BaseShaderRegister = 0;
+			descRange.RegisterSpace = (UINT) s;
+			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			ranges.push_back(descRange);
+
+			for (size_t d = 0; d < setDesc.constantBufferDescriptorCount; d++)
+				allDescriptorStages |= setDesc.constantBufferBindingsShaderStageAccess[d];
+		}
+
+		if (setDesc.inputAttachmentDescriptorCount > 0)
+		{
+			D3D12_DESCRIPTOR_RANGE descRange = {};
+			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			descRange.NumDescriptors = setDesc.inputAttachmentDescriptorCount;
+			descRange.BaseShaderRegister = 0;
+			descRange.RegisterSpace = (UINT) s;
+			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			ranges.push_back(descRange);
+
+			for (size_t d = 0; d < setDesc.inputAttachmentDescriptorCount; d++)
+				allDescriptorStages |= setDesc.inputAttachmentBindingsShaderStageAccess[d];
+		}
+
+		if (setDesc.sampledTextureDescriptorCount > 0)
+		{
+			D3D12_DESCRIPTOR_RANGE descRange = {};
+			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			descRange.NumDescriptors = setDesc.sampledTextureDescriptorCount;
+			descRange.BaseShaderRegister = 10;
+			descRange.RegisterSpace = (UINT) s;
+			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			ranges.push_back(descRange);
+
+			for (size_t d = 0; d < setDesc.sampledTextureDescriptorCount; d++)
+				allDescriptorStages |= setDesc.sampledTextureBindingsShaderStageAccess[d];
+		}
+
+		if (ranges.size() > 0)
+		{
+			D3D12_ROOT_DESCRIPTOR_TABLE descTable = {};
+			descTable.NumDescriptorRanges = (UINT) ranges.size();
+			descTable.pDescriptorRanges = ranges.data();
+
+			D3D12_ROOT_PARAMETER rootParam = {};
+			rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParam.DescriptorTable = descTable;
+
+			switch (allDescriptorStages)
+			{
+				case SHADER_STAGE_VERTEX_BIT:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+					break;
+				case SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_HULL;
+					break;
+				case SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN;
+					break;
+				case SHADER_STAGE_GEOMETRY_BIT:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+					break;
+				case SHADER_STAGE_FRAGMENT_BIT:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+					break;
+				case SHADER_STAGE_ALL_GRAPHICS:
+				case SHADER_STAGE_ALL:
+				default:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+			}
+
+			rootParams.push_back(rootParam);
+		}
+
+		if (samplerRanges.size() > 0)
+		{
+			D3D12_ROOT_DESCRIPTOR_TABLE descTable = {};
+			descTable.NumDescriptorRanges = (UINT) samplerRanges.size();
+			descTable.pDescriptorRanges = samplerRanges.data();
+
+			D3D12_ROOT_PARAMETER rootParam = {};
+			rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParam.DescriptorTable = descTable;
+
+			switch (samplerDescriptorStages)
+			{
+				case SHADER_STAGE_VERTEX_BIT:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+					break;
+				case SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_HULL;
+					break;
+				case SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN;
+					break;
+				case SHADER_STAGE_GEOMETRY_BIT:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+					break;
+				case SHADER_STAGE_FRAGMENT_BIT:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+					break;
+				case SHADER_STAGE_ALL_GRAPHICS:
+				case SHADER_STAGE_ALL:
+				default:
+					rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+			}
+
+			rootParams.push_back(rootParam);
+		}
+	}
+
 	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
-	rootSigDesc.NumParameters = (UINT) rootParams.size();;
+	rootSigDesc.NumParameters = (UINT) rootParams.size();
 	rootSigDesc.pParameters = rootParams.data();
 	rootSigDesc.NumStaticSamplers = 0;
 	rootSigDesc.pStaticSamplers = nullptr;

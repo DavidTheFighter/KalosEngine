@@ -17,19 +17,6 @@ buffers exlusively while the right one uses both vertex and index buffers.
 
 */
 
-/*
-
-This is the most basic test, just rendering a triangle with a specific clear color. It tests the proper operation of:
-- Basic, one stage render graphs (validate, build, resource assignment, execution)
-- Resizing the swapchain (look for jagged edges when upscaling the window size on the triangle)
-- Basic pipeline usage (culling, wind order, viewport, scissor, no descriptors)
-- Command buffers (only really bindPipeline and draw, but some backend stuff too)
-- HLSL compatiblity between all backends
-- Clear colors, resource formats
-- Color attachment/render target
-- Should theoretically test semaphores, but won't always show an error if they're being misused
-*/
-
 VertexIndexBufferTest::VertexIndexBufferTest(Renderer *rendererPtr)
 {
 	renderer = rendererPtr;

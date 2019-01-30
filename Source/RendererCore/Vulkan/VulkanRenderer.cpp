@@ -449,8 +449,6 @@ void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vecto
 		vkWrites.push_back(write);
 	}
 
-	printf("%u - %u, %u - %u\n", im, imageInfos.size(), bf, bufferInfos.size());
-
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(vkWrites.size()), vkWrites.data(), 0, nullptr);
 }
 
@@ -714,13 +712,14 @@ Texture VulkanRenderer::createTexture (suvec3 extent, ResourceFormat format, Tex
 	DEBUG_ASSERT(!(extent.z > 1 && arrayLayerCount > 1) && "3D Texture arrays are not supported, only one of extent.z or arrayLayerCount can be greater than 1");
 
 	if ((format == RESOURCE_FORMAT_A2R10G10B10_UINT_PACK32 || format == RESOURCE_FORMAT_A2R10G10B10_UNORM_PACK32) && (usage & TEXTURE_USAGE_TRANSFER_DST_BIT))
-		printf("%s There are no swizzle equivalents between D3D12 and Vulkan, using R10G10B10A2 and A2R10G10B10, respectively, and the renderer backend does not convert the texture data for you\n", WARN_PREFIX);
+		Log::get()->warn("There are no swizzle equivalents between D3D12 and Vulkan, using R10G10B10A2 and A2R10G10B10, respectively, and the renderer backend does not convert the texture data for you");
 
 	if (format == RESOURCE_FORMAT_B10G11R11_UFLOAT_PACK32 && (usage & TEXTURE_USAGE_TRANSFER_DST_BIT))
-		printf("%s There are no swizzle equivalents between D3D12 and Vulkan, using R11G11B10 and B10G11R11, respectively, and the renderer backend does not convert the texture data for you\n", WARN_PREFIX);
+		Log::get()->warn("There are no swizzle equivalents between D3D12 and Vulkan, using R11G11B10 and B10G11R11, respectively, and the renderer backend does not convert the texture data for you");
 
 	if (format == RESOURCE_FORMAT_E5B9G9R9_UFLOAT_PACK32 && (usage & TEXTURE_USAGE_TRANSFER_DST_BIT))
-		printf("%s There are no swizzle equivalents between D3D12 and Vulkan, using R9G9B9E5 and E5B9G9R9, respectively, and the renderer backend does not convert the texture data for you\n", WARN_PREFIX);
+		Log::get()->warn("There are no swizzle equivalents between D3D12 and Vulkan, using R9G9B9E5 and E5B9G9R9, respectively, and the renderer backend does not convert the texture data for you");
+
 #endif
 
 	VulkanTexture *tex = new VulkanTexture();
@@ -729,6 +728,8 @@ Texture VulkanRenderer::createTexture (suvec3 extent, ResourceFormat format, Tex
 	tex->height = extent.y;
 	tex->depth = extent.z;
 	tex->textureFormat = format;
+	tex->layerCount = arrayLayerCount;
+	tex->mipCount = mipLevelCount;
 
 	VkImageCreateFlags createFlags = 0;
 

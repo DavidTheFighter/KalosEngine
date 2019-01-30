@@ -47,10 +47,9 @@ class RendererCommandBuffer
 		/*
 		 * Binds one or more descriptor sets to the currently bound pipeline.
 		 */
-		virtual void bindDescriptorSets (PipelineBindPoint point, uint32_t firstSet, std::vector<DescriptorSet> sets) = 0;
+		virtual void bindDescriptorSets (PipelineBindPoint point, uint32_t firstSet, const std::vector<DescriptorSet> &sets) = 0;
 
 		virtual void transitionTextureLayout (Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource = {0, 1, 0, 1}) = 0;
-		virtual void setTextureLayout (Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource, PipelineStageFlags srcStage, PipelineStageFlags dstStage) = 0;
 		virtual void stageBuffer (StagingBuffer stagingBuffer, Texture dstTexture, TextureSubresourceLayers subresource = {0, 0, 1}, sivec3 offset = {0, 0, 0}, suvec3 extent = {std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max()}) = 0;
 		virtual void stageBuffer (StagingBuffer stagingBuffer, Buffer dstBuffer) = 0;
 

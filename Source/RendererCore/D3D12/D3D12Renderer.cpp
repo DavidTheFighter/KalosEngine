@@ -2,8 +2,8 @@
 
 #include <RendererCore/D3D12/D3D12CommandPool.h>
 #include <RendererCore/D3D12/D3D12DescriptorPool.h>
-#include <RendererCore/D3D12/D3D12Objects.h>
 #include <RendererCore/D3D12/D3D12Enums.h>
+#include <RendererCore/D3D12/D3D12Objects.h>
 
 #include <RendererCore/D3D12/D3D12Swapchain.h>
 #include <RendererCore/D3D12/D3D12PipelineHelper.h>
@@ -86,6 +86,12 @@ D3D12Renderer::D3D12Renderer(const RendererAllocInfo& allocInfo)
 	initSwapchain(allocInfo.mainWindow);
 
 	pipelineHelper = std::unique_ptr<D3D12PipelineHelper>(new D3D12PipelineHelper(this));
+
+	cbvSrvUavDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	samplerDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+
+	createNewDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	createNewDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 }
 
 D3D12Renderer::~D3D12Renderer()
@@ -165,9 +171,42 @@ void D3D12Renderer::createLogicalDevice()
 	DX_CHECK_RESULT(device->CreateCommandQueue(&transferQueueDesc, IID_PPV_ARGS(&transferQueue)));
 }
 
+void D3D12Renderer::createNewDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, uint32_t numDescriptors)
+{
+	if (heapType == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
+		numDescriptors = std::min<uint32_t>(numDescriptors, 2048);
+	else
+		numDescriptors = std::min<uint32_t>(numDescriptors, 1000000);
+
+	std::lock_guard<std::mutex> lockGuard(massDescriptorHeaps_mutex);
+
+	for (size_t i = 0; i < massDescriptorHeaps.size(); i++)
+	{
+		DescriptorHeap &descHeap = massDescriptorHeaps[i];
+
+		if (descHeap.heap == nullptr)
+		{
+			D3D12_DESCRIPTOR_HEAP_DESC descHeapDesc = {};
+			descHeapDesc.Type = heapType;
+			descHeapDesc.NumDescriptors = numDescriptors;
+			descHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			descHeapDesc.NodeMask = 0;
+
+			device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&descHeap.heap));
+
+			descHeap.heapType = heapType;
+			descHeap.numDescriptors = numDescriptors;
+			descHeap.allocatedDescriptors = std::vector<uint8_t>(numDescriptors, 0);
+			descHeap.numFreeDescriptors = numDescriptors;
+
+			break;
+		}
+	}
+}
+
 CommandPool D3D12Renderer::createCommandPool(QueueType queue, CommandPoolFlags flags)
 {
-	D3D12CommandPool *cmdPool = new D3D12CommandPool(device, queue);
+	D3D12CommandPool *cmdPool = new D3D12CommandPool(this, queue);
 
 	return cmdPool;
 }
@@ -305,8 +344,168 @@ void D3D12Renderer::waitForFences(const std::vector<Fence>& fences, bool waitFor
 	WaitForMultipleObjects((DWORD)waitHandles.size(), waitHandles.data(), waitForAll, static_cast<DWORD>(timeoutInSeconds * 1000.0));
 }
 
+inline D3D12_SHADER_RESOURCE_VIEW_DESC createSRVDescFromTextureView(TextureView view)
+{
+	D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+	viewDesc.Format = ResourceFormatToDXGIFormat(view->viewFormat);
+	viewDesc.ViewDimension = textureViewTypeToD3D12SRVDimension(view->viewType);
+	viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	
+	switch (viewDesc.ViewDimension)
+	{
+		case D3D12_SRV_DIMENSION_TEXTURE1D:
+		{
+			D3D12_TEX1D_SRV tex = {};
+			tex.MostDetailedMip = view->baseMip;
+			tex.MipLevels = view->mipCount;
+			tex.ResourceMinLODClamp = 0.0f;
+
+			viewDesc.Texture1D = tex;
+			break;
+		}
+		case D3D12_SRV_DIMENSION_TEXTURE1DARRAY:
+		{
+			D3D12_TEX1D_ARRAY_SRV tex = {};
+			tex.MostDetailedMip = view->baseMip;
+			tex.MipLevels = view->mipCount;
+			tex.FirstArraySlice = view->baseLayer;
+			tex.ArraySize = view->layerCount;
+			tex.ResourceMinLODClamp = 0.0f;
+
+			viewDesc.Texture1DArray = tex;
+			break;
+		}
+		case D3D12_SRV_DIMENSION_TEXTURE2D:
+		{
+			D3D12_TEX2D_SRV tex = {};
+			tex.MostDetailedMip = view->baseMip;
+			tex.MipLevels = view->mipCount;
+			tex.PlaneSlice = 0;
+			tex.ResourceMinLODClamp = 0.0f;
+
+			viewDesc.Texture2D = tex;
+			break;
+		}
+		case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
+		{
+			D3D12_TEX2D_ARRAY_SRV tex = {};
+			tex.MostDetailedMip = view->baseMip;
+			tex.MipLevels = view->mipCount;
+			tex.FirstArraySlice = view->baseLayer;
+			tex.ArraySize = view->layerCount;
+			tex.PlaneSlice = 0;
+			tex.ResourceMinLODClamp = 0.0f;
+
+			viewDesc.Texture2DArray = tex;
+			break;
+		}
+		case D3D12_SRV_DIMENSION_TEXTURE3D:
+		{
+			D3D12_TEX3D_SRV tex = {};
+			tex.MostDetailedMip = view->baseMip;
+			tex.MipLevels = view->mipCount;
+			tex.ResourceMinLODClamp = 0.0f;
+
+			viewDesc.Texture3D = tex;
+			break;
+		}
+		case D3D12_SRV_DIMENSION_TEXTURECUBE:
+		{
+			D3D12_TEXCUBE_SRV tex = {};
+			tex.MostDetailedMip = view->baseMip;
+			tex.MipLevels = view->mipCount;
+			tex.ResourceMinLODClamp = 0.0f;
+
+			viewDesc.TextureCube = tex;
+			break;
+		}
+		case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY:
+		{
+			D3D12_TEXCUBE_ARRAY_SRV tex = {};
+			tex.MostDetailedMip = view->baseMip;
+			tex.MipLevels = view->mipCount;
+			tex.First2DArrayFace = view->baseLayer;
+			tex.NumCubes = view->layerCount / 6;
+			tex.ResourceMinLODClamp = 0.0f;
+
+			viewDesc.TextureCubeArray = tex;
+			break;
+		}
+		default:
+		{
+			D3D12_TEX2D_SRV tex = {};
+			tex.MostDetailedMip = 0;
+			tex.MipLevels = 1;
+			tex.PlaneSlice = 0;
+			tex.ResourceMinLODClamp = 0.0f;
+
+			viewDesc.Texture2D = tex;
+		}
+	}
+
+	return viewDesc;
+}
+
 void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<DescriptorWriteInfo>& writes)
 {
+	D3D12DescriptorSet *d3dset = static_cast<D3D12DescriptorSet*>(dstSet);
+
+	uint32_t constantBufferOffset = 0;
+	uint32_t inputAttachmentOffset = constantBufferOffset + d3dset->constantBufferCount;
+	uint32_t sampledTextureOffset = inputAttachmentOffset + d3dset->inputAtttachmentCount;
+
+	for (size_t i = 0; i < writes.size(); i++)
+	{
+		const DescriptorWriteInfo &writeInfo = writes[i];
+		
+		switch (writeInfo.descriptorType)
+		{
+			case DESCRIPTOR_TYPE_SAMPLER:
+			{
+				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->samplerHeap->GetCPUDescriptorHandleForHeapStart();
+				descHandle.ptr += samplerDescriptorSize * (writeInfo.dstBinding + d3dset->samplerStartDescriptorSlot);
+
+				device->CreateSampler(&static_cast<D3D12Sampler*>(writeInfo.samplerInfo.sampler)->samplerDesc, descHandle);
+
+				break;
+			}
+			case DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			{
+				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
+				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + constantBufferOffset);
+
+				D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {};
+				viewDesc.BufferLocation = static_cast<D3D12Buffer*>(writeInfo.bufferInfo.buffer)->bufferResource->GetGPUVirtualAddress() + writeInfo.bufferInfo.offset;
+				viewDesc.SizeInBytes = (writeInfo.bufferInfo.range + 255) & (~255);
+
+				device->CreateConstantBufferView(&viewDesc, descHandle);
+
+				break;
+			}
+			case DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			{
+				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
+				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + inputAttachmentOffset);
+
+				D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.inputAttachmentInfo.view);
+
+				device->CreateShaderResourceView(static_cast<D3D12Texture*>(writeInfo.inputAttachmentInfo.view->parentTexture)->textureResource, &viewDesc, descHandle);
+
+				break;
+			}
+			case DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			{
+				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
+				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + sampledTextureOffset);
+
+				D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.samledImageInfo.view);
+
+				device->CreateShaderResourceView(static_cast<D3D12Texture*>(writeInfo.samledImageInfo.view->parentTexture)->textureResource, &viewDesc, descHandle);
+
+				break;
+			}
+		}
+	}
 }
 
 RenderGraph D3D12Renderer::createRenderGraph()
@@ -330,9 +529,7 @@ ShaderModule D3D12Renderer::createShaderModule(const std::string &file, ShaderSt
 	return createShaderModuleFromSource(source, debugMarkerName, stage, sourceLang, entryPoint);
 }
 
-const std::string D3D12Renderer_PushConstantBufferPreprocessorValue = "cbuffer __D3D12_PushConstantsUniformBuffer_" + toString(ROOT_CONSTANT_REGISTER_SPACE) + " : register(b0, space" + toString(ROOT_CONSTANT_REGISTER_SPACE) + ")";
-
-ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string & source, const std::string & referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint)
+ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string &source, const std::string &referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint)
 {
 	D3D12ShaderModule *shaderModule = new D3D12ShaderModule();
 	ID3DBlob *blob = nullptr, *errorBuf = nullptr;
@@ -342,7 +539,14 @@ ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string & sou
 		{nullptr, nullptr}
 	};
 
-	HRESULT hr = D3DCompile(source.data(), source.size(), referenceName.c_str(), macroDefines, nullptr, entryPoint.c_str(), shaderStageFlagBitsToD3D12CompilerTargetStr(stage).c_str(), D3DCOMPILE_DEBUG | D3DCOMPILE_ALL_RESOURCES_BOUND | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &blob, &errorBuf);
+	std::string modSource = source;
+	modSource = std::string(D3D12_HLSL_SAMPLED_TEXTURE_PREPROCESSOR) + "\n" + modSource;
+	modSource = std::string(D3D12_HLSL_INPUT_ATTACHMENT_PREPROCESSOR) + "\n" + modSource;
+	modSource = std::string(D3D12_HLSL_CBUFFER_PREPROCESSOR) + "\n" + modSource;
+	modSource = std::string(D3D12_HLSL_SAMPLER_PREPROCESSOR) + "\n" + modSource;
+	modSource = std::string(D3D12_HLSL_MERGE_PREPROCESSOR) + "\n" + modSource;
+
+	HRESULT hr = D3DCompile(modSource.data(), modSource.size(), referenceName.c_str(), macroDefines, nullptr, entryPoint.c_str(), shaderStageFlagBitsToD3D12CompilerTargetStr(stage).c_str(), D3DCOMPILE_DEBUG | D3DCOMPILE_ALL_RESOURCES_BOUND | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &blob, &errorBuf);
 
 	if (FAILED(hr))
 	{
@@ -381,7 +585,7 @@ Pipeline D3D12Renderer::createComputePipeline(const ComputePipelineInfo &pipelin
 
 DescriptorPool D3D12Renderer::createDescriptorPool(const DescriptorSetLayoutDescription &descriptorSetLayout, uint32_t poolBlockAllocSize)
 {
-	D3D12DescriptorPool *pool = new D3D12DescriptorPool();
+	D3D12DescriptorPool *pool = new D3D12DescriptorPool(this, descriptorSetLayout);
 
 	return pool;
 }
@@ -428,17 +632,23 @@ Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, Textu
 	DEBUG_ASSERT(!(extent.z > 1 && arrayLayerCount > 1) && "3D Texture arrays are not supported, only one of extent.z or arrayLayerCount can be greater than 1");
 
 	if ((format == RESOURCE_FORMAT_A2R10G10B10_UINT_PACK32 || format == RESOURCE_FORMAT_A2R10G10B10_UNORM_PACK32) && (usage & TEXTURE_USAGE_TRANSFER_DST_BIT))
-		printf("%s There are no swizzle equivalents between D3D12 and Vulkan, using R10G10B10A2 and A2R10G10B10, respectively, and the renderer backend does not convert the texture data for you\n", WARN_PREFIX);
+		Log::get()->warn("There are no swizzle equivalents between D3D12 and Vulkan, using R10G10B10A2 and A2R10G10B10, respectively, and the renderer backend does not convert the texture data for you");
 
 	if (format == RESOURCE_FORMAT_B10G11R11_UFLOAT_PACK32 && (usage & TEXTURE_USAGE_TRANSFER_DST_BIT))
-		printf("%s There are no swizzle equivalents between D3D12 and Vulkan, using R11G11B10 and B10G11R11, respectively, and the renderer backend does not convert the texture data for you\n", WARN_PREFIX);
+		Log::get()->warn("There are no swizzle equivalents between D3D12 and Vulkan, using R11G11B10 and B10G11R11, respectively, and the renderer backend does not convert the texture data for you");
 
 	if (format == RESOURCE_FORMAT_E5B9G9R9_UFLOAT_PACK32 && (usage & TEXTURE_USAGE_TRANSFER_DST_BIT))
-		printf("%s There are no swizzle equivalents between D3D12 and Vulkan, using R9G9B9E5 and E5B9G9R9, respectively, and the renderer backend does not convert the texture data for you\n", WARN_PREFIX);
+		Log::get()->warn("There are no swizzle equivalents between D3D12 and Vulkan, using R9G9B9E5 and E5B9G9R9, respectively, and the renderer backend does not convert the texture data for you");
 
 #endif
 
 	D3D12Texture *texture = new D3D12Texture();
+	texture->width = (uint32_t) extent.x;
+	texture->height = (uint32_t) extent.y;
+	texture->depth = (uint32_t) extent.z;
+	texture->textureFormat = format;
+	texture->layerCount = arrayLayerCount;
+	texture->mipCount = mipLevelCount;
 
 	D3D12_RESOURCE_DESC texDesc = {};
 	texDesc.Dimension = extent.z > 1 ? D3D12_RESOURCE_DIMENSION_TEXTURE3D : (extent.y > 1 ? D3D12_RESOURCE_DIMENSION_TEXTURE2D : D3D12_RESOURCE_DIMENSION_TEXTURE1D);
@@ -507,6 +717,8 @@ Sampler D3D12Renderer::createSampler(SamplerAddressMode addressMode, SamplerFilt
 	samplerDesc.BorderColor[3] = 1.0f;
 	samplerDesc.MinLOD = min_max_biasLod.x;
 	samplerDesc.MaxLOD = min_max_biasLod.y;
+
+	sampler->samplerDesc = samplerDesc;
 
 	return sampler;
 }

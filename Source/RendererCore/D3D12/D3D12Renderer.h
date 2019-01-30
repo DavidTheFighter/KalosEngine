@@ -8,6 +8,16 @@
 class D3D12Swapchain;
 class D3D12PipelineHelper;
 
+typedef struct
+{
+	D3D12_DESCRIPTOR_HEAP_TYPE heapType;
+	ID3D12DescriptorHeap *heap; // If heap == nullptr, then this object hasn't allocated a d3d12 heap yet and needs to before it can be used
+
+	uint32_t numDescriptors; // The number of descriptors allocated for this heap
+	std::vector<uint8_t> allocatedDescriptors; // An array of booleans describing whether each slot of the heap has been used/allocated and if it's available
+	uint32_t numFreeDescriptors; // The number of free descriptor slots
+} DescriptorHeap;
+
 class D3D12Renderer : public Renderer
 {
 	public:
@@ -21,8 +31,16 @@ class D3D12Renderer : public Renderer
 	ID3D12CommandQueue *computeQueue;
 	ID3D12CommandQueue *transferQueue;
 
+	uint32_t cbvSrvUavDescriptorSize;
+	uint32_t samplerDescriptorSize;
+
+	std::array<DescriptorHeap, 64> massDescriptorHeaps;
+	std::mutex massDescriptorHeaps_mutex;
+
 	D3D12Renderer(const RendererAllocInfo& allocInfo);
 	virtual ~D3D12Renderer();
+
+	void createNewDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, uint32_t numDescriptors = 1000000);
 
 	CommandPool createCommandPool(QueueType queue, CommandPoolFlags flags);
 

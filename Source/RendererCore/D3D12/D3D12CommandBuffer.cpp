@@ -1,16 +1,22 @@
 #include "RendererCore/D3D12/D3D12CommandBuffer.h"
 
+#include <RendererCore/D3D12/D3D12Renderer.h>
 #include <RendererCore/D3D12/D3D12Enums.h>
 #include <RendererCore/D3D12/D3D12Objects.h>
 
-D3D12CommandBuffer::D3D12CommandBuffer(D3D12CommandPool *parentCommandPoolPtr, D3D12_COMMAND_LIST_TYPE commandListType)
+D3D12CommandBuffer::D3D12CommandBuffer(D3D12Renderer *rendererPtr, D3D12CommandPool *parentCommandPoolPtr, D3D12_COMMAND_LIST_TYPE commandListType)
 {
+	renderer = rendererPtr;
 	parentCmdPool = parentCommandPoolPtr;
 	cmdListType = commandListType;
 
 	cmdList = nullptr;
 
 	startedRecording = false;
+
+	cxt_currentGraphicsPipeline = nullptr;
+	ctx_currentBoundSamplerDescHeap = nullptr;
+	ctx_currentBoundSrvUavCbvDescHeap = nullptr;
 }
 
 D3D12CommandBuffer::~D3D12CommandBuffer()
@@ -30,7 +36,7 @@ void D3D12CommandBuffer::beginCommands(CommandBufferUsageFlags flags)
 
 	if (cmdList == nullptr)
 	{
-		DX_CHECK_RESULT(parentCmdPool->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, parentCmdPool->cmdAlloc, nullptr, IID_PPV_ARGS(&cmdList)));
+		DX_CHECK_RESULT(renderer->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, parentCmdPool->cmdAlloc, nullptr, IID_PPV_ARGS(&cmdList)));
 	}
 	else
 	{
@@ -39,11 +45,17 @@ void D3D12CommandBuffer::beginCommands(CommandBufferUsageFlags flags)
 
 	startedRecording = true;
 	cxt_currentGraphicsPipeline = nullptr;
+	ctx_currentBoundSamplerDescHeap = nullptr;
+	ctx_currentBoundSrvUavCbvDescHeap = nullptr;
 }
 
 void D3D12CommandBuffer::endCommands()
 {
 	DX_CHECK_RESULT(cmdList->Close());
+
+	cxt_currentGraphicsPipeline = nullptr;
+	ctx_currentBoundSamplerDescHeap = nullptr;
+	ctx_currentBoundSrvUavCbvDescHeap = nullptr;
 }
 
 void D3D12CommandBuffer::d3d12_reset()
@@ -142,20 +154,123 @@ void D3D12CommandBuffer::pushConstants(uint32_t offset, uint32_t size, const voi
 	cmdList->SetGraphicsRoot32BitConstants(0, (uint32_t) std::ceil(size / 4.0), data, (uint32_t) std::ceil(offset / 4.0));
 }
 
-void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t firstSet, std::vector<DescriptorSet> sets)
+void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t firstSet, const std::vector<DescriptorSet> &sets)
 {
+	uint32_t baseRootParameter = 0;
+
+	for (uint32_t i = 0; i < firstSet; i++)
+	{
+		cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i];
+
+		if (cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].samplerDescriptorCount > 0)
+			baseRootParameter++;
+
+		uint32_t srvUavCbvDescCount = cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].constantBufferDescriptorCount + cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].inputAttachmentDescriptorCount + cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].sampledTextureDescriptorCount;
+
+		if (srvUavCbvDescCount > 0)
+			baseRootParameter++;
+	}
+
+	for (size_t i = 0; i < sets.size(); i++)
+	{
+		D3D12DescriptorSet *d3dset = static_cast<D3D12DescriptorSet*>(sets[i]);
+
+		ID3D12DescriptorHeap *samplerHeapToBind = d3dset->samplerCount == 0 ? ctx_currentBoundSamplerDescHeap : d3dset->samplerHeap;
+		ID3D12DescriptorHeap *srvUavCbvHeapToBind = d3dset->srvUavCbvDescriptorCount == 0 ? ctx_currentBoundSrvUavCbvDescHeap : d3dset->srvUavCbvHeap;
+		ID3D12DescriptorHeap *heaps[2] = {samplerHeapToBind, srvUavCbvHeapToBind};
+
+		if (samplerHeapToBind == nullptr)
+			cmdList->SetDescriptorHeaps(1, &heaps[1]);
+		else if (srvUavCbvHeapToBind == nullptr)
+			cmdList->SetDescriptorHeaps(1, &heaps[0]);
+		else
+			cmdList->SetDescriptorHeaps(2, &heaps[0]);
+
+		if (d3dset->samplerCount > 0)
+		{
+			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->samplerHeap->GetGPUDescriptorHandleForHeapStart();
+			descHandle.ptr += renderer->samplerDescriptorSize * (d3dset->samplerStartDescriptorSlot);
+
+			//cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);
+
+			baseRootParameter++;
+		}
+
+		if (d3dset->srvUavCbvDescriptorCount > 0)
+		{
+			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetGPUDescriptorHandleForHeapStart();
+			descHandle.ptr += renderer->cbvSrvUavDescriptorSize * (d3dset->srvUavCbvStartDescriptorSlot);
+
+			cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);
+
+			baseRootParameter++;
+		}
+	}
 }
 
 void D3D12CommandBuffer::transitionTextureLayout(Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource)
 {
-}
+#if D3D12_DEBUG_COMPATIBILITY_CHECKS
 
-void D3D12CommandBuffer::setTextureLayout(Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource, PipelineStageFlags srcStage, PipelineStageFlags dstStage)
-{
+	if (newLayout == TEXTURE_LAYOUT_INITIAL_STATE)
+	{
+		Log::get()->error("D3D12CommandBuffer: Cannot transition a texture layout into it's initial state (TEXTURE_LAYOUT_INITIAL_STATE). This state can be transitioned out of right after the texture has been initialized but has no other use");
+		throw std::runtime_error("d3d12 error: invalid newLayout in resource barrier");
+	}
+
+#endif
+
+	D3D12Texture *d3dtexture = static_cast<D3D12Texture*>(texture);
+
+	std::vector<D3D12_RESOURCE_BARRIER> barriers;
+
+	for (uint32_t layer = subresource.baseArrayLayer; layer < subresource.baseArrayLayer + subresource.layerCount; layer++)
+	{
+		for (uint32_t mip = subresource.baseMipLevel; mip < subresource.baseMipLevel + subresource.levelCount; mip++)
+		{
+			D3D12_RESOURCE_TRANSITION_BARRIER transBarrier = {};
+			transBarrier.pResource = d3dtexture->textureResource;
+			transBarrier.Subresource = layer * d3dtexture->mipCount + mip;
+			transBarrier.StateBefore = TextureLayoutToD3D12ResourceStates(oldLayout);
+			transBarrier.StateAfter = TextureLayoutToD3D12ResourceStates(newLayout);
+
+			D3D12_RESOURCE_BARRIER barrier = {};
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			barrier.Transition = transBarrier;
+
+			barriers.push_back(barrier);
+		}
+	}
+
+	cmdList->ResourceBarrier((UINT) barriers.size(), barriers.data());
 }
 
 void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Texture dstTexture, TextureSubresourceLayers subresource, sivec3 offset, suvec3 extent)
 {
+	D3D12StagingBuffer *d3dstagingBuffer = static_cast<D3D12StagingBuffer*>(stagingBuffer);
+	D3D12Texture *d3ddstTexture = static_cast<D3D12Texture*>(dstTexture);
+
+	D3D12_SUBRESOURCE_FOOTPRINT subresourceFootprint = {};
+	subresourceFootprint.Format = ResourceFormatToDXGIFormat(d3ddstTexture->textureFormat);
+	subresourceFootprint.Width = extent.x == std::numeric_limits<uint32_t>::max() ? dstTexture->width : extent.x;
+	subresourceFootprint.Height = extent.y == std::numeric_limits<uint32_t>::max() ? dstTexture->height : extent.y;
+	subresourceFootprint.Depth = extent.z == std::numeric_limits<uint32_t>::max() ? dstTexture->depth : extent.z;
+	//subresourceFootprint.RowPitch
+
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT placedSubresourceFootprint = {};
+	placedSubresourceFootprint.Offset = 0;
+	placedSubresourceFootprint.Footprint = subresourceFootprint;
+
+	D3D12_TEXTURE_COPY_LOCATION src = {};
+	src.pResource = d3dstagingBuffer->bufferResource;
+	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+
+
+	D3D12_TEXTURE_COPY_LOCATION dst = {};
+	dst.pResource = d3ddstTexture->textureResource;
+
+	D3D12_BOX copyRegion = {};
 }
 
 void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Buffer dstBuffer)

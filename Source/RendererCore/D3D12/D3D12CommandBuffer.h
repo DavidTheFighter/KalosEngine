@@ -5,6 +5,7 @@
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
+class D3D12Renderer;
 class D3D12CommandPool;
 class D3D12Pipeline;
 
@@ -12,7 +13,7 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 {
 	public:
 
-	D3D12CommandBuffer(D3D12CommandPool *parentCommandPoolPtr, D3D12_COMMAND_LIST_TYPE commandListType);
+	D3D12CommandBuffer(D3D12Renderer *rendererPtr, D3D12CommandPool *parentCommandPoolPtr, D3D12_COMMAND_LIST_TYPE commandListType);
 	virtual ~D3D12CommandBuffer();
 
 	void beginCommands(CommandBufferUsageFlags flags);
@@ -28,10 +29,9 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 	void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
 	void pushConstants(uint32_t offset, uint32_t size, const void *data);
-	void bindDescriptorSets(PipelineBindPoint point, uint32_t firstSet, std::vector<DescriptorSet> sets);
+	void bindDescriptorSets(PipelineBindPoint point, uint32_t firstSet, const std::vector<DescriptorSet> &sets);
 
 	void transitionTextureLayout(Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource);
-	void setTextureLayout(Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource, PipelineStageFlags srcStage, PipelineStageFlags dstStage);
 
 	void stageBuffer(StagingBuffer stagingBuffer, Texture dstTexture, TextureSubresourceLayers subresource, sivec3 offset, suvec3 extent);
 	void stageBuffer(StagingBuffer stagingBuffer, Buffer dstBuffer);
@@ -53,12 +53,15 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 
 	private:
 
+	D3D12Renderer *renderer;
 	D3D12CommandPool *parentCmdPool;
 	D3D12_COMMAND_LIST_TYPE cmdListType;
 
 	ID3D12GraphicsCommandList *cmdList;
 
 	D3D12Pipeline *cxt_currentGraphicsPipeline;
+	ID3D12DescriptorHeap *ctx_currentBoundSamplerDescHeap;
+	ID3D12DescriptorHeap *ctx_currentBoundSrvUavCbvDescHeap;
 
 	bool startedRecording;
 

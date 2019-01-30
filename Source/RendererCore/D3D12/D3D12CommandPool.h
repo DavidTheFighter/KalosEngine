@@ -6,13 +6,14 @@
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
+class D3D12Renderer;
 class D3D12CommandBuffer;
 
 class D3D12CommandPool : public RendererCommandPool
 {
 	public:
 
-	D3D12CommandPool(ID3D12Device2 *devicePtr, QueueType queueType);
+	D3D12CommandPool(D3D12Renderer *rendererPtr, QueueType queueType);
 	virtual ~D3D12CommandPool();
 
 	RendererCommandBuffer *allocateCommandBuffer(CommandBufferLevel level);
@@ -25,7 +26,7 @@ class D3D12CommandPool : public RendererCommandPool
 
 	private:
 
-	ID3D12Device2 *device;
+	D3D12Renderer *renderer;
 	ID3D12CommandAllocator *cmdAlloc;
 	ID3D12CommandAllocator *bundleCmdAlloc;
 

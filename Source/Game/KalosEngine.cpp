@@ -6,6 +6,7 @@
 
 #include <RendererCore/Tests/TriangleTest.h>
 #include <RendererCore/Tests/VertexIndexBufferTest.h>
+#include <RendererCore/Tests/PushConstantsTest.h>
 #include <RendererCore/Tests/CubeTest.h>
 
 KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBackend rendererBackendType, uint32_t engineUpdateFrequencyCap)
@@ -58,6 +59,11 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 				vertexIndexBufferTest = std::unique_ptr<VertexIndexBufferTest>(new VertexIndexBufferTest(renderer.get()));
 
 				renderer->setSwapchainTexture(mainWindow.get(), vertexIndexBufferTest->gfxGraph->getRenderGraphOutputTextureView(), vertexIndexBufferTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+				break;
+			case RENDERER_TEST_PUSH_CONSTANTS:
+				pushConstantsTest = std::unique_ptr<PushConstantsTest>(new PushConstantsTest(renderer.get()));
+
+				renderer->setSwapchainTexture(mainWindow.get(), pushConstantsTest->gfxGraph->getRenderGraphOutputTextureView(), pushConstantsTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 				break;
 			case RENDERER_TEST_CUBE:
 				cubeTest = std::unique_ptr<CubeTest>(new CubeTest(renderer.get()));
@@ -142,6 +148,11 @@ void KalosEngine::update()
 
 					renderer->setSwapchainTexture(mainWindow.get(), vertexIndexBufferTest->gfxGraph->getRenderGraphOutputTextureView(), vertexIndexBufferTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 					break;
+				case RENDERER_TEST_PUSH_CONSTANTS:
+					pushConstantsTest->gfxGraph->resizeNamedSize("swapchain", mainWindowSize);
+
+					renderer->setSwapchainTexture(mainWindow.get(), pushConstantsTest->gfxGraph->getRenderGraphOutputTextureView(), pushConstantsTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+					break;
 				case RENDERER_TEST_CUBE:
 					cubeTest->gfxGraph->resizeNamedSize("swapchain", mainWindowSize);
 
@@ -187,6 +198,10 @@ void KalosEngine::render()
 			case RENDERER_TEST_VERTEX_INDEX_BUFFER:
 				vertexIndexBufferTest->render();
 				renderer->presentToSwapchain(mainWindow.get(), {vertexIndexBufferTest->renderDoneSemaphore});
+				break;
+			case RENDERER_TEST_PUSH_CONSTANTS:
+				pushConstantsTest->render();
+				renderer->presentToSwapchain(mainWindow.get(), {pushConstantsTest->renderDoneSemaphore});
 				break;
 			case RENDERER_TEST_CUBE:
 				cubeTest->render();

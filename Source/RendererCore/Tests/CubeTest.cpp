@@ -31,7 +31,7 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 		testOutDepth.namedRelativeSize = "swapchain";
 
 		auto &test = gfxGraph->addRenderPass("test", RG_PIPELINE_GRAPHICS);
-		test.addColorOutput("testOut", testOut, true, {0.75, 0.75, 0.1, 1});
+		test.addColorOutput("testOut", testOut, true, {1.0f, 1.0f, 1.0f, 1.0f});
 		test.setDepthStencilOutput("testOutDepth", testOutDepth, true, {1, 0});
 
 		test.setInitFunction(std::bind(&CubeTest::passInit, this, std::placeholders::_1));
@@ -48,69 +48,37 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 	createBuffers();
 	createTextures();
 
-	for (uint32_t i = 0; i < 4; i++)
-		testSamplers[i] = renderer->createSampler();
+	cubeTexSampler = renderer->createSampler();
 
 	rotateCounter = 0.0f;
 
-	descSet0 = cubeDescPool->allocateDescriptorSet();
-	descSet1 = cubeDescPool->allocateDescriptorSet();
+	descSet = cubeDescPool->allocateDescriptorSet();
 
-	std::vector<DescriptorWriteInfo> writes(6);
+	std::vector<DescriptorWriteInfo> writes(3);
 	writes[0].dstBinding = 0;
 	writes[0].descriptorType = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	writes[0].bufferInfo = {testBuffers[0], 0, sizeof(glm::mat4)};
-	writes[1].dstBinding = 1;
-	writes[1].descriptorType = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	writes[1].bufferInfo = {testBuffers[1], 0, sizeof(glm::mat4)};
+	writes[0].bufferInfo = {cubeCBuffer, 0, sizeof(glm::mat4)};
+
+	writes[1].dstBinding = 0;
+	writes[1].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
+	writes[1].samplerInfo = {cubeTexSampler};
 
 	writes[2].dstBinding = 0;
-	writes[2].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
-	writes[2].samplerInfo = {testSamplers[0]};
-	writes[3].dstBinding = 1;
-	writes[3].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
-	writes[3].samplerInfo = {testSamplers[1]};
+	writes[2].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	writes[2].samledImageInfo = {cubeTestTextureView, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 
-	writes[4].dstBinding = 0;
-	writes[4].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	writes[4].samledImageInfo = {testTextureViews[0], TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-	writes[5].dstBinding = 1;
-	writes[5].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	writes[5].samledImageInfo = {testTextureViews[1], TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-
-	renderer->writeDescriptorSets(descSet0, writes);
-
-	writes[0].dstBinding = 0;
-	writes[0].descriptorType = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	writes[0].bufferInfo = {testBuffers[2], 0, sizeof(glm::mat4)};
-	writes[1].dstBinding = 1;
-	writes[1].descriptorType = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	writes[1].bufferInfo = {testBuffers[3], 0, sizeof(glm::mat4)};
-
-	writes[2].dstBinding = 0;
-	writes[2].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
-	writes[2].samplerInfo = {testSamplers[2]};
-	writes[3].dstBinding = 1;
-	writes[3].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
-	writes[3].samplerInfo = {testSamplers[3]};
-
-	writes[4].dstBinding = 0;
-	writes[4].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	writes[4].samledImageInfo = {testTextureViews[2], TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-	writes[5].dstBinding = 1;
-	writes[5].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	writes[5].samledImageInfo = {testTextureViews[3], TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-
-	renderer->writeDescriptorSets(descSet1, writes);
+	renderer->writeDescriptorSets(descSet, writes);
 }
 
 CubeTest::~CubeTest()
 {
-	renderer->destroyBuffer(cubeBuffer0);
-	renderer->destroyBuffer(cubeBuffer1);
+	renderer->destroyBuffer(cubeBuffer);
 	renderer->destroyBuffer(cubeIndexBuffer);
+	renderer->destroyBuffer(cubeCBuffer);
 
 	renderer->destroySampler(renderTargetSampler);
+	renderer->destroyTextureView(cubeTestTextureView);
+	renderer->destroyTexture(cubeTestTexture);
 
 	renderer->destroyPipeline(gfxPipeline);
 
@@ -137,9 +105,9 @@ void CubeTest::passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFuncti
 
 	cmdBuffer->bindPipeline(PIPELINE_BIND_POINT_GRAPHICS, gfxPipeline);
 	cmdBuffer->bindIndexBuffer(cubeIndexBuffer, 0);
-	cmdBuffer->bindVertexBuffers(0, {cubeBuffer0, cubeBuffer1}, {0, 0});
+	cmdBuffer->bindVertexBuffers(0, {cubeBuffer}, {0});
 	cmdBuffer->pushConstants(0, sizeof(camMVPMat), &camMVPMat[0][0]);
-	cmdBuffer->bindDescriptorSets(PIPELINE_BIND_POINT_GRAPHICS, 0, {descSet0, descSet1});
+	cmdBuffer->bindDescriptorSets(PIPELINE_BIND_POINT_GRAPHICS, 0, {descSet});
 
 	cmdBuffer->drawIndexed(36);
 }
@@ -153,104 +121,54 @@ void CubeTest::render()
 
 void CubeTest::createBuffers()
 {
-	glm::vec4 buffer0[] = {
+	glm::vec4 cubeBufferData[] = {
 		// -x side
-		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
-		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
 
 		// -z side
-		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
-		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
 
 		// -y side
-		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
-		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
 
 		// +y side
-		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
-		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
 
 		// +x side
-		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
-		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
+		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
 
 		// +z side
-		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f),
-		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1, 0, 0, 0.0f),
-		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0, 1, 0, 0.0f),
-		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0, 0, 1, 0.0f)
-	};
-
-	glm::vec4 buffer1[] = {
-		// -x side
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-
-		// -z side
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-
-		// -y side
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-
-		// +y side
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-
-		// +x side
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-
-		// +z side
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(0.0f, 1.0f, 0.0f, 0.0f)
+		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
 	};
 
 	uint16_t indexBufferData[] = {
@@ -262,63 +180,76 @@ void CubeTest::createBuffers()
 		30, 31, 32, 33, 34, 35
 	};
 
-	glm::mat4 testBufferData[] = {
-		glm::mat4(1),
-		glm::mat4(1),
-		glm::mat4(1),
-		glm::mat4(1)
-	};
+	glm::mat4 cbufferData[] = {glm::mat4(1)};
 
-	cubeBuffer0 = renderer->createBuffer(sizeof(buffer0), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
-	cubeBuffer1 = renderer->createBuffer(sizeof(buffer1), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
+	cubeBuffer = renderer->createBuffer(sizeof(cubeBufferData), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
 	cubeIndexBuffer = renderer->createBuffer(sizeof(indexBufferData), BUFFER_USAGE_INDEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
+	cubeCBuffer = renderer->createBuffer(sizeof(cbufferData), BUFFER_USAGE_UNIFORM_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
 
-	for (uint32_t i = 0; i < 4; i++)
-		testBuffers[i] = renderer->createBuffer(sizeof(glm::mat4), BUFFER_USAGE_UNIFORM_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
-
-	StagingBuffer stagingBuffer0 = renderer->createAndFillStagingBuffer(sizeof(buffer0), buffer0);
-	StagingBuffer stagingBuffer1 = renderer->createAndFillStagingBuffer(sizeof(buffer1), buffer1);
+	StagingBuffer stagingCubeBuffer = renderer->createAndFillStagingBuffer(sizeof(cubeBufferData), cubeBufferData);
 	StagingBuffer stagingIndexBuffer = renderer->createAndFillStagingBuffer(sizeof(indexBufferData), indexBufferData);
-	StagingBuffer testStagingBuffers[4];
-
-	for (uint32_t i = 0; i < 4; i++)
-		testStagingBuffers[i] = renderer->createAndFillStagingBuffer(sizeof(glm::mat4), &testBufferData[i][0][0]);
+	StagingBuffer stagingCubeCBuffer = renderer->createAndFillStagingBuffer(sizeof(cbufferData), cbufferData);
 
 	Fence tempFence = renderer->createFence();
 
 	CommandBuffer cmdBuffer = cmdPool->allocateCommandBuffer();
 	cmdBuffer->beginCommands(COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-	cmdBuffer->stageBuffer(stagingBuffer0, cubeBuffer0);
-	cmdBuffer->stageBuffer(stagingBuffer1, cubeBuffer1);
+	cmdBuffer->stageBuffer(stagingCubeBuffer, cubeBuffer);
 	cmdBuffer->stageBuffer(stagingIndexBuffer, cubeIndexBuffer);
-
-	for (uint32_t i = 0; i < 4; i++)
-		cmdBuffer->stageBuffer(testStagingBuffers[i], testBuffers[i]);
+	cmdBuffer->stageBuffer(stagingCubeCBuffer, cubeCBuffer);
 
 	cmdBuffer->endCommands();
 
 	renderer->submitToQueue(QUEUE_TYPE_GRAPHICS, {cmdBuffer}, {}, {}, {}, tempFence);
 
-	renderer->waitForFence(tempFence, 10);
+	renderer->waitForFence(tempFence, 5);
 
 	cmdPool->resetCommandPoolAndFreeCommandBuffer(cmdBuffer);
-	renderer->destroyStagingBuffer(stagingBuffer0);
-	renderer->destroyStagingBuffer(stagingBuffer1);
+	renderer->destroyStagingBuffer(stagingCubeBuffer);
 	renderer->destroyStagingBuffer(stagingIndexBuffer);
+	renderer->destroyStagingBuffer(stagingCubeCBuffer);
 	renderer->destroyFence(tempFence);
-
-	for (uint32_t i = 0; i < 4; i++)
-		renderer->destroyStagingBuffer(testStagingBuffers[i]);
 }
 
 void CubeTest::createTextures()
 {
-	for (uint32_t i = 0; i < 4; i++)
-		testTextures[i] = renderer->createTexture({4, 4, 1}, RESOURCE_FORMAT_R8G8B8A8_UNORM, TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT, MEMORY_USAGE_GPU_ONLY);
+	cubeTestTexture = renderer->createTexture({16, 16, 1}, RESOURCE_FORMAT_R8G8B8A8_UNORM, TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT, MEMORY_USAGE_GPU_ONLY);
+	cubeTestTextureView = renderer->createTextureView(cubeTestTexture);
 
-	for (uint32_t i = 0; i < 4; i++)
-		testTextureViews[i] = renderer->createTextureView(testTextures[i]);
+	uint8_t textureData[16][16][4];
+
+	for (uint32_t x = 0; x < 16; x++)
+	{
+		for (uint32_t y = 0; y < 16; y++)
+		{
+			textureData[x][y][0] = (uint32_t) ((x / 15.0f) * 255.0f);
+			textureData[x][y][1] = 0;
+			textureData[x][y][2] = (uint32_t) (255.0f - (x / 15.0f) * 255.0f);
+			textureData[x][y][3] = 255;
+		}
+	}
+
+	StagingBuffer texStagingBuffer = renderer->createAndFillStagingBuffer(sizeof(textureData), textureData);
+
+	Fence tempFence = renderer->createFence();
+
+	CommandBuffer cmdBuffer = cmdPool->allocateCommandBuffer();
+	cmdBuffer->beginCommands(COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	cmdBuffer->transitionTextureLayout(cubeTestTexture, TEXTURE_LAYOUT_INITIAL_STATE, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	cmdBuffer->stageBuffer(texStagingBuffer, cubeTestTexture);
+	cmdBuffer->transitionTextureLayout(cubeTestTexture, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	cmdBuffer->endCommands();
+
+	renderer->submitToQueue(QUEUE_TYPE_GRAPHICS, {cmdBuffer}, {}, {}, {}, tempFence);
+
+	renderer->waitForFence(tempFence, 5);
+
+	cmdPool->resetCommandPoolAndFreeCommandBuffer(cmdBuffer);
+	renderer->destroyStagingBuffer(texStagingBuffer);
+	renderer->destroyFence(tempFence);
 }
 
 void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
@@ -332,16 +263,12 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	PipelineShaderStage fragShaderStage = {};
 	fragShaderStage.shaderModule = fragShader;
 
-	std::vector<VertexInputBinding> bindingDesc = std::vector<VertexInputBinding>(2);
+	std::vector<VertexInputBinding> bindingDesc = std::vector<VertexInputBinding>(1);
 	bindingDesc[0].binding = 0;
 	bindingDesc[0].stride = sizeof(glm::vec4) * 2;
 	bindingDesc[0].inputRate = VERTEX_INPUT_RATE_VERTEX;
 
-	bindingDesc[1].binding = 1;
-	bindingDesc[1].stride = sizeof(glm::vec4);
-	bindingDesc[1].inputRate = VERTEX_INPUT_RATE_VERTEX;
-
-	std::vector<VertexInputAttribute> attribDesc = std::vector<VertexInputAttribute>(3);
+	std::vector<VertexInputAttribute> attribDesc = std::vector<VertexInputAttribute>(2);
 	attribDesc[0].binding = 0;
 	attribDesc[0].location = 0;
 	attribDesc[0].format = RESOURCE_FORMAT_R32G32B32_SFLOAT;
@@ -349,13 +276,8 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 
 	attribDesc[1].binding = 0;
 	attribDesc[1].location = 1;
-	attribDesc[1].format = RESOURCE_FORMAT_R32G32B32_SFLOAT;
+	attribDesc[1].format = RESOURCE_FORMAT_R32G32_SFLOAT;
 	attribDesc[1].offset = sizeof(glm::vec4);
-
-	attribDesc[2].binding = 1;
-	attribDesc[2].location = 2;
-	attribDesc[2].format = RESOURCE_FORMAT_R32G32_SFLOAT;
-	attribDesc[2].offset = 0;
 
 	PipelineVertexInputInfo vertexInput = {};
 	vertexInput.vertexInputBindings = bindingDesc;
@@ -393,27 +315,17 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	info.colorBlendInfo = colorBlend;
 
 	DescriptorSetLayoutDescription set0 = {};
-	set0.samplerDescriptorCount = 2;
-	set0.constantBufferDescriptorCount = 2;
+	set0.samplerDescriptorCount = 1;
+	set0.constantBufferDescriptorCount = 1;
 	set0.inputAttachmentDescriptorCount = 0;
-	set0.sampledTextureDescriptorCount = 2;
-	set0.samplerBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT, SHADER_STAGE_FRAGMENT_BIT};
-	set0.constantBufferBindingsShaderStageAccess = {SHADER_STAGE_VERTEX_BIT, SHADER_STAGE_VERTEX_BIT};
+	set0.sampledTextureDescriptorCount = 1;
+	set0.samplerBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT};
+	set0.constantBufferBindingsShaderStageAccess = {SHADER_STAGE_VERTEX_BIT};
 	set0.inputAttachmentBindingsShaderStageAccess = {};
-	set0.sampledTextureBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT, SHADER_STAGE_FRAGMENT_BIT};
-
-	DescriptorSetLayoutDescription set1 = {};
-	set1.samplerDescriptorCount = 2;
-	set1.constantBufferDescriptorCount = 2;
-	set1.inputAttachmentDescriptorCount = 0;
-	set1.sampledTextureDescriptorCount = 2;
-	set1.samplerBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT, SHADER_STAGE_FRAGMENT_BIT};
-	set1.constantBufferBindingsShaderStageAccess = {SHADER_STAGE_VERTEX_BIT, SHADER_STAGE_VERTEX_BIT};
-	set1.inputAttachmentBindingsShaderStageAccess = {};
-	set1.sampledTextureBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT, SHADER_STAGE_FRAGMENT_BIT};
+	set0.sampledTextureBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT};
 
 	info.inputPushConstants = {sizeof(glm::mat4), SHADER_STAGE_VERTEX_BIT};
-	info.inputSetLayouts = {set0, set1};
+	info.inputSetLayouts = {set0};
 
 	gfxPipeline = renderer->createGraphicsPipeline(info, data.renderPassHandle, data.baseSubpass);
 

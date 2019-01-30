@@ -1,15 +1,16 @@
 #include "RendererCore/D3D12/D3D12CommandPool.h"
 
+#include <RendererCore/D3D12/D3D12Renderer.h>
 #include <RendererCore/D3D12/D3D12CommandBuffer.h>
 #include <RendererCore/D3D12/D3D12Enums.h>
 
-D3D12CommandPool::D3D12CommandPool(ID3D12Device2 *devicePtr, QueueType queueType)
+D3D12CommandPool::D3D12CommandPool(D3D12Renderer *rendererPtr, QueueType queueType)
 {
-	device = devicePtr;
+	renderer = rendererPtr;
 	cmdListType = queueTypeToD3D12CommandListType(queueType);
 	
-	DX_CHECK_RESULT(device->CreateCommandAllocator(cmdListType, IID_PPV_ARGS(&cmdAlloc)));
-	DX_CHECK_RESULT(device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_BUNDLE, IID_PPV_ARGS(&bundleCmdAlloc)));
+	DX_CHECK_RESULT(renderer->device->CreateCommandAllocator(cmdListType, IID_PPV_ARGS(&cmdAlloc)));
+	DX_CHECK_RESULT(renderer->device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_BUNDLE, IID_PPV_ARGS(&bundleCmdAlloc)));
 }
 
 D3D12CommandPool::~D3D12CommandPool()
@@ -32,7 +33,7 @@ std::vector<RendererCommandBuffer*> D3D12CommandPool::allocateCommandBuffers(Com
 
 	for (uint32_t i = 0; i < commandBufferCount; i++)
 	{
-		D3D12CommandBuffer *cmdBuffer = new D3D12CommandBuffer(this, level == COMMAND_BUFFER_LEVEL_PRIMARY ? cmdListType : D3D12_COMMAND_LIST_TYPE_BUNDLE);
+		D3D12CommandBuffer *cmdBuffer = new D3D12CommandBuffer(renderer, this, level == COMMAND_BUFFER_LEVEL_PRIMARY ? cmdListType : D3D12_COMMAND_LIST_TYPE_BUNDLE);
 
 		cmdBuffers.push_back(cmdBuffer);
 		allocatedCmdLists.push_back(cmdBuffer);
