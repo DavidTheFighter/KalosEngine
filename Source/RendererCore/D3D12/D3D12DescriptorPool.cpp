@@ -13,7 +13,12 @@ D3D12DescriptorPool::D3D12DescriptorPool(D3D12Renderer *rendererPtr, const Descr
 
 D3D12DescriptorPool::~D3D12DescriptorPool()
 {
+	std::vector<DescriptorSet> descSetsToFree;
 
+	for (size_t i = 0; i < allocatedDescSets.size(); i++)
+		descSetsToFree.push_back(static_cast<DescriptorSet>(allocatedDescSets[i]));
+
+	freeDescriptorSets(descSetsToFree);
 }
 
 DescriptorSet D3D12DescriptorPool::allocateDescriptorSet()
@@ -182,6 +187,7 @@ std::vector<DescriptorSet> D3D12DescriptorPool::allocateDescriptorSets(uint32_t 
 		}
 
 		sets.push_back(descSet);
+		allocatedDescSets.push_back(descSet);
 	}
 
 	return sets;
@@ -229,6 +235,11 @@ void D3D12DescriptorPool::freeDescriptorSets(const std::vector<DescriptorSet> se
 			for (uint32_t s = set->srvUavCbvStartDescriptorSlot; s < set->srvUavCbvStartDescriptorSlot + srvuavcbvDescCount; s++)
 				descHeap.allocatedDescriptors[s] = 0;
 		}
+
+		auto descSetIt = std::find(allocatedDescSets.begin(), allocatedDescSets.end(), set);
+
+		if (descSetIt != allocatedDescSets.end())
+			allocatedDescSets.erase(descSetIt);
 
 		delete set;
 	}

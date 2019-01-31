@@ -91,12 +91,19 @@ D3D12Renderer::D3D12Renderer(const RendererAllocInfo& allocInfo)
 	cbvSrvUavDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	samplerDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 
+	for (size_t i = 0; i < massDescriptorHeaps.size(); i++)
+		massDescriptorHeaps[i].heap = nullptr;
+
 	createNewDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	createNewDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 }
 
 D3D12Renderer::~D3D12Renderer()
 {
+	for (size_t i = 0; i < massDescriptorHeaps.size(); i++)
+		if (massDescriptorHeaps[i].heap != nullptr)
+			massDescriptorHeaps[i].heap->Release();
+
 	delete swapchainHandler;
 
 	graphicsQueue->Release();

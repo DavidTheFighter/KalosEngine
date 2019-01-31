@@ -8,6 +8,7 @@
 #include <RendererCore/RendererObjects.h>
 
 class D3D12Renderer;
+class D3D12DescriptorSet;
 
 class D3D12DescriptorPool : public RendererDescriptorPool
 {
@@ -27,6 +28,8 @@ class D3D12DescriptorPool : public RendererDescriptorPool
 	D3D12Renderer *renderer;
 
 	DescriptorSetLayoutDescription descriptorSetLayout;
+
+	std::vector<D3D12DescriptorSet*> allocatedDescSets;
 };
 
 #endif
