@@ -1,5 +1,5 @@
-
 #include "RendererCore/Vulkan/VulkanShaderLoader.h"
+#if BUILD_VULKAN_BACKEND
 
 #include <Resources/FileLoader.h>
 
@@ -175,3 +175,5 @@ std::string getShaderStageMacroString (VkShaderStageFlagBits stage)
 			return "SHADER_STAGE_UNDEFINED";
 	}
 }
+
+#endif

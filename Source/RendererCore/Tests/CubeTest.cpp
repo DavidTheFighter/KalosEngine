@@ -56,7 +56,7 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 
 	std::vector<DescriptorWriteInfo> writes(3);
 	writes[0].dstBinding = 0;
-	writes[0].descriptorType = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	writes[0].descriptorType = DESCRIPTOR_TYPE_CONSTANT_BUFFER;
 	writes[0].bufferInfo = {cubeCBuffer, 0, sizeof(glm::mat4)};
 
 	writes[1].dstBinding = 0;
@@ -65,7 +65,7 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 
 	writes[2].dstBinding = 0;
 	writes[2].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-	writes[2].samledImageInfo = {cubeTestTextureView, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+	writes[2].sampledTextureInfo = {cubeTestTextureView, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 
 	renderer->writeDescriptorSets(descSet, writes);
 }
@@ -185,7 +185,7 @@ void CubeTest::createBuffers()
 
 	cubeBuffer = renderer->createBuffer(sizeof(cubeBufferData), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
 	cubeIndexBuffer = renderer->createBuffer(sizeof(indexBufferData), BUFFER_USAGE_INDEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
-	cubeCBuffer = renderer->createBuffer(sizeof(cbufferData), BUFFER_USAGE_UNIFORM_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
+	cubeCBuffer = renderer->createBuffer(sizeof(cbufferData), BUFFER_USAGE_CONSTANT_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
 
 	StagingBuffer stagingCubeBuffer = renderer->createAndFillStagingBuffer(sizeof(cubeBufferData), cubeBufferData);
 	StagingBuffer stagingIndexBuffer = renderer->createAndFillStagingBuffer(sizeof(indexBufferData), indexBufferData);

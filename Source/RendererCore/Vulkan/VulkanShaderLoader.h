@@ -3,6 +3,8 @@
 #define RENDERING_VULKAN_VULKANSHADERLOADER_H_
 
 #include <RendererCore/Vulkan/vulkan_common.h>
+#if BUILD_VULKAN_BACKEND
+
 #include <RendererCore/RendererEnums.h>
 
 class VulkanShaderLoader
@@ -22,4 +24,5 @@ class VulkanShaderLoader
 		static VkShaderModule createVkShaderModule (const VkDevice &device, const std::vector<uint32_t> &spirv);
 };
 
+#endif
 #endif /* RENDERING_VULKAN_VULKANSHADERLOADER_H_ */

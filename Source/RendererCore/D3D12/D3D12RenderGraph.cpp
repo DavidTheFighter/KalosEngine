@@ -1,4 +1,5 @@
 #include "RendererCore/D3D12/D3D12RenderGraph.h"
+#if BUILD_D3D12_BACKEND
 
 #include <RendererCore/Renderer.h>
 #include <RendererCore/D3D12/D3D12Renderer.h>
@@ -410,3 +411,5 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 
 	finalPassStack = passStack;
 }
+
+#endif

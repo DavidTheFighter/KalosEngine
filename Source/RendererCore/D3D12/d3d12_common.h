@@ -2,6 +2,7 @@
 #define RENDERERCORE_D3D12_D3D12_COMMON_H_
 
 #include <RendererCore/renderer_common.h>
+#if BUILD_D3D12_BACKEND
 
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -37,4 +38,5 @@ inline HANDLE createEventHandle()
 	return eventHandle;
 }
 
+#endif /* BUILD_D3D12_BACKEND */
 #endif /* RENDERERCORE_D3D12_D3D12_COMMON_H_ */

@@ -1,4 +1,5 @@
 #include "RendererCore/D3D12/D3D12CommandPool.h"
+#if BUILD_D3D12_BACKEND
 
 #include <RendererCore/D3D12/D3D12Renderer.h>
 #include <RendererCore/D3D12/D3D12CommandBuffer.h>
@@ -68,3 +69,4 @@ void D3D12CommandPool::resetCommandPool()
 	cmdAlloc->Reset();
 	bundleCmdAlloc->Reset();
 }
+#endif

@@ -1,8 +1,10 @@
 #ifndef RENDERING_VULKAN_VULKANPIPELINEHELPER_H_
 #define RENDERING_VULKAN_VULKANPIPELINEHELPER_H_
 
-#include <RendererCore/Renderer.h>
 #include <RendererCore/Vulkan/vulkan_common.h>
+#if BUILD_VULKAN_BACKEND
+
+#include <RendererCore/Renderer.h>
 #include <RendererCore/Vulkan/VulkanObjects.h>
 
 class VulkanRenderer;
@@ -37,4 +39,5 @@ class VulkanPipelineHelper
 		VkPipelineDepthStencilStateCreateInfo getPipelineDepthStencilInfo (const PipelineDepthStencilInfo &info);
 };
 
+#endif
 #endif /* RENDERING_VULKAN_VULKANPIPELINES_H_ */

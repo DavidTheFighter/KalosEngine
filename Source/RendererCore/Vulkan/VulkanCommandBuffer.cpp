@@ -1,4 +1,5 @@
 #include "RendererCore/Vulkan/VulkanCommandBuffer.h"
+#if BUILD_VULKAN_BACKEND
 
 #include <RendererCore/Vulkan/VulkanEnums.h>
 #include <RendererCore/Vulkan/VulkanObjects.h>
@@ -350,3 +351,5 @@ void VulkanCommandBuffer::vulkan_nextSubpass(VkSubpassContents contents)
 {
 	vkCmdNextSubpass(bufferHandle, contents);
 }
+
+#endif

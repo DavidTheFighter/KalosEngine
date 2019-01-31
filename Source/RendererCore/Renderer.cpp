@@ -21,23 +21,32 @@ RendererBackend Renderer::chooseRendererBackend (const std::vector<std::string>&
 	// Check if the commmand line args forced an api first
 	if (std::find(launchArgs.begin(), launchArgs.end(), "-force_vulkan") != launchArgs.end())
 	{
+#if BUILD_VULKAN_BACKEND
 		return RENDERER_BACKEND_VULKAN;
+#endif
 	}
-	else if (std::find(launchArgs.begin(), launchArgs.end(), "-force_d3d12") != launchArgs.end())
+	
+	if (std::find(launchArgs.begin(), launchArgs.end(), "-force_d3d12") != launchArgs.end())
 	{
-#ifdef _WIN32
+#if defined(_WIN32) && BUILD_D3D12_BACKEND
 		return RENDERER_BACKEND_D3D12;
 #endif
 	}
 
-	// Always use vulkan by default
+#if BUILD_VULKAN_BACKEND
 	return RENDERER_BACKEND_VULKAN;
+#elif defined(_WIN32) && BUILD_D3D12_BACKEND
+	return RENDERER_BACKEND_D3D12;
+#else
+	return RENDERER_BACKEND_MAX_ENUM;
+#endif
 }
 
 Renderer* Renderer::allocateRenderer (const RendererAllocInfo& allocInfo)
 {
 	switch (allocInfo.backend)
 	{
+#if BUILD_VULKAN_BACKEND
 		case RENDERER_BACKEND_VULKAN:
 		{
 			Log::get()->info("Allocating renderer w/ Vulkan backend");
@@ -46,10 +55,11 @@ Renderer* Renderer::allocateRenderer (const RendererAllocInfo& allocInfo)
 
 			return renderer;
 		}
-#ifdef _WIN32
+#endif
+#if defined(_WIN32) && BUILD_D3D12_BACKEND
 		case RENDERER_BACKEND_D3D12:
 		{
-			Log::get()->info("Allocating rednerer w/ D3D12 backend\n");
+			Log::get()->info("Allocating renderer w/ D3D12 backend\n");
 
 			Renderer *renderer = new D3D12Renderer(allocInfo);
 

@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 		launchArgs.push_back(argv[i]);
 	}
 
-	if (false)
+	if (true)
 	{
 		launchArgs.push_back("-force_vulkan");
 		launchArgs.push_back("-enable_vulkan_layers");

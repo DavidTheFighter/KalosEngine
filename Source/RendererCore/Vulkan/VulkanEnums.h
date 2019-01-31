@@ -7,6 +7,7 @@
 
 #ifndef RENDERING_VULKAN_VULKANENUMS_H_
 #define RENDERING_VULKAN_VULKANENUMS_H_
+#if BUILD_VULKAN_BACKEND
 
 inline VkCullModeFlags PolygonCullModetoVkCullModeFlags(PolygonCullMode cullMode)
 {
@@ -229,4 +230,5 @@ inline bool isVkDepthFormat (VkFormat format)
 	}
 }
 
+#endif
 #endif /* RENDERING_VULKAN_VULKANENUMS_H_ */

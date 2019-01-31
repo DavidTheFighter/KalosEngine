@@ -1,5 +1,5 @@
-
 #include "RendererCore/Vulkan/VulkanPipelineHelper.h"
+#if BUILD_VULKAN_BACKEND
 
 #include <RendererCore/Vulkan/VulkanRenderer.h>
 #include <RendererCore/Vulkan/VulkanEnums.h>
@@ -231,7 +231,7 @@ Pipeline VulkanPipelineHelper::createComputePipeline(const ComputePipelineInfo &
 		vulkanPushConstantRanges.push_back(vulkanPushRange);
 	}
 
-	for (size_t i = 0; i < pipelineInfo.inputSetLayouts.size(); i++)
+	//for (size_t i = 0; i < pipelineInfo.inputSetLayouts.size(); i++)
 	{
 		//vulkanDescSetLayouts.push_back(createDescriptorSetLayout(pipelineInfo.inputSetLayouts[i]));
 	}
@@ -239,7 +239,7 @@ Pipeline VulkanPipelineHelper::createComputePipeline(const ComputePipelineInfo &
 	VkPipelineLayoutCreateInfo layoutCreateInfo = {};
 	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	layoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(pipelineInfo.inputPushConstantRanges.size());
-	layoutCreateInfo.setLayoutCount = static_cast<uint32_t>(pipelineInfo.inputSetLayouts.size());
+	//layoutCreateInfo.setLayoutCount = static_cast<uint32_t>(pipelineInfo.inputSetLayouts.size());
 	layoutCreateInfo.pPushConstantRanges = vulkanPushConstantRanges.data();
 	layoutCreateInfo.pSetLayouts = vulkanDescSetLayouts.data();
 
@@ -383,3 +383,4 @@ VkPipelineDepthStencilStateCreateInfo VulkanPipelineHelper::getPipelineDepthSten
 	return depthStencilCreateInfo;
 }
 
+#endif

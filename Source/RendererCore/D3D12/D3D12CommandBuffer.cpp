@@ -1,4 +1,5 @@
 #include "RendererCore/D3D12/D3D12CommandBuffer.h"
+#if BUILD_D3D12_BACKEND
 
 #include <RendererCore/D3D12/D3D12Renderer.h>
 #include <RendererCore/D3D12/D3D12Enums.h>
@@ -260,7 +261,7 @@ void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Buffer dstBuff
 
 	switch (d3ddstBuffer->usage)
 	{
-		case BUFFER_USAGE_UNIFORM_BUFFER:
+		case BUFFER_USAGE_CONSTANT_BUFFER:
 		case BUFFER_USAGE_VERTEX_BUFFER:
 			stateBefore = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 			break;
@@ -400,3 +401,5 @@ void D3D12CommandBuffer::d3d12_resourceBarrier(const std::vector<D3D12_RESOURCE_
 {
 	cmdList->ResourceBarrier(barriers.size(), barriers.data());
 }
+
+#endif

@@ -1,9 +1,10 @@
 #ifndef RENDERING_D3D12_D3D12RENDERER_H_
 #define RENDERING_D3D12_D3D12RENDERER_H_
 
-#include "RendererCore/Renderer.h"
-
 #include <RendererCore/D3D12/d3d12_common.h>
+#if BUILD_D3D12_BACKEND
+
+#include "RendererCore/Renderer.h"
 
 class D3D12Swapchain;
 class D3D12PipelineHelper;
@@ -126,4 +127,5 @@ class D3D12Renderer : public Renderer
 	void createLogicalDevice();
 };
 
+#endif
 #endif /* RENDERING_D3D12_D3D12RENDERER_H_ */

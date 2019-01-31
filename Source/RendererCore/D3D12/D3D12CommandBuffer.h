@@ -2,6 +2,8 @@
 #define RENDERING_D3D12_D3D12COMMANDBUFFER_H_
 
 #include <RendererCore/D3D12/d3d12_common.h>
+#if BUILD_D3D12_BACKEND
+
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
@@ -69,4 +71,5 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 	friend class D3D12Renderer;
 };
 
+#endif
 #endif /* RENDERING_D3D12_D3D12COMMANDBUFFER_H_ */

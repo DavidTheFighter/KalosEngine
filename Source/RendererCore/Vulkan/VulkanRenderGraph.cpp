@@ -1,4 +1,5 @@
 #include "RendererCore/Vulkan/VulkanRenderGraph.h"
+#if BUILD_VULKAN_BACKEND
 
 #include <RendererCore/Vulkan/VulkanRenderer.h>
 #include <RendererCore/Vulkan/VulkanEnums.h>
@@ -777,3 +778,5 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 		}
 	}
 }
+
+#endif

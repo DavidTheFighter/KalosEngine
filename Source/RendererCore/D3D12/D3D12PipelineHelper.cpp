@@ -1,4 +1,5 @@
 #include "RendererCore/D3D12/D3D12PipelineHelper.h"
+#if BUILD_D3D12_BACKEND
 
 #include <RendererCore/D3D12/D3D12Renderer.h>
 #include <RendererCore/D3D12/D3D12Enums.h>
@@ -348,3 +349,5 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 
 	return pipeline;
 }
+
+#endif

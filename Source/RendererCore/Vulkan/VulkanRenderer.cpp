@@ -1,4 +1,5 @@
 #include "RendererCore/Vulkan/VulkanRenderer.h"
+#if BUILD_VULKAN_BACKEND
 
 #include <Peripherals/Window.h>
 #include <RendererCore/Vulkan/VulkanSwapchain.h>
@@ -377,7 +378,7 @@ void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vecto
 
 		switch (writeInfo.descriptorType)
 		{
-			case DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			case DESCRIPTOR_TYPE_CONSTANT_BUFFER:
 				bf++;
 				break;
 			case DESCRIPTOR_TYPE_SAMPLER:
@@ -404,7 +405,7 @@ void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vecto
 
 		switch (writeInfo.descriptorType)
 		{
-			case DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			case DESCRIPTOR_TYPE_CONSTANT_BUFFER:
 			{
 				VkDescriptorBufferInfo bufferInfo = {};
 				bufferInfo.buffer = static_cast<VulkanBuffer*>(writeInfo.bufferInfo.buffer)->bufferHandle;
@@ -433,8 +434,8 @@ void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vecto
 			case DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 			{
 				VkDescriptorImageInfo imageInfo = {};
-				imageInfo.imageView = static_cast<VulkanTextureView*>(writeInfo.samledImageInfo.view)->imageView;
-				imageInfo.imageLayout = toVkImageLayout(writeInfo.samledImageInfo.layout);
+				imageInfo.imageView = static_cast<VulkanTextureView*>(writeInfo.sampledTextureInfo.view)->imageView;
+				imageInfo.imageLayout = toVkImageLayout(writeInfo.sampledTextureInfo.layout);
 
 				imageInfos.push_back(imageInfo);
 
@@ -839,7 +840,7 @@ Buffer VulkanRenderer::createBuffer(size_t size, BufferUsageType usage, bool can
 
 	switch (usage)
 	{
-		case BUFFER_USAGE_UNIFORM_BUFFER:
+		case BUFFER_USAGE_CONSTANT_BUFFER:
 			bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 			break;
 		case BUFFER_USAGE_VERTEX_BUFFER:
@@ -1143,7 +1144,7 @@ void VulkanRenderer::destroyStagingTexture(StagingTexture stagingTexture)
 
 void VulkanRenderer::setObjectDebugName (void *obj, RendererObjectType objType, const std::string &name)
 {
-#if SE_VULKAN_DEBUG_MARKERS
+#if RENDER_DEBUG_MARKERS
 
 	if (VulkanExtensions::enabled_VK_EXT_debug_marker)
 	{
@@ -1694,3 +1695,5 @@ VkBool32 VulkanRenderer::debugCallback (VkDebugReportFlagsEXT flags, VkDebugRepo
 
 	return VK_FALSE;
 }
+
+#endif

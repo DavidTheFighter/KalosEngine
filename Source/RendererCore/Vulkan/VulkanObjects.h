@@ -9,6 +9,7 @@
 #define RENDERING_VULKAN_VULKANOBJECTS_H_
 
 #include <RendererCore/Vulkan/vulkan_common.h>
+#if BUILD_VULKAN_BACKEND
 
 #include <set>
 
@@ -169,4 +170,5 @@ class DeviceQueues
 #include <RendererCore/Vulkan/VulkanCommandPool.h>
 #include <RendererCore/Vulkan/VulkanDescriptorPool.h>
 
+#endif
 #endif /* RENDERING_VULKAN_VULKANOBJECTS_H_ */

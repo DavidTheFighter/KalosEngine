@@ -1,4 +1,5 @@
 #include "RendererCore/D3D12/D3D12Renderer.h"
+#if BUILD_D3D12_BACKEND
 
 #include <RendererCore/D3D12/D3D12CommandPool.h>
 #include <RendererCore/D3D12/D3D12DescriptorPool.h>
@@ -102,20 +103,20 @@ D3D12Renderer::~D3D12Renderer()
 	computeQueue->Release();
 	transferQueue->Release();
 	
-	debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
-
-	if (debugLayersEnabled)
+	if (debugLayersEnabled && debugDevice)
 	{
+		debugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
+
 		debugDevice->Release();
+
+		debugController0->Release();
+		debugController1->Release();
 	}
 
 	deviceAdapter->Release();
 	device->Release();
 
 	dxgiFactory->Release();
-	
-	debugController0->Release();
-	debugController1->Release();
 
 	delete temp_mapBuffer;
 }
@@ -469,7 +470,7 @@ void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<
 
 				break;
 			}
-			case DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			case DESCRIPTOR_TYPE_CONSTANT_BUFFER:
 			{
 				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
 				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + constantBufferOffset);
@@ -498,9 +499,9 @@ void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<
 				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
 				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + sampledTextureOffset);
 
-				D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.samledImageInfo.view);
+				D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.sampledTextureInfo.view);
 
-				device->CreateShaderResourceView(static_cast<D3D12Texture*>(writeInfo.samledImageInfo.view->parentTexture)->textureResource, &viewDesc, descHandle);
+				device->CreateShaderResourceView(static_cast<D3D12Texture*>(writeInfo.sampledTextureInfo.view->parentTexture)->textureResource, &viewDesc, descHandle);
 
 				break;
 			}
@@ -754,7 +755,7 @@ Buffer D3D12Renderer::createBuffer(size_t size, BufferUsageType usage, bool canB
 	{
 		switch (usage)
 		{
-			case BUFFER_USAGE_UNIFORM_BUFFER:
+			case BUFFER_USAGE_CONSTANT_BUFFER:
 			case BUFFER_USAGE_VERTEX_BUFFER:
 				initialState = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 				break;
@@ -1046,4 +1047,4 @@ void D3D12Renderer::setSwapchainTexture(Window *wnd, TextureView texView, Sample
 	swapchainHandler->setSwapchainSourceTexture(srvDesc, d3dtv->parentTextureResource);
 }
 
-
+#endif

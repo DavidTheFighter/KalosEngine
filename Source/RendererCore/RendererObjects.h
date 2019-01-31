@@ -110,30 +110,6 @@ typedef struct RendererRenderPass
 		std::vector<SubpassDependency> subpassDependencies;
 } RendererRenderPass;
 
-typedef struct RendererDescriptorSetLayoutBinding
-{
-		uint32_t binding;
-		DescriptorType descriptorType;
-		uint32_t descriptorCount;
-		ShaderStageFlags stageFlags;
-		// TODO Add immutable sampler functionality, but don't forget the descriptor set layout cache also needs to be updated for this!!!!!!!!
-
-		bool operator< (const RendererDescriptorSetLayoutBinding &other)
-		{
-			return binding < other.binding;
-		}
-
-		bool operator== (const RendererDescriptorSetLayoutBinding &other)
-		{
-			return binding == other.binding && descriptorType == other.descriptorType && descriptorCount == other.descriptorCount && stageFlags == other.stageFlags;
-		}
-
-		bool operator!= (const RendererDescriptorSetLayoutBinding &other)
-		{
-			return !(operator==(other));
-		}
-} DescriptorSetLayoutBinding;
-
 typedef struct RendererDescriptorSetLayoutDescription
 {
 	uint32_t samplerDescriptorCount;
@@ -183,13 +159,6 @@ typedef struct RendererDescriptorSetLayoutDescription
 	}
 
 } DescriptorSetLayoutDescription;
-
-/*
-typedef struct RendererDescriptorSetLayout
-{
-		std::vector<DescriptorSetLayoutBinding> bindings;
-} RendererDescriptorSetLayout;
-*/
 
 typedef struct RendererShaderModule
 {
@@ -326,7 +295,7 @@ typedef struct RendererComputePipelineInfo
 	PipelineShaderStage shader;
 
 	std::vector<PushConstantRange> inputPushConstantRanges;
-	std::vector<std::vector<DescriptorSetLayoutBinding> > inputSetLayouts;
+	//std::vector<std::vector<DescriptorSetLayoutBinding> > inputSetLayouts;
 
 } ComputePipelineInfo;
 
@@ -350,12 +319,12 @@ typedef struct RendererDescriptorSamplerInfo
 	RendererSampler *sampler;
 } DescriptorSamplerInfo;
 
-typedef struct RendererDescriptorImageInfo
+typedef struct RendererDescriptorTextureInfo
 {
 		RendererTextureView *view;
 		TextureLayout layout;
 
-} DescriptorImageInfo;
+} DescriptorTextureInfo;
 
 typedef struct RendererDescriptorBufferInfo
 {
@@ -372,9 +341,9 @@ typedef struct RendererDescriptorWriteInfo
 		union
 		{
 			RendererDescriptorSamplerInfo samplerInfo;
-			RendererDescriptorImageInfo inputAttachmentInfo;
+			DescriptorTextureInfo inputAttachmentInfo;
 			RendererDescriptorBufferInfo bufferInfo;
-			RendererDescriptorImageInfo samledImageInfo;
+			DescriptorTextureInfo sampledTextureInfo;
 		};
 
 } DescriptorWriteInfo;

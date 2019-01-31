@@ -1,8 +1,9 @@
-
 #ifndef RENDERING_VULKAN_VULKANDESCRIPTORPOOL_H_
 #define RENDERING_VULKAN_VULKANDESCRIPTORPOOL_H_
 
 #include <RendererCore/Vulkan/vulkan_common.h>
+#if BUILD_VULKAN_BACKEND
+
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
@@ -48,4 +49,5 @@ class VulkanDescriptorPool : public RendererDescriptorPool
 	bool tryAllocFromDescriptorPoolObject(uint32_t poolObjIndex, VulkanDescriptorSet* &outSet);
 };
 
+#endif
 #endif /* RENDERING_VULKAN_VULKANDESCRIPTORPOOL_H_ */

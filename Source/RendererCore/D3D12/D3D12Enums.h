@@ -1,5 +1,6 @@
 #ifndef RENDERING_D3D12_D3D12ENUMS_H_
 #define RENDERING_D3D12_D3D12ENUMS_H_
+#if BUILD_D3D12_BACKEND
 
 inline D3D12_RESOURCE_STATES TextureLayoutToD3D12ResourceStates(TextureLayout layout)
 {
@@ -503,4 +504,5 @@ inline DXGI_FORMAT ResourceFormatToDXGIFormat(ResourceFormat format)
 	}
 }
 
+#endif
 #endif /* RENDERING_D3D12_D3D12ENUMS_H_ */

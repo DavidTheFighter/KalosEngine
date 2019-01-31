@@ -2,16 +2,15 @@
 #ifndef RENDERING_VULKAN_VULKAN_COMMON_H_
 #define RENDERING_VULKAN_VULKAN_COMMON_H_
 
+#include <RendererCore/renderer_common.h>
+#if BUILD_VULKAN_BACKEND
+
 #define VENDOR_ID_AMD 		0x1002
 #define VENDOR_ID_NVIDIA 	0x10DE
 #define VENDOR_ID_INTEL 	0x8086
 #define VENDOR_ID_ARM 		0x13B5
 #define VENDOR_ID_QUALCOMM 	0x5143
 #define VENDOR_ID_IMGTEC 	0x1010
-
-#define SE_VULKAN_DEBUG_MARKERS (1 && SE_RENDER_DEBUG_MARKERS)
-
-#include <RendererCore/renderer_common.h>
 
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
@@ -197,4 +196,5 @@ inline std::string getVkVendorString (uint32_t vendor)
 	}								\
 }									\
 
+#endif
 #endif /* RENDERING_VULKAN_VULKAN_COMMON_H_ */

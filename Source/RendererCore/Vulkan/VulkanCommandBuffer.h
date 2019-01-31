@@ -3,6 +3,8 @@
 #define RENDERING_VULKAN_VULKANCOMMANDBUFFER_H_
 
 #include <RendererCore/Vulkan/vulkan_common.h>
+#if BUILD_VULKAN_BACKEND
+
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
@@ -59,4 +61,5 @@ class VulkanCommandBuffer : public RendererCommandBuffer
 		friend class VulkanRenderer;
 };
 
+#endif
 #endif /* RENDERING_VULKAN_VULKANCOMMANDBUFFER_H_ */

@@ -1,8 +1,8 @@
-
 #ifndef RENDERING_VULKAN_VULKANSWAPCHAIN_H_
 #define RENDERING_VULKAN_VULKANSWAPCHAIN_H_
 
 #include <RendererCore/Vulkan/vulkan_common.h>
+#if BUILD_VULKAN_BACKEND
 
 class Window;
 
@@ -96,4 +96,5 @@ class VulkanSwapchain
 		VkExtent2D chooseSwapExtent (const VkSurfaceCapabilitiesKHR& capabilities, uint32_t windowWidth, uint32_t windowHeight);
 };
 
+#endif
 #endif /* RENDERING_VULKAN_VULKANSWAPCHAIN_H_ */

@@ -1,8 +1,9 @@
-
 #ifndef RENDERING_VULKAN_VULKANCOMMANDPOOL_H_
 #define RENDERING_VULKAN_VULKANCOMMANDPOOL_H_
 
 #include <RendererCore/Vulkan/vulkan_common.h>
+#if BUILD_VULKAN_BACKEND
+
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
@@ -30,4 +31,5 @@ class VulkanCommandPool : public RendererCommandPool
 
 };
 
+#endif
 #endif /* RENDERING_VULKAN_VULKANCOMMANDPOOL_H_ */

@@ -1,5 +1,5 @@
-
 #include <RendererCore/Vulkan/vulkan_common.h>
+#if BUILD_VULKAN_BACKEND
 
 void VulkanExtensions::getProcAddresses (VkDevice device)
 {
@@ -88,4 +88,5 @@ VKAPI_ATTR void VKAPI_CALL vkCmdDebugMarkerInsertEXT (VkCommandBuffer commandBuf
 {
 }
 
+#endif
 #endif

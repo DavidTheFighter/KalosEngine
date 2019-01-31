@@ -1,10 +1,10 @@
-
-
 #ifndef RENDERING_VULKAN_VULKANRENDERER_H_
 #define RENDERING_VULKAN_VULKANRENDERER_H_
 
-#include <RendererCore/Renderer.h>
 #include <RendererCore/Vulkan/vulkan_common.h>
+#if BUILD_VULKAN_BACKEND
+
+#include <RendererCore/Renderer.h>
 #include <RendererCore/Vulkan/VulkanObjects.h>
 
 class VulkanSwapchain;
@@ -133,4 +133,5 @@ class VulkanRenderer : public Renderer
 		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback (VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 };
 
+#endif
 #endif /* RENDERING_VULKAN_VULKANRENDERER_H_ */

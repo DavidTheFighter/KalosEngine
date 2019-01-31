@@ -1,5 +1,5 @@
-
 #include "RendererCore/Vulkan/VulkanSwapchain.h"
+#if BUILD_VULKAN_BACKEND
 
 #include <Peripherals/Window.h>
 
@@ -863,3 +863,5 @@ VkExtent2D VulkanSwapchain::chooseSwapExtent (const VkSurfaceCapabilitiesKHR& ca
 		return actualExtent;
 	}
 }
+
+#endif

@@ -2,6 +2,7 @@
 #define RENDERING_D3D12_D3D12SWAPCHAIN_H_
 
 #include <RendererCore/D3D12/d3d12_common.h>
+#if BUILD_D3D12_BACKEND
 
 #include <Peripherals/Window.h>
 
@@ -74,4 +75,5 @@ class D3D12Swapchain
 	void createTexture();
 };
 
+#endif
 #endif /* RENDERING_D3D12_D3D12SWAPCHAIN_H_ */

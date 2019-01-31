@@ -1,5 +1,5 @@
-
 #include "RendererCore/Vulkan/VulkanCommandPool.h"
+#if BUILD_VULKAN_BACKEND
 
 #include <RendererCore/Vulkan/VulkanEnums.h>
 #include <RendererCore/Vulkan/VulkanObjects.h>
@@ -78,3 +78,5 @@ void VulkanCommandPool::resetCommandPool ()
 {
 	VK_CHECK_RESULT(vkResetCommandPool(device, poolHandle, 0));
 }
+
+#endif

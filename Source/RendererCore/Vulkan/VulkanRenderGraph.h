@@ -2,6 +2,8 @@
 #define RENDERERCORE_VULKAN_VULKANRENDERGRAPH_H_
 
 #include <RendererCore/Vulkan/vulkan_common.h>
+#if BUILD_VULKAN_BACKEND
+
 #include <RendererCore/RendererRenderGraph.h>
 
 typedef struct
@@ -82,4 +84,5 @@ private:
 	void cleanupResources();
 };
 
+#endif
 #endif /* RENDERERCORE_VULKAN_VULKANRENDERGRAPH_H_ */

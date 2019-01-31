@@ -1,5 +1,5 @@
-
 #include "RendererCore/Vulkan/VulkanDescriptorPool.h"
+#if BUILD_VULKAN_BACKEND
 
 #include <RendererCore/Vulkan/VulkanEnums.h>
 #include <RendererCore/Vulkan/VulkanObjects.h>
@@ -192,3 +192,4 @@ VulkanDescriptorPoolObject VulkanDescriptorPool::createDescPoolObject()
 
 	return poolObject;
 }
+#endif

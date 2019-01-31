@@ -2,6 +2,7 @@
 #define RENDERING_D3D12_D3D12COMMANDPOOL_H_
 
 #include <RendererCore/D3D12/d3d12_common.h>
+#if BUILD_D3D12_BACKEND
 
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
@@ -36,4 +37,5 @@ class D3D12CommandPool : public RendererCommandPool
 	friend class D3D12CommandBuffer;
 };
 
+#endif
 #endif /* RENDERING_D3D12_D3D12COMMANDPOOL_H_*/

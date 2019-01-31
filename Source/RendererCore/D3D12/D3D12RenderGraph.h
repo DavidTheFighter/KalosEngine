@@ -1,9 +1,11 @@
 #ifndef RENDERERCORE_D3D12_D3D12RENDERGRAPH_H_
 #define RENDERERCORE_D3D12_D3D12RENDERGRAPH_H_
 
+#include <RendererCore/D3D12/d3d12_common.h>
+#if BUILD_D3D12_BACKEND
+
 #include <RendererCore/RendererRenderGraph.h>
 
-#include <RendererCore/D3D12/d3d12_common.h>
 #include <RendererCore/D3D12/D3D12Enums.h>
 #include <RendererCore/D3D12/D3D12Objects.h>
 
@@ -54,4 +56,5 @@ private:
 	UINT rtvDescriptorSize;
 };
 
+#endif
 #endif /* RENDERERCORE_D3D12_D3D12RENDERGRAPH_H_*/

@@ -1,4 +1,5 @@
 #include "RendererCore/D3D12/D3D12Swapchain.h"
+#if BUILD_D3D12_BACKEND
 
 #include <RendererCore/D3D12/D3D12Renderer.h>
 
@@ -111,7 +112,7 @@ void D3D12Swapchain::prerecordSwapchainCommandList(D3D12SwapchainData *swapchain
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = {};
 	rtvHandle.ptr = swapchain->descHeap->GetCPUDescriptorHandleForHeapStart().ptr + bufferIndex * rtvDescriptorSize;
 
-	D3D12_RECT scissor = {0, 0, swapchain->parentWindow->getWidth(), swapchain->parentWindow->getHeight()};
+	D3D12_RECT scissor = {0, 0, (LONG) swapchain->parentWindow->getWidth(), (LONG) swapchain->parentWindow->getHeight()};
 	D3D12_VIEWPORT viewport = {0, 0, (float) swapchain->parentWindow->getWidth(), (float) swapchain->parentWindow->getHeight(), 0, 1};
 
 	cmdList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
@@ -512,3 +513,5 @@ void D3D12Swapchain::createPSO()
 	if (errorBuf != nullptr)
 		errorBuf->Release();
 }
+
+#endif

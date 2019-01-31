@@ -1,5 +1,6 @@
 #ifndef RENDERING_D3D12_D3D12OBJECTS_H_
 #define RENDERING_D3D12_D3D12OBJECTS_H_
+#if BUILD_D3D12_BACKEND
 
 #include <RendererCore/RendererObjects.h>
 
@@ -102,4 +103,5 @@ struct D3D12Semaphore : public RendererSemaphore
 #include <RendererCore/D3D12/D3D12CommandPool.h>
 #include <RendererCore/D3D12/D3D12DescriptorPool.h>
 
+#endif
 #endif /* RENDERING_D3D12_D3D12OBJECTS_H_*/
