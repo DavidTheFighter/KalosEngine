@@ -70,6 +70,17 @@ struct VulkanStagingBuffer : public RendererStagingBuffer
 		VmaAllocation bufferMemory;
 };
 
+struct VulkanStagingTexture : public RendererStagingTexture
+{
+	VkBuffer bufferHandle;
+	VmaAllocation bufferMemory;
+
+	std::vector<uint64_t> subresourceOffets;
+	std::vector<uint64_t> subresourceRowSize;
+	std::vector<uint64_t> subresourceRowPitches;
+
+};
+
 struct VulkanBuffer : public RendererBuffer
 {
 		VkBuffer bufferHandle;

@@ -243,6 +243,26 @@ inline void seqmemcpy(char *to, const void *from, size_t size, size_t &offset)
 	offset += size;
 }
 
+template<typename T0>
+inline T0 gcd(T0 a, T0 b)
+{
+	while (true)
+	{
+		if (a == 0) return b;
+		b %= a;
+		if (b == 0) return a;
+		a %= b;
+	}
+}
+
+template<typename T0>
+inline T0 lcm(T0 a, T0 b)
+{
+	int temp = gcd(a, b);
+
+	return temp ? (a / temp * b) : 0;
+}
+
 typedef struct simple_float_vector_2
 {
 	float x, y;
