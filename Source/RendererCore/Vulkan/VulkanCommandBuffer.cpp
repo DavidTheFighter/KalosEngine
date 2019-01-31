@@ -206,6 +206,34 @@ void VulkanCommandBuffer::stageBuffer (StagingBuffer stagingBuffer, Buffer dstBu
 	vkCmdCopyBuffer(bufferHandle, static_cast<VulkanStagingBuffer*>(stagingBuffer)->bufferHandle, static_cast<VulkanBuffer*>(dstBuffer)->bufferHandle, 1, &bufferCopyRegion);
 }
 
+void VulkanCommandBuffer::stageTextureSubresources(StagingTexture stagingTexture, Texture dstTexture, TextureSubresourceRange subresources)
+{
+	VulkanStagingTexture *vkStagingTexture = static_cast<VulkanStagingTexture*>(stagingTexture);
+	VulkanTexture *vkDstTexture = static_cast<VulkanTexture*>(dstTexture);
+
+	std::vector<VkBufferImageCopy> copyRegions;
+
+	for (uint32_t layer = subresources.baseArrayLayer; layer < subresources.baseArrayLayer + subresources.layerCount; layer++)
+	{
+		for (uint32_t level = subresources.baseMipLevel; level < subresources.baseMipLevel + subresources.levelCount; level++)
+		{
+			uint32_t subresourceIndex = layer * vkStagingTexture->mipLevels + level;
+
+			VkBufferImageCopy copyInfo = {};
+			copyInfo.bufferOffset = vkStagingTexture->subresourceOffets[subresourceIndex];
+			copyInfo.bufferRowLength = std::max<uint32_t>(vkStagingTexture->width >> level, 1);// vkStagingTexture->subresourceRowPitches[subresourceIndex];
+			copyInfo.bufferImageHeight = std::max<uint32_t>(vkStagingTexture->height >> level, 1);
+			copyInfo.imageSubresource = {(VkImageAspectFlags) (isDepthFormat(vkDstTexture->textureFormat) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT), level, layer, 1};
+			copyInfo.imageOffset = {0, 0, 0};
+			copyInfo.imageExtent = {std::max<uint32_t>(vkStagingTexture->width >> level, 1), std::max<uint32_t>(vkStagingTexture->height >> level, 1), std::max<uint32_t>(vkStagingTexture->depth >> level, 1)};
+
+			copyRegions.push_back(copyInfo);
+		}
+	}
+
+	vkCmdCopyBufferToImage(bufferHandle, vkStagingTexture->bufferHandle, vkDstTexture->imageHandle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t) copyRegions.size(), copyRegions.data());
+}
+
 void VulkanCommandBuffer::setViewports (uint32_t firstViewport, const std::vector<Viewport> &viewports)
 {
 	std::vector<VkViewport> vulkanViewports;

@@ -67,6 +67,14 @@ struct D3D12StagingBuffer : public RendererStagingBuffer
 	ID3D12Resource *bufferResource;
 };
 
+struct D3D12StagingTexture : public RendererStagingTexture
+{
+	ID3D12Resource *bufferResource;
+	std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> placedSubresourceFootprints;
+	std::vector<uint32_t> subresourceNumRows;
+	std::vector<uint64_t> subresourceRowSize;
+};
+
 struct D3D12Buffer : public RendererBuffer
 {
 	ID3D12Resource *bufferResource;

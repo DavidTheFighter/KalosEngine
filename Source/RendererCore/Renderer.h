@@ -61,6 +61,9 @@ class Renderer
 		virtual void *mapStagingBuffer(StagingBuffer stagingBuffer) = 0;
 		virtual void unmapStagingBuffer(StagingBuffer stagingBuffer) = 0;
 
+		virtual StagingTexture createStagingTexture(suvec3 extent, ResourceFormat format, uint32_t mipLevelCount = 1, uint32_t arrayLayerCount = 1) = 0;
+		virtual void fillStagingTextureSubresource(StagingTexture stagingTexture, const void *textureData, uint32_t mipLevel, uint32_t arrayLayer) = 0;
+
 		virtual void destroyCommandPool (CommandPool pool) = 0;
 		virtual void destroyRenderGraph(RenderGraph &graph) = 0;
 		virtual void destroyPipeline (Pipeline pipeline) = 0;
@@ -71,6 +74,7 @@ class Renderer
 		virtual void destroySampler (Sampler sampler) = 0;
 		virtual void destroyBuffer (Buffer buffer) = 0;
 		virtual void destroyStagingBuffer (StagingBuffer stagingBuffer) = 0;
+		virtual void destroyStagingTexture(StagingTexture stagingTexture) = 0;
 
 		virtual void destroyFence (Fence fence) = 0;
 		virtual void destroySemaphore (Semaphore sem) = 0;

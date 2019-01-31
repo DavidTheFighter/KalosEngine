@@ -34,6 +34,7 @@ class VulkanCommandBuffer : public RendererCommandBuffer
 
 		void stageBuffer (StagingBuffer stagingBuffer, Texture dstTexture, TextureSubresourceLayers subresource, sivec3 offset, suvec3 extent);
 		void stageBuffer (StagingBuffer stagingBuffer, Buffer dstBuffer);
+		void stageTextureSubresources(StagingTexture stagingTexture, Texture dstTexture, TextureSubresourceRange subresources);
 
 		void setViewports (uint32_t firstViewport, const std::vector<Viewport> &viewports);
 		void setScissors (uint32_t firstScissor, const std::vector<Scissor> &scissors);

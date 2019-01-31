@@ -48,7 +48,7 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 	createBuffers();
 	createTextures();
 
-	cubeTexSampler = renderer->createSampler();
+	cubeTexSampler = renderer->createSampler(SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
 	rotateCounter = 0.0f;
 
@@ -77,6 +77,7 @@ CubeTest::~CubeTest()
 	renderer->destroyBuffer(cubeCBuffer);
 
 	renderer->destroySampler(renderTargetSampler);
+	renderer->destroySampler(cubeTexSampler);
 	renderer->destroyTextureView(cubeTestTextureView);
 	renderer->destroyTexture(cubeTestTexture);
 
@@ -131,44 +132,44 @@ void CubeTest::createBuffers()
 		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
 
 		// -z side
-		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, -1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
 
 		// -y side
-		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
 		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
 
 		// +y side
-		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
 		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
 
 		// +x side
-		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f,-1.0f,-1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f,-1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
 
 		// +z side
-		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
-		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
 		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),
-		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(-1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f,-1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f),
+		glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f),
 	};
 
 	uint16_t indexBufferData[] = {
@@ -214,23 +215,27 @@ void CubeTest::createBuffers()
 
 void CubeTest::createTextures()
 {
-	cubeTestTexture = renderer->createTexture({16, 16, 1}, RESOURCE_FORMAT_R8G8B8A8_UNORM, TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT, MEMORY_USAGE_GPU_ONLY);
+	const uint32_t testTextureWidth = 256;
+	const uint32_t testTextureHeight = 256;
+
+	cubeTestTexture = renderer->createTexture({testTextureWidth, testTextureHeight, 1}, RESOURCE_FORMAT_R8G8B8A8_UNORM, TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT, MEMORY_USAGE_GPU_ONLY);
 	cubeTestTextureView = renderer->createTextureView(cubeTestTexture);
 
-	uint8_t textureData[16][16][4];
+	uint8_t textureData[testTextureWidth][testTextureHeight][4];
 
-	for (uint32_t x = 0; x < 16; x++)
+	for (uint32_t x = 0; x < testTextureWidth; x++)
 	{
-		for (uint32_t y = 0; y < 16; y++)
+		for (uint32_t y = 0; y < testTextureHeight; y++)
 		{
-			textureData[x][y][0] = (uint32_t) ((x / 15.0f) * 255.0f);
-			textureData[x][y][1] = 0;
-			textureData[x][y][2] = (uint32_t) (255.0f - (x / 15.0f) * 255.0f);
+			textureData[x][y][0] = (uint32_t) (std::min(std::sin((x / float(testTextureWidth - 1)) * M_PI), std::sin((y / float(testTextureHeight - 1)) * M_PI)) * 255.0f);
+			textureData[x][y][1] = 0;// (uint32_t) (std::min(std::max(0.0, std::sin((x / float(testTextureWidth - 1)) * M_PI * 16.0f)), std::max(0.0, std::sin((y / float(testTextureHeight - 1)) * M_PI * 16.0f))) * 255.0f);
+			textureData[x][y][2] = 255 - textureData[x][y][0];
 			textureData[x][y][3] = 255;
 		}
 	}
 
-	StagingBuffer texStagingBuffer = renderer->createAndFillStagingBuffer(sizeof(textureData), textureData);
+	StagingTexture stagingTexture = renderer->createStagingTexture({testTextureWidth, testTextureHeight, 1}, RESOURCE_FORMAT_R8G8B8A8_UNORM, 1, 1);
+	renderer->fillStagingTextureSubresource(stagingTexture, textureData, 0, 0);
 
 	Fence tempFence = renderer->createFence();
 
@@ -238,7 +243,7 @@ void CubeTest::createTextures()
 	cmdBuffer->beginCommands(COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	cmdBuffer->transitionTextureLayout(cubeTestTexture, TEXTURE_LAYOUT_INITIAL_STATE, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	cmdBuffer->stageBuffer(texStagingBuffer, cubeTestTexture);
+	cmdBuffer->stageTextureSubresources(stagingTexture, cubeTestTexture, {0, 1, 0, 1});
 	cmdBuffer->transitionTextureLayout(cubeTestTexture, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	cmdBuffer->endCommands();
@@ -248,7 +253,7 @@ void CubeTest::createTextures()
 	renderer->waitForFence(tempFence, 5);
 
 	cmdPool->resetCommandPoolAndFreeCommandBuffer(cmdBuffer);
-	renderer->destroyStagingBuffer(texStagingBuffer);
+	renderer->destroyStagingTexture(stagingTexture);
 	renderer->destroyFence(tempFence);
 }
 
@@ -332,5 +337,5 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	renderer->destroyShaderModule(vertShaderStage.shaderModule);
 	renderer->destroyShaderModule(fragShaderStage.shaderModule);
 
-	cubeDescPool = renderer->createDescriptorPool(set0, 2);
+	cubeDescPool = renderer->createDescriptorPool(set0, 1);
 }

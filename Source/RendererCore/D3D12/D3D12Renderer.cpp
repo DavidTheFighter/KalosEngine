@@ -655,9 +655,9 @@ Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, Textu
 	texDesc.Alignment = 0;
 	texDesc.Width = extent.x;
 	texDesc.Height = extent.y;
-	texDesc.DepthOrArraySize = std::max(extent.z, arrayLayerCount);
+	texDesc.DepthOrArraySize = std::max<uint32_t>(extent.z, arrayLayerCount);
 	texDesc.MipLevels = mipLevelCount;
-	texDesc.Format = ResourceFormatToDXGIFormat(format);;
+	texDesc.Format = ResourceFormatToDXGIFormat(format);
 	texDesc.SampleDesc = {1, 0};
 	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
@@ -840,6 +840,76 @@ void D3D12Renderer::unmapStagingBuffer(StagingBuffer stagingBuffer)
 	d3dstagingBuffer->bufferResource->Unmap(0, &readRange);
 }
 
+StagingTexture D3D12Renderer::createStagingTexture(suvec3 extent, ResourceFormat format, uint32_t mipLevelCount, uint32_t arrayLayerCount)
+{
+	D3D12_RESOURCE_DESC textureResourceDesc = {};
+	textureResourceDesc.Dimension = extent.z > 1 ? D3D12_RESOURCE_DIMENSION_TEXTURE3D : (extent.y > 1 ? D3D12_RESOURCE_DIMENSION_TEXTURE2D : D3D12_RESOURCE_DIMENSION_TEXTURE1D);
+	textureResourceDesc.Alignment = 0;
+	textureResourceDesc.Width = extent.x;
+	textureResourceDesc.Height = extent.y;
+	textureResourceDesc.DepthOrArraySize = std::max<uint32_t>(extent.z, arrayLayerCount);
+	textureResourceDesc.MipLevels = mipLevelCount;
+	textureResourceDesc.Format = ResourceFormatToDXGIFormat(format);
+	textureResourceDesc.SampleDesc = {1, 0};
+	textureResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	textureResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	uint32_t numSubresources = mipLevelCount * arrayLayerCount;
+	uint64_t totalSize = 0;
+
+	D3D12StagingTexture *stagingTexture = new D3D12StagingTexture();
+	stagingTexture->placedSubresourceFootprints.resize(numSubresources);
+	stagingTexture->subresourceNumRows.resize(numSubresources);
+	stagingTexture->subresourceRowSize.resize(numSubresources);
+
+	device->GetCopyableFootprints(&textureResourceDesc, 0, numSubresources, 0, stagingTexture->placedSubresourceFootprints.data(), stagingTexture->subresourceNumRows.data(), stagingTexture->subresourceRowSize.data(), &totalSize);
+
+	stagingTexture->bufferSize = totalSize;
+	stagingTexture->textureFormat = format;
+	stagingTexture->width = extent.x;
+	stagingTexture->height = extent.y;
+	stagingTexture->depth = extent.z;
+	stagingTexture->mipLevels = mipLevelCount;
+	stagingTexture->arrayLayers = arrayLayerCount;
+
+	DX_CHECK_RESULT(device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), D3D12_HEAP_FLAG_NONE, &CD3DX12_RESOURCE_DESC::Buffer(totalSize), D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&stagingTexture->bufferResource)));
+
+	return stagingTexture;
+}
+
+void D3D12Renderer::fillStagingTextureSubresource(StagingTexture stagingTexture, const void *textureData, uint32_t mipLevel, uint32_t arrayLayer)
+{
+	D3D12StagingTexture *d3dstagingTexture = static_cast<D3D12StagingTexture*>(stagingTexture);
+
+	uint32_t subresourceIndex = arrayLayer * d3dstagingTexture->mipLevels + arrayLayer;
+	uint32_t subresourceRows = d3dstagingTexture->subresourceNumRows[subresourceIndex];
+	uint64_t subresourceRowSize = d3dstagingTexture->subresourceRowSize[subresourceIndex];
+
+	const D3D12_PLACED_SUBRESOURCE_FOOTPRINT &placedSubresourceFootprint = d3dstagingTexture->placedSubresourceFootprints[subresourceIndex];
+
+	uint32_t subresourceSlicePitch = placedSubresourceFootprint.Footprint.RowPitch * placedSubresourceFootprint.Footprint.Height;
+
+	D3D12_RANGE mapReadRange = {0, 0};
+
+	char *mappedMem = nullptr;
+	DX_CHECK_RESULT(d3dstagingTexture->bufferResource->Map(0, &mapReadRange, reinterpret_cast<void**>(&mappedMem)));
+
+	mappedMem += placedSubresourceFootprint.Offset;
+
+	for (uint32_t z = 0; z < placedSubresourceFootprint.Footprint.Depth; z++)
+	{
+		char *dstSlice = mappedMem + subresourceSlicePitch * z;
+		const char *srcSlice = reinterpret_cast<const char*>(textureData) + subresourceRowSize * placedSubresourceFootprint.Footprint.Height * z;
+
+		for (uint32_t y = 0; y < subresourceRows; y++)
+		{
+			memcpy(dstSlice + placedSubresourceFootprint.Footprint.RowPitch * y, srcSlice + subresourceRowSize * y, subresourceRowSize);
+		}
+	}
+
+	d3dstagingTexture->bufferResource->Unmap(0, nullptr);
+}
+
 void D3D12Renderer::destroyCommandPool(CommandPool pool)
 {
 	delete static_cast<D3D12CommandPool*>(pool);
@@ -931,6 +1001,15 @@ void D3D12Renderer::destroySemaphore(Semaphore sem)
 	CloseHandle(d3d12Sem->semFenceWaitEvent);
 
 	delete d3d12Sem;
+}
+
+void D3D12Renderer::destroyStagingTexture(StagingTexture stagingTexture)
+{
+	D3D12StagingTexture *d3d12StagingTexture = static_cast<D3D12StagingTexture*>(stagingTexture);
+
+	d3d12StagingTexture->bufferResource->Release();
+
+	delete d3d12StagingTexture;
 }
 
 void D3D12Renderer::setObjectDebugName(void * obj, RendererObjectType objType, const std::string & name)

@@ -46,6 +46,18 @@ typedef struct RendererStagingBuffer
 	size_t bufferSize;
 } RendererStagingBuffer;
 
+typedef struct RendererStagingTexture
+{
+	size_t bufferSize;
+	ResourceFormat textureFormat;
+	uint32_t width;
+	uint32_t height;
+	uint32_t depth;
+	uint32_t mipLevels;
+	uint32_t arrayLayers;
+
+} RendererStagingTexture;
+
 typedef struct RendererBuffer
 {
 	size_t bufferSize;
@@ -414,6 +426,7 @@ typedef RendererSampler *Sampler;
 typedef RendererBuffer *Buffer;
 //typedef RendererCommandPool *CommandPool;
 typedef RendererStagingBuffer *StagingBuffer;
+typedef RendererStagingTexture *StagingTexture;
 typedef RendererFence *Fence;
 typedef RendererSemaphore *Semaphore;
 

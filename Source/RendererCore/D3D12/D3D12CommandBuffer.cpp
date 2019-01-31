@@ -158,6 +158,9 @@ void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t fi
 {
 	uint32_t baseRootParameter = 0;
 
+	if (cxt_currentGraphicsPipeline->gfxPipelineInfo.inputPushConstants.size > 0)
+		baseRootParameter++;
+
 	for (uint32_t i = 0; i < firstSet; i++)
 	{
 		cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i];
@@ -186,20 +189,20 @@ void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t fi
 		else
 			cmdList->SetDescriptorHeaps(2, &heaps[0]);
 
-		if (d3dset->samplerCount > 0)
-		{
-			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->samplerHeap->GetGPUDescriptorHandleForHeapStart();
-			descHandle.ptr += renderer->samplerDescriptorSize * (d3dset->samplerStartDescriptorSlot);
-
-			//cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);
-
-			baseRootParameter++;
-		}
-
 		if (d3dset->srvUavCbvDescriptorCount > 0)
 		{
 			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetGPUDescriptorHandleForHeapStart();
 			descHandle.ptr += renderer->cbvSrvUavDescriptorSize * (d3dset->srvUavCbvStartDescriptorSlot);
+
+			cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);
+
+			baseRootParameter++;
+		}
+
+		if (d3dset->samplerCount > 0)
+		{
+			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->samplerHeap->GetGPUDescriptorHandleForHeapStart();
+			descHandle.ptr += renderer->samplerDescriptorSize * (d3dset->samplerStartDescriptorSlot);
 
 			cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);
 
@@ -244,33 +247,6 @@ void D3D12CommandBuffer::transitionTextureLayout(Texture texture, TextureLayout 
 	}
 
 	cmdList->ResourceBarrier((UINT) barriers.size(), barriers.data());
-}
-
-void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Texture dstTexture, TextureSubresourceLayers subresource, sivec3 offset, suvec3 extent)
-{
-	D3D12StagingBuffer *d3dstagingBuffer = static_cast<D3D12StagingBuffer*>(stagingBuffer);
-	D3D12Texture *d3ddstTexture = static_cast<D3D12Texture*>(dstTexture);
-
-	D3D12_SUBRESOURCE_FOOTPRINT subresourceFootprint = {};
-	subresourceFootprint.Format = ResourceFormatToDXGIFormat(d3ddstTexture->textureFormat);
-	subresourceFootprint.Width = extent.x == std::numeric_limits<uint32_t>::max() ? dstTexture->width : extent.x;
-	subresourceFootprint.Height = extent.y == std::numeric_limits<uint32_t>::max() ? dstTexture->height : extent.y;
-	subresourceFootprint.Depth = extent.z == std::numeric_limits<uint32_t>::max() ? dstTexture->depth : extent.z;
-	//subresourceFootprint.RowPitch
-
-	D3D12_PLACED_SUBRESOURCE_FOOTPRINT placedSubresourceFootprint = {};
-	placedSubresourceFootprint.Offset = 0;
-	placedSubresourceFootprint.Footprint = subresourceFootprint;
-
-	D3D12_TEXTURE_COPY_LOCATION src = {};
-	src.pResource = d3dstagingBuffer->bufferResource;
-	src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-
-
-	D3D12_TEXTURE_COPY_LOCATION dst = {};
-	dst.pResource = d3ddstTexture->textureResource;
-
-	D3D12_BOX copyRegion = {};
 }
 
 void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Buffer dstBuffer)
@@ -323,6 +299,32 @@ void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Buffer dstBuff
 	cmdList->ResourceBarrier(1, &barrier0);
 	cmdList->CopyBufferRegion(d3ddstBuffer->bufferResource, 0, d3dstagingBuffer->bufferResource, 0, std::min<uint32_t>(d3dstagingBuffer->bufferSize, d3ddstBuffer->bufferSize));
 	cmdList->ResourceBarrier(1, &barrier1);
+}
+
+void D3D12CommandBuffer::stageTextureSubresources(StagingTexture stagingTexture, Texture dstTexture, TextureSubresourceRange subresources)
+{
+	D3D12StagingTexture *d3dstagingTexture = static_cast<D3D12StagingTexture*>(stagingTexture);
+	D3D12Texture *d3ddstTexture = static_cast<D3D12Texture*>(dstTexture);
+
+	for (uint32_t layer = subresources.baseArrayLayer; layer < subresources.baseArrayLayer + subresources.layerCount; layer++)
+	{
+		for (uint32_t level = subresources.baseMipLevel; level < subresources.baseMipLevel + subresources.levelCount; level++)
+		{
+			uint32_t subresourceIndex = layer * d3ddstTexture->mipCount + level;
+
+			D3D12_TEXTURE_COPY_LOCATION dstCopyLoc = {};
+			dstCopyLoc.pResource = d3ddstTexture->textureResource;
+			dstCopyLoc.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			dstCopyLoc.SubresourceIndex = subresourceIndex;
+
+			D3D12_TEXTURE_COPY_LOCATION srcCopyLoc = {};
+			srcCopyLoc.pResource = d3dstagingTexture->bufferResource;
+			srcCopyLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+			srcCopyLoc.PlacedFootprint = d3dstagingTexture->placedSubresourceFootprints[subresourceIndex];
+
+			cmdList->CopyTextureRegion(&dstCopyLoc, 0, 0, 0, &srcCopyLoc, nullptr);
+		}
+	}
 }
 
 void D3D12CommandBuffer::setViewports(uint32_t firstViewport, const std::vector<Viewport>& viewports)

@@ -50,8 +50,9 @@ class RendererCommandBuffer
 		virtual void bindDescriptorSets (PipelineBindPoint point, uint32_t firstSet, const std::vector<DescriptorSet> &sets) = 0;
 
 		virtual void transitionTextureLayout (Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource = {0, 1, 0, 1}) = 0;
-		virtual void stageBuffer (StagingBuffer stagingBuffer, Texture dstTexture, TextureSubresourceLayers subresource = {0, 0, 1}, sivec3 offset = {0, 0, 0}, suvec3 extent = {std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max()}) = 0;
+		
 		virtual void stageBuffer (StagingBuffer stagingBuffer, Buffer dstBuffer) = 0;
+		virtual void stageTextureSubresources(StagingTexture stagingTexture, Texture dstTexture, TextureSubresourceRange subresources = {0, 1, 0, 1}) = 0;
 
 		virtual void setViewports (uint32_t firstViewport, const std::vector<Viewport> &viewports) = 0;
 		virtual void setScissors (uint32_t firstScissor, const std::vector<Scissor> &scissors) = 0;

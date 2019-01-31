@@ -1,4 +1,3 @@
-
 #include "RendererCore/Vulkan/VulkanRenderer.h"
 
 #include <Peripherals/Window.h>
@@ -945,6 +944,79 @@ void VulkanRenderer::unmapStagingBuffer(StagingBuffer stagingBuffer)
 	vmaUnmapMemory(memAllocator, vkStagingBuffer->bufferMemory);
 }
 
+StagingTexture VulkanRenderer::createStagingTexture(suvec3 extent, ResourceFormat format, uint32_t mipLevelCount, uint32_t arrayLayerCount)
+{
+	VulkanStagingTexture *stagingTexture = new VulkanStagingTexture();
+	stagingTexture->textureFormat = format;
+	stagingTexture->width = extent.x;
+	stagingTexture->height = extent.y;
+	stagingTexture->depth = extent.z;
+	stagingTexture->mipLevels = mipLevelCount;
+	stagingTexture->arrayLayers = arrayLayerCount;
+	stagingTexture->bufferSize = 0;
+
+	// This part ensures that the buffer regions containing the image data have the optimal offset and row pitch alignment for copying
+	for (uint32_t layer = 0; layer < arrayLayerCount; layer++)
+	{
+		for (uint32_t level = 0; level < mipLevelCount; level++)
+		{
+			uint32_t mipWidth = std::max<uint32_t>(stagingTexture->width >> level, 1);
+			uint32_t mipHeight = std::max<uint32_t>(stagingTexture->height >> level, 1);
+			uint32_t mipDepth = std::max<uint32_t>(stagingTexture->depth >> level, 1);
+
+			uint32_t rowSize = (uint32_t) mipWidth * getResourceFormatBytesPerElement(format);
+			uint32_t rowPitch = rowSize;// ((rowSize + physicalDeviceLimits.optimalBufferCopyRowPitchAlignment - 1) / physicalDeviceLimits.optimalBufferCopyRowPitchAlignment) * physicalDeviceLimits.optimalBufferCopyRowPitchAlignment;
+
+			stagingTexture->subresourceOffets.push_back(stagingTexture->bufferSize);
+			stagingTexture->subresourceRowSize.push_back(rowSize);
+			stagingTexture->subresourceRowPitches.push_back(rowPitch);
+			
+			stagingTexture->bufferSize += (size_t) (((rowPitch * mipHeight * mipDepth + bestBufferCopyOffsetAlignment - 1) / bestBufferCopyOffsetAlignment) * bestBufferCopyOffsetAlignment);
+		}
+	}
+
+	VkBufferCreateInfo bufferCreateInfo = {};
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.size = static_cast<VkDeviceSize>(stagingTexture->bufferSize);
+	bufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	bufferCreateInfo.queueFamilyIndexCount = 0;
+
+	VmaAllocationCreateInfo allocInfo = {};
+	allocInfo.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+	allocInfo.flags = 0;
+
+	VK_CHECK_RESULT(vmaCreateBuffer(memAllocator, &bufferCreateInfo, &allocInfo, &stagingTexture->bufferHandle, &stagingTexture->bufferMemory, nullptr));
+
+	return stagingTexture;
+}
+
+void VulkanRenderer::fillStagingTextureSubresource(StagingTexture stagingTexture, const void *textureData, uint32_t mipLevel, uint32_t arrayLayer)
+{
+	VulkanStagingTexture *vkStagingTexture = static_cast<VulkanStagingTexture*>(stagingTexture);
+	
+	uint32_t subresourceIndex = arrayLayer * vkStagingTexture->mipLevels + mipLevel;
+	uint32_t subresourceSlicePitch = vkStagingTexture->subresourceRowPitches[subresourceIndex] * std::max<uint32_t>(vkStagingTexture->height >> mipLevel, 1);
+
+	char *mappedBufferMemory = nullptr;
+	VK_CHECK_RESULT(vmaMapMemory(memAllocator, vkStagingTexture->bufferMemory, reinterpret_cast<void**>(&mappedBufferMemory)));
+
+	mappedBufferMemory += vkStagingTexture->subresourceOffets[subresourceIndex];
+
+	for (uint32_t z = 0; z < std::max<uint32_t>(vkStagingTexture->depth >> mipLevel, 1); z++)
+	{
+		char *dstSlice = mappedBufferMemory + subresourceSlicePitch * z;
+		const char *srcSlice = reinterpret_cast<const char*>(textureData) + vkStagingTexture->subresourceRowSize[subresourceIndex] * std::max<uint32_t>(vkStagingTexture->height >> mipLevel, 1) * z;
+
+		for (uint32_t y = 0; y < std::max<uint32_t>(vkStagingTexture->width >> mipLevel, 1); y++)
+		{
+			memcpy(dstSlice + vkStagingTexture->subresourceRowPitches[subresourceIndex] * y, srcSlice + vkStagingTexture->subresourceRowSize[subresourceIndex] * y, vkStagingTexture->subresourceRowSize[subresourceIndex]);
+		}
+	}
+
+	vmaUnmapMemory(memAllocator, vkStagingTexture->bufferMemory);
+}
+
 void VulkanRenderer::destroyCommandPool (CommandPool pool)
 {
 	VulkanCommandPool *vkCmdPool = static_cast<VulkanCommandPool*>(pool);
@@ -988,18 +1060,6 @@ void VulkanRenderer::destroyDescriptorPool (DescriptorPool pool)
 {
 	delete pool;
 }
-
-/*
- void VulkanRenderer::destroyDescriptorSetLayout (DescriptorSetLayout layout)
- {
- VulkanDescriptorSetLayout *vulkanDescriptorSetLayout = static_cast<VulkanDescriptorSetLayout*>(layout);
-
- if (vulkanDescriptorSetLayout->setLayoutHandle != VK_NULL_HANDLE)
- vkDestroyDescriptorSetLayout(device, vulkanDescriptorSetLayout->setLayoutHandle, nullptr);
-
- delete vulkanDescriptorSetLayout;
- }
- */
 
 void VulkanRenderer::destroyTexture (Texture texture)
 {
@@ -1069,6 +1129,16 @@ void VulkanRenderer::destroySemaphore (Semaphore sem)
 		vkDestroySemaphore(device, vulkanSem->semHandle, nullptr);
 
 	delete vulkanSem;
+}
+
+void VulkanRenderer::destroyStagingTexture(StagingTexture stagingTexture)
+{
+	VulkanStagingTexture *vkStagingTexture = static_cast<VulkanStagingTexture*>(stagingTexture);
+
+	if (vkStagingTexture->bufferHandle != VK_NULL_HANDLE)
+		vmaDestroyBuffer(memAllocator, vkStagingTexture->bufferHandle, vkStagingTexture->bufferMemory);
+
+	delete vkStagingTexture;
 }
 
 void VulkanRenderer::setObjectDebugName (void *obj, RendererObjectType objType, const std::string &name)
@@ -1236,6 +1306,13 @@ void VulkanRenderer::createLogicalDevice ()
 	}
 
 	VK_CHECK_RESULT(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device));
+
+	VkPhysicalDeviceProperties props = {};
+	vkGetPhysicalDeviceProperties(physicalDevice, &props);
+
+	physicalDeviceLimits = props.limits;
+
+	bestBufferCopyOffsetAlignment = lcm<uint32_t>(4, physicalDeviceLimits.optimalBufferCopyOffsetAlignment);
 
 	VulkanExtensions::getProcAddresses(device);
 

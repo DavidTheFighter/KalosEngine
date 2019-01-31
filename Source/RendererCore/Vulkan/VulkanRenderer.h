@@ -17,6 +17,9 @@ class VulkanRenderer : public Renderer
 		VkInstance instance;
 		VkPhysicalDevice physicalDevice;
 		VkDevice device;
+		VkPhysicalDeviceLimits physicalDeviceLimits;
+
+		uint32_t bestBufferCopyOffsetAlignment;
 
 		VkQueue graphicsQueue;
 		VkQueue computeQueue;
@@ -80,6 +83,9 @@ class VulkanRenderer : public Renderer
 		void *mapStagingBuffer(StagingBuffer stagingBuffer);
 		void unmapStagingBuffer(StagingBuffer stagingBuffer);
 
+		StagingTexture createStagingTexture(suvec3 extent, ResourceFormat format, uint32_t mipLevelCount, uint32_t arrayLayerCount);
+		void fillStagingTextureSubresource(StagingTexture stagingTexture, const void *textureData, uint32_t mipLevel, uint32_t arrayLayer);
+
 		void destroyCommandPool (CommandPool pool);
 		void destroyRenderGraph(RenderGraph &graph);
 		void destroyPipeline (Pipeline pipeline);
@@ -90,6 +96,7 @@ class VulkanRenderer : public Renderer
 		void destroySampler (Sampler sampler);
 		void destroyBuffer (Buffer buffer);
 		void destroyStagingBuffer (StagingBuffer stagingBuffer);
+		void destroyStagingTexture(StagingTexture stagingTexture);
 
 		void destroyFence (Fence fence);
 		void destroySemaphore (Semaphore sem);
