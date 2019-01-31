@@ -543,7 +543,6 @@ ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string &sour
 	ID3DBlob *blob = nullptr, *errorBuf = nullptr;
 
 	const D3D_SHADER_MACRO macroDefines[] = {
-		{"PushConstantBuffer", D3D12_PUSHCONSTANTBUFFER_PREPROCESSOR_STR},
 		{nullptr, nullptr}
 	};
 
@@ -552,6 +551,7 @@ ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string &sour
 	modSource = std::string(D3D12_HLSL_INPUT_ATTACHMENT_PREPROCESSOR) + "\n" + modSource;
 	modSource = std::string(D3D12_HLSL_CBUFFER_PREPROCESSOR) + "\n" + modSource;
 	modSource = std::string(D3D12_HLSL_SAMPLER_PREPROCESSOR) + "\n" + modSource;
+	modSource = std::string(D3D12_HLSL_PUSHCONSTANTBUFFER_PREPROCESSOR) + "\n" + modSource;
 	modSource = std::string(D3D12_HLSL_MERGE_PREPROCESSOR) + "\n" + modSource;
 
 	HRESULT hr = D3DCompile(modSource.data(), modSource.size(), referenceName.c_str(), macroDefines, nullptr, entryPoint.c_str(), shaderStageFlagBitsToD3D12CompilerTargetStr(stage).c_str(), D3DCOMPILE_DEBUG | D3DCOMPILE_ALL_RESOURCES_BOUND | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &blob, &errorBuf);
