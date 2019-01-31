@@ -6,6 +6,17 @@
 
 /*
 
+This test should produce a rotating cube, colored blue with red star-like patterns on each face, on a white background.
+
+Specifically this tests:
+- Vertex and index buffers
+- Basic descriptor usage (1 cbv, 1 texture, 1 sampler)
+- Depth buffering
+- Push constants (only vertex stage)
+- Texture sampling, uploading/staging
+- Buffer uploading/staging
+- Propery face culling order
+- Viewports/scissors, essentially everythign the triangle test does
 
 */
 
