@@ -28,7 +28,7 @@ DescriptorSet D3D12DescriptorPool::allocateDescriptorSet()
 
 std::vector<DescriptorSet> D3D12DescriptorPool::allocateDescriptorSets(uint32_t setCount)
 {
-	uint32_t srvuavcbvDescCount = descriptorSetLayout.constantBufferDescriptorCount + descriptorSetLayout.inputAttachmentDescriptorCount + descriptorSetLayout.sampledTextureDescriptorCount;
+	uint32_t srvuavcbvDescCount = descriptorSetLayout.constantBufferDescriptorCount + descriptorSetLayout.inputAttachmentDescriptorCount + descriptorSetLayout.textureDescriptorCount;
 	uint32_t samplerDescCount = descriptorSetLayout.samplerDescriptorCount;
 
 	std::vector<DescriptorSet> sets;
@@ -44,7 +44,7 @@ std::vector<DescriptorSet> D3D12DescriptorPool::allocateDescriptorSets(uint32_t 
 		descSet->samplerCount = descriptorSetLayout.samplerDescriptorCount;
 		descSet->constantBufferCount = descriptorSetLayout.constantBufferDescriptorCount;
 		descSet->inputAtttachmentCount = descriptorSetLayout.inputAttachmentDescriptorCount;
-		descSet->sampledTextureCount = descriptorSetLayout.sampledTextureDescriptorCount;
+		descSet->sampledTextureCount = descriptorSetLayout.textureDescriptorCount;
 
 		if (samplerDescCount > 0)
 		{
@@ -201,7 +201,7 @@ void D3D12DescriptorPool::freeDescriptorSet(DescriptorSet set)
 void D3D12DescriptorPool::freeDescriptorSets(const std::vector<DescriptorSet> sets)
 {
 	uint32_t samplerDescCount = descriptorSetLayout.samplerDescriptorCount;
-	uint32_t srvuavcbvDescCount = descriptorSetLayout.constantBufferDescriptorCount + descriptorSetLayout.inputAttachmentDescriptorCount + descriptorSetLayout.sampledTextureDescriptorCount;
+	uint32_t srvuavcbvDescCount = descriptorSetLayout.constantBufferDescriptorCount + descriptorSetLayout.inputAttachmentDescriptorCount + descriptorSetLayout.textureDescriptorCount;
 
 	for (size_t i = 0; i < sets.size(); i++)
 	{

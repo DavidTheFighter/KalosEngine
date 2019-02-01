@@ -143,6 +143,13 @@ void VulkanCommandBuffer::transitionTextureLayout (Texture texture, TextureLayou
 
 			break;
 		}
+		case TEXTURE_LAYOUT_GENERAL:
+		{
+			barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+			srcStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+			break;
+		}
 		default:
 			break;
 	}
@@ -167,6 +174,13 @@ void VulkanCommandBuffer::transitionTextureLayout (Texture texture, TextureLayou
 		{
 			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 			dstStage = VK_PIPELINE_STAGE_HOST_BIT;
+
+			break;
+		}
+		case TEXTURE_LAYOUT_GENERAL:
+		{
+			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+			dstStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
 			break;
 		}

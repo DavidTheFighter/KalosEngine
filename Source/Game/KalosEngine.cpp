@@ -8,6 +8,7 @@
 #include <RendererCore/Tests/VertexIndexBufferTest.h>
 #include <RendererCore/Tests/PushConstantsTest.h>
 #include <RendererCore/Tests/CubeTest.h>
+#include <RendererCore/Tests/ComputeTest.h>
 
 KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBackend rendererBackendType, uint32_t engineUpdateFrequencyCap)
 {
@@ -41,8 +42,8 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 		currentRenderingTest = RENDERER_TEST_PUSH_CONSTANTS;
 	else if (std::find(launchArgs.begin(), launchArgs.end(), "-cube_test") != launchArgs.end())
 		currentRenderingTest = RENDERER_TEST_CUBE;
-	else if (std::find(launchArgs.begin(), launchArgs.end(), "-descriptor_test") != launchArgs.end())
-		currentRenderingTest = RENDERER_TEST_DESCRIPTORS;
+	else if (std::find(launchArgs.begin(), launchArgs.end(), "-compute_test") != launchArgs.end())
+		currentRenderingTest = RENDERER_TEST_COMPUTE;
 	else
 		doingRenderingTest = false;
 
@@ -69,6 +70,11 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 				cubeTest = std::unique_ptr<CubeTest>(new CubeTest(renderer.get()));
 
 				renderer->setSwapchainTexture(mainWindow.get(), cubeTest->gfxGraph->getRenderGraphOutputTextureView(), cubeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+				break;
+			case RENDERER_TEST_COMPUTE:
+				computeTest = std::unique_ptr<ComputeTest>(new ComputeTest(renderer.get()));
+
+				renderer->setSwapchainTexture(mainWindow.get(), computeTest->gfxGraph->getRenderGraphOutputTextureView(), computeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 				break;
 		}
 	}
@@ -158,6 +164,11 @@ void KalosEngine::update()
 
 					renderer->setSwapchainTexture(mainWindow.get(), cubeTest->gfxGraph->getRenderGraphOutputTextureView(), cubeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 					break;
+				case RENDERER_TEST_COMPUTE:
+					computeTest->gfxGraph->resizeNamedSize("swapchain", mainWindowSize);
+
+					renderer->setSwapchainTexture(mainWindow.get(), computeTest->gfxGraph->getRenderGraphOutputTextureView(), computeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+					break;
 			}
 		}
 	}
@@ -206,6 +217,10 @@ void KalosEngine::render()
 			case RENDERER_TEST_CUBE:
 				cubeTest->render();
 				renderer->presentToSwapchain(mainWindow.get(), {});
+				break;
+			case RENDERER_TEST_COMPUTE:
+				computeTest->render();
+				renderer->presentToSwapchain(mainWindow.get(), {computeTest->renderDoneSemaphore});
 				break;
 		}
 	}

@@ -137,6 +137,11 @@ void RendererRenderGraph::addNamedSize(const std::string &sizeName, glm::uvec3 i
 	namedSizes[sizeName] = initialSize;
 }
 
+glm::uvec3 RendererRenderGraph::getNamedSize(const std::string &name)
+{
+	return namedSizes[name];
+}
+
 void RendererRenderGraph::setFrameGraphOutput(const std::string &textureName)
 {
 	renderGraphOutputAttachment = textureName;

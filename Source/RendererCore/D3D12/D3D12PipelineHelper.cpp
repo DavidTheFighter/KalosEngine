@@ -240,19 +240,19 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 				allDescriptorStages |= setDesc.inputAttachmentBindingsShaderStageAccess[d];
 		}
 
-		if (setDesc.sampledTextureDescriptorCount > 0)
+		if (setDesc.textureDescriptorCount > 0)
 		{
 			D3D12_DESCRIPTOR_RANGE descRange = {};
 			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-			descRange.NumDescriptors = setDesc.sampledTextureDescriptorCount;
+			descRange.NumDescriptors = setDesc.textureDescriptorCount;
 			descRange.BaseShaderRegister = 10;
 			descRange.RegisterSpace = (UINT) s;
 			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
 			ranges.push_back(descRange);
 
-			for (size_t d = 0; d < setDesc.sampledTextureDescriptorCount; d++)
-				allDescriptorStages |= setDesc.sampledTextureBindingsShaderStageAccess[d];
+			for (size_t d = 0; d < setDesc.textureDescriptorCount; d++)
+				allDescriptorStages |= setDesc.textureBindingsShaderStageAccess[d];
 		}
 
 		if (ranges.size() > 0)

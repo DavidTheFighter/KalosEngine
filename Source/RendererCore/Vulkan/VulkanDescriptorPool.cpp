@@ -39,11 +39,29 @@ VulkanDescriptorPool::VulkanDescriptorPool(VulkanRenderer *rendererPtr, const De
 		vulkanPoolSizes.push_back(poolSize);
 	}
 
-	if (descriptorSetLayout.sampledTextureDescriptorCount > 0)
+	if (descriptorSetLayout.textureDescriptorCount > 0)
 	{
 		VkDescriptorPoolSize poolSize = {};
-		poolSize.descriptorCount = descriptorSetLayout.sampledTextureDescriptorCount * poolBlockAllocSize;
+		poolSize.descriptorCount = descriptorSetLayout.textureDescriptorCount * poolBlockAllocSize;
 		poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+		vulkanPoolSizes.push_back(poolSize);
+	}
+
+	if (descriptorSetLayout.storageBufferDescriptorCount > 0)
+	{
+		VkDescriptorPoolSize poolSize = {};
+		poolSize.descriptorCount = descriptorSetLayout.storageBufferDescriptorCount * poolBlockAllocSize;
+		poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+		vulkanPoolSizes.push_back(poolSize);
+	}
+
+	if (descriptorSetLayout.storageTextureDescriptorCount > 0)
+	{
+		VkDescriptorPoolSize poolSize = {};
+		poolSize.descriptorCount = descriptorSetLayout.storageTextureDescriptorCount * poolBlockAllocSize;
+		poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
 		vulkanPoolSizes.push_back(poolSize);
 	}

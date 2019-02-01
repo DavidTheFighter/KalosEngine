@@ -220,9 +220,9 @@ Pipeline VulkanPipelineHelper::createComputePipeline(const ComputePipelineInfo &
 	std::vector<VkPushConstantRange> vulkanPushConstantRanges;
 	std::vector<VkDescriptorSetLayout> vulkanDescSetLayouts;
 
-	for (size_t i = 0; i < pipelineInfo.inputPushConstantRanges.size(); i++)
+	if (pipelineInfo.inputPushConstants.size > 0)
 	{
-		const PushConstantRange &genericPushRange = pipelineInfo.inputPushConstantRanges[i];
+		const PushConstantRange &genericPushRange = pipelineInfo.inputPushConstants;
 		VkPushConstantRange vulkanPushRange = {};
 		vulkanPushRange.stageFlags = genericPushRange.stageAccessFlags;
 		vulkanPushRange.size = genericPushRange.size;
@@ -231,16 +231,16 @@ Pipeline VulkanPipelineHelper::createComputePipeline(const ComputePipelineInfo &
 		vulkanPushConstantRanges.push_back(vulkanPushRange);
 	}
 
-	//for (size_t i = 0; i < pipelineInfo.inputSetLayouts.size(); i++)
+	for (size_t i = 0; i < pipelineInfo.inputSetLayouts.size(); i++)
 	{
-		//vulkanDescSetLayouts.push_back(createDescriptorSetLayout(pipelineInfo.inputSetLayouts[i]));
+		vulkanDescSetLayouts.push_back(createDescriptorSetLayout(pipelineInfo.inputSetLayouts[i]));
 	}
 
 	VkPipelineLayoutCreateInfo layoutCreateInfo = {};
 	layoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	layoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(pipelineInfo.inputPushConstantRanges.size());
-	//layoutCreateInfo.setLayoutCount = static_cast<uint32_t>(pipelineInfo.inputSetLayouts.size());
+	layoutCreateInfo.pushConstantRangeCount = static_cast<uint32_t>(vulkanPushConstantRanges.size());
 	layoutCreateInfo.pPushConstantRanges = vulkanPushConstantRanges.data();
+	layoutCreateInfo.setLayoutCount = static_cast<uint32_t>(pipelineInfo.inputSetLayouts.size());
 	layoutCreateInfo.pSetLayouts = vulkanDescSetLayouts.data();
 
 	VK_CHECK_RESULT(vkCreatePipelineLayout(renderer->device, &layoutCreateInfo, nullptr, &vulkanPipeline->pipelineLayoutHandle));
@@ -257,7 +257,7 @@ VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const Des
 	DEBUG_ASSERT(setDescription.samplerDescriptorCount == setDescription.samplerBindingsShaderStageAccess.size());
 	DEBUG_ASSERT(setDescription.constantBufferDescriptorCount == setDescription.constantBufferBindingsShaderStageAccess.size());
 	DEBUG_ASSERT(setDescription.inputAttachmentDescriptorCount == setDescription.inputAttachmentBindingsShaderStageAccess.size());
-	DEBUG_ASSERT(setDescription.sampledTextureDescriptorCount == setDescription.sampledTextureBindingsShaderStageAccess.size());
+	DEBUG_ASSERT(setDescription.textureDescriptorCount == setDescription.textureBindingsShaderStageAccess.size());
 
 	// Search the cache and see if we have an existing descriptor set layout to use
 	for (size_t i = 0; i < descriptorSetLayoutCache.size(); i++)
@@ -299,13 +299,35 @@ VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const Des
 		bindings.push_back(vulkanBinding);
 	}
 
-	for (uint32_t i = 0; i < setDescription.sampledTextureDescriptorCount; i++)
+	for (uint32_t i = 0; i < setDescription.textureDescriptorCount; i++)
 	{
 		VkDescriptorSetLayoutBinding vulkanBinding = {};
-		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.sampledTextureBindingsShaderStageAccess[i]);
-		vulkanBinding.binding = HLSL_SPV_SAMPLED_TEXTURE_OFFSET + i;
+		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.textureBindingsShaderStageAccess[i]);
+		vulkanBinding.binding = HLSL_SPV_TEXTURE_OFFSET + i;
 		vulkanBinding.descriptorCount = 1;
 		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+		bindings.push_back(vulkanBinding);
+	}
+
+	for (uint32_t i = 0; i < setDescription.storageBufferDescriptorCount; i++)
+	{
+		VkDescriptorSetLayoutBinding vulkanBinding = {};
+		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.storageBufferBindingsShaderStageAccess[i]);
+		vulkanBinding.binding = HLSL_SPV_STORAGE_BUFFER_OFFSET + i;
+		vulkanBinding.descriptorCount = 1;
+		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+		bindings.push_back(vulkanBinding);
+	}
+
+	for (uint32_t i = 0; i < setDescription.storageTextureDescriptorCount; i++)
+	{
+		VkDescriptorSetLayoutBinding vulkanBinding = {};
+		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.storageTextureBindingsShaderStageAccess[i]);
+		vulkanBinding.binding = HLSL_SPV_STORAGE_TEXTURE_OFFSET + i;
+		vulkanBinding.descriptorCount = 1;
+		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
 		bindings.push_back(vulkanBinding);
 	}

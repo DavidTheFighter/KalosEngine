@@ -23,6 +23,7 @@ class RendererRenderGraph
 
 	void setFrameGraphOutput(const std::string &textureName);
 	void addNamedSize(const std::string &sizeName, glm::uvec3 initialSize);
+	glm::uvec3 getNamedSize(const std::string &name);
 
 	virtual void resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize) = 0;
 

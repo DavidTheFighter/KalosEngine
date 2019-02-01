@@ -75,7 +75,7 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 	writes[1].samplerInfo = {cubeTexSampler};
 
 	writes[2].dstBinding = 0;
-	writes[2].descriptorType = DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+	writes[2].descriptorType = DESCRIPTOR_TYPE_SAMPLED_TEXTURE;
 	writes[2].sampledTextureInfo = {cubeTestTextureView, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
 
 	renderer->writeDescriptorSets(descSet, writes);
@@ -334,11 +334,11 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	set0.samplerDescriptorCount = 1;
 	set0.constantBufferDescriptorCount = 1;
 	set0.inputAttachmentDescriptorCount = 0;
-	set0.sampledTextureDescriptorCount = 1;
+	set0.textureDescriptorCount = 1;
 	set0.samplerBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT};
 	set0.constantBufferBindingsShaderStageAccess = {SHADER_STAGE_VERTEX_BIT};
 	set0.inputAttachmentBindingsShaderStageAccess = {};
-	set0.sampledTextureBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT};
+	set0.textureBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT};
 
 	info.inputPushConstants = {sizeof(glm::mat4), SHADER_STAGE_VERTEX_BIT};
 	info.inputSetLayouts = {set0};

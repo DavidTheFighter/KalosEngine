@@ -73,6 +73,11 @@ void RendererGraphRenderPass::setInitFunction(std::function<void(const RenderGra
 	initFunction = callbackFunc;
 }
 
+void RendererGraphRenderPass::setDescriptorUpdateFunction(std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> updateFunc)
+{
+	descriptorUpdateFunction = updateFunc;
+}
+
 void RendererGraphRenderPass::setRenderFunction(std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> renderFunc)
 {
 	renderFunction = renderFunc;
@@ -81,6 +86,11 @@ void RendererGraphRenderPass::setRenderFunction(std::function<void(CommandBuffer
 std::function<void(const RenderGraphInitFunctionData&)> RendererGraphRenderPass::getInitFunction()
 {
 	return initFunction;
+}
+
+std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> RendererGraphRenderPass::getDescriptorUpdateFunction()
+{
+	return descriptorUpdateFunction;
 }
 
 std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> RendererGraphRenderPass::getRenderFunction()

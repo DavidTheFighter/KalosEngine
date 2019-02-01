@@ -383,7 +383,7 @@ void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vecto
 				break;
 			case DESCRIPTOR_TYPE_SAMPLER:
 			case DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			case DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			case DESCRIPTOR_TYPE_SAMPLED_TEXTURE:
 				im++;
 				break;
 		}
@@ -431,7 +431,7 @@ void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vecto
 
 				break;
 			}
-			case DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			case DESCRIPTOR_TYPE_SAMPLED_TEXTURE:
 			{
 				VkDescriptorImageInfo imageInfo = {};
 				imageInfo.imageView = static_cast<VulkanTextureView*>(writeInfo.sampledTextureInfo.view)->imageView;
@@ -440,8 +440,34 @@ void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vecto
 				imageInfos.push_back(imageInfo);
 
 				write.pImageInfo = &imageInfos[imageInfos.size() - 1];
-				write.dstBinding = HLSL_SPV_SAMPLED_TEXTURE_OFFSET + writeInfo.dstBinding;
+				write.dstBinding = HLSL_SPV_TEXTURE_OFFSET + writeInfo.dstBinding;
 
+				break;
+			}
+			case DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			{
+				VkDescriptorBufferInfo bufferInfo = {};
+				bufferInfo.buffer = static_cast<VulkanBuffer*>(writeInfo.bufferInfo.buffer)->bufferHandle;
+				bufferInfo.offset = static_cast<VkDeviceSize>(writeInfo.bufferInfo.offset);
+				bufferInfo.range = static_cast<VkDeviceSize>(writeInfo.bufferInfo.range);
+
+				bufferInfos.push_back(bufferInfo);
+
+				write.pBufferInfo = &bufferInfos[bufferInfos.size() - 1];
+				write.dstBinding = HLSL_SPV_STORAGE_BUFFER_OFFSET + writeInfo.dstBinding;
+
+				break;
+			}
+			case DESCRIPTOR_TYPE_STORAGE_TEXTURE:
+			{
+				VkDescriptorImageInfo imageInfo = {};
+				imageInfo.imageView = static_cast<VulkanTextureView*>(writeInfo.sampledTextureInfo.view)->imageView;
+				imageInfo.imageLayout = toVkImageLayout(writeInfo.sampledTextureInfo.layout);
+
+				imageInfos.push_back(imageInfo);
+
+				write.pImageInfo = &imageInfos[imageInfos.size() - 1];
+				write.dstBinding = HLSL_SPV_STORAGE_TEXTURE_OFFSET + writeInfo.dstBinding;
 				break;
 			}
 		}

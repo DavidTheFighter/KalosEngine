@@ -501,7 +501,7 @@ void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<
 
 				break;
 			}
-			case DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			case DESCRIPTOR_TYPE_SAMPLED_TEXTURE:
 			{
 				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
 				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + sampledTextureOffset);

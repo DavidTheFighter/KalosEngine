@@ -53,7 +53,7 @@ typedef struct
 
 typedef struct
 {
-
+	std::map<std::string, TextureView> graphTextureViews;
 } RenderGraphDescriptorUpdateFunctionData;
 
 typedef struct
@@ -78,11 +78,11 @@ class RendererGraphRenderPass
 	void addDepthStencilFragmentInputAttachment(const std::string &name);
 
 	void setInitFunction(std::function<void(const RenderGraphInitFunctionData&)> callbackFunc);
-	//void setDescriptorUpdateFunction(std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> updateFunc);
+	void setDescriptorUpdateFunction(std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> updateFunc);
 	void setRenderFunction(std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> renderFunc);
 
 	std::function<void(const RenderGraphInitFunctionData&)> getInitFunction();
-	//std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> getDescriptorUpdateFunction();
+	std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> getDescriptorUpdateFunction();
 	std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> getRenderFunction();
 
 	std::string getNodeName() const;
@@ -112,7 +112,7 @@ class RendererGraphRenderPass
 	std::vector<std::string> depthStencilInputAttachments;
 
 	std::function<void(const RenderGraphInitFunctionData&)> initFunction;
-	//std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> descriptorUpdateFunction;
+	std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> descriptorUpdateFunction;
 	std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> renderFunction;
 };
 

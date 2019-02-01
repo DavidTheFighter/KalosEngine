@@ -169,7 +169,7 @@ void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t fi
 		if (cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].samplerDescriptorCount > 0)
 			baseRootParameter++;
 
-		uint32_t srvUavCbvDescCount = cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].constantBufferDescriptorCount + cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].inputAttachmentDescriptorCount + cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].sampledTextureDescriptorCount;
+		uint32_t srvUavCbvDescCount = cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].constantBufferDescriptorCount + cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].inputAttachmentDescriptorCount + cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].textureDescriptorCount;
 
 		if (srvUavCbvDescCount > 0)
 			baseRootParameter++;

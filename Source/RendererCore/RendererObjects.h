@@ -115,17 +115,25 @@ typedef struct RendererDescriptorSetLayoutDescription
 	uint32_t samplerDescriptorCount;
 	uint32_t constantBufferDescriptorCount;
 	uint32_t inputAttachmentDescriptorCount;
-	uint32_t sampledTextureDescriptorCount;
+	uint32_t textureDescriptorCount;
+	uint32_t storageBufferDescriptorCount;
+	uint32_t storageTextureDescriptorCount;
 
 	std::vector<ShaderStageFlags> samplerBindingsShaderStageAccess;
 	std::vector<ShaderStageFlags> constantBufferBindingsShaderStageAccess;
 	std::vector<ShaderStageFlags> inputAttachmentBindingsShaderStageAccess;
-	std::vector<ShaderStageFlags> sampledTextureBindingsShaderStageAccess;
+	std::vector<ShaderStageFlags> textureBindingsShaderStageAccess;
+	std::vector<ShaderStageFlags> storageBufferBindingsShaderStageAccess;
+	std::vector<ShaderStageFlags> storageTextureBindingsShaderStageAccess;
 
 	bool operator==(const RendererDescriptorSetLayoutDescription &other)
 	{
-		if (samplerDescriptorCount != other.samplerDescriptorCount || constantBufferDescriptorCount != other.constantBufferDescriptorCount || inputAttachmentDescriptorCount != other.inputAttachmentDescriptorCount || sampledTextureDescriptorCount != other.sampledTextureDescriptorCount)
+		if (samplerDescriptorCount != other.samplerDescriptorCount || constantBufferDescriptorCount != other.constantBufferDescriptorCount ||
+			inputAttachmentDescriptorCount != other.inputAttachmentDescriptorCount || textureDescriptorCount != other.textureDescriptorCount ||
+			storageBufferDescriptorCount != other.storageBufferDescriptorCount || storageTextureDescriptorCount != other.storageTextureDescriptorCount)
+		{
 			return false;
+		}
 
 		if (samplerBindingsShaderStageAccess.size() != other.samplerBindingsShaderStageAccess.size())
 			return false;
@@ -136,7 +144,13 @@ typedef struct RendererDescriptorSetLayoutDescription
 		if (inputAttachmentBindingsShaderStageAccess.size() != other.inputAttachmentBindingsShaderStageAccess.size())
 			return false;
 
-		if (sampledTextureBindingsShaderStageAccess.size() != other.sampledTextureBindingsShaderStageAccess.size())
+		if (textureBindingsShaderStageAccess.size() != other.textureBindingsShaderStageAccess.size())
+			return false;
+
+		if (storageBufferBindingsShaderStageAccess.size() != other.storageBufferBindingsShaderStageAccess.size())
+			return false;
+
+		if (storageTextureBindingsShaderStageAccess.size() != other.storageTextureBindingsShaderStageAccess.size())
 			return false;
 
 		for (size_t i = 0; i < samplerBindingsShaderStageAccess.size(); i++)
@@ -151,8 +165,16 @@ typedef struct RendererDescriptorSetLayoutDescription
 			if (inputAttachmentBindingsShaderStageAccess[i] != other.inputAttachmentBindingsShaderStageAccess[i])
 				return false;
 
-		for (size_t i = 0; i < sampledTextureBindingsShaderStageAccess.size(); i++)
-			if (sampledTextureBindingsShaderStageAccess[i] != other.sampledTextureBindingsShaderStageAccess[i])
+		for (size_t i = 0; i < textureBindingsShaderStageAccess.size(); i++)
+			if (textureBindingsShaderStageAccess[i] != other.textureBindingsShaderStageAccess[i])
+				return false;
+
+		for (size_t i = 0; i < storageBufferBindingsShaderStageAccess.size(); i++)
+			if (storageBufferBindingsShaderStageAccess[i] != other.storageBufferBindingsShaderStageAccess[i])
+				return false;
+
+		for (size_t i = 0; i < storageTextureBindingsShaderStageAccess.size(); i++)
+			if (storageTextureBindingsShaderStageAccess[i] != other.storageTextureBindingsShaderStageAccess[i])
 				return false;
 		
 		return true;
@@ -294,8 +316,8 @@ typedef struct RendererComputePipelineInfo
 {
 	PipelineShaderStage shader;
 
-	std::vector<PushConstantRange> inputPushConstantRanges;
-	//std::vector<std::vector<DescriptorSetLayoutBinding> > inputSetLayouts;
+	PushConstantRange inputPushConstants;
+	std::vector<DescriptorSetLayoutDescription> inputSetLayouts;
 
 } ComputePipelineInfo;
 

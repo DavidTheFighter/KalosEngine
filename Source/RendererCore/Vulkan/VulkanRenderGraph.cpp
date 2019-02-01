@@ -45,71 +45,91 @@ Semaphore VulkanRenderGraph::execute()
 
 		switch (opCode)
 		{
-		case VKRG_OPCODE_BEGIN_RENDER_PASS:
-		{
-			const VulkanRenderGraphBeginRenderPassData &opData = *static_cast<VulkanRenderGraphBeginRenderPassData*>(opDataPtr);
-			cmdBuffer->vulkan_beginRenderPass(opData.renderPass, opData.framebuffer, { 0, 0, opData.size.x, opData.size.y }, opData.clearValues, opData.subpassContents);
-			cmdBuffer->setScissors(0, { {0, 0, opData.size.x, opData.size.y} });
-			cmdBuffer->setViewports(0, { {0, 0, (float)opData.size.x, (float) opData.size.y, 0, 1} });
-
-			break;
-		}
-		case VKRG_OPCODE_END_RENDER_PASS:
-		{
-			cmdBuffer->vulkan_endRenderPass();
-
-			break;
-		}
-		case VKRG_OPCODE_NEXT_SUBPASS:
-		{
-			cmdBuffer->vulkan_nextSubpass(VK_SUBPASS_CONTENTS_INLINE);
-
-			break;
-		}
-		case VKRG_OPCODE_POST_BLIT:
-		{
-			break;
-			const VulkanRenderGraphPostBlitOpData &opData = *static_cast<VulkanRenderGraphPostBlitOpData*>(opDataPtr);
-			VulkanRenderGraphImage graphTex = graphImages[opData.graphImageIndex];
-
-			uint32_t sizeX = graphTex.attachment.namedRelativeSize == "" ? uint32_t(graphTex.attachment.sizeX) : uint32_t(namedSizes[graphTex.attachment.namedRelativeSize].x * graphTex.attachment.sizeX);
-			uint32_t sizeY = graphTex.attachment.namedRelativeSize == "" ? uint32_t(graphTex.attachment.sizeY) : uint32_t(namedSizes[graphTex.attachment.namedRelativeSize].y * graphTex.attachment.sizeY);
-			uint32_t sizeZ = (uint32_t) graphTex.attachment.sizeZ;
-
-			/*
-			cmdBuffer->setTextureLayout(graphTex.imageHandle, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, TEXTURE_LAYOUT_TRANSFER_SRC_OPTIMAL, { 0, 1, 0, graphTex.base.arrayLayers }, PIPELINE_STAGE_ALL_COMMANDS_BIT, PIPELINE_STAGE_TRANSFER_BIT);
-
-			for (uint32_t m = 1; m < graphTex.base.mipLevels; m++)
+			case VKRG_OPCODE_BEGIN_RENDER_PASS:
 			{
-				TextureBlitInfo blitInfo = {};
-				blitInfo.srcSubresource = { m - 1, 0, graphTex.base.arrayLayers };
-				blitInfo.dstSubresource = { m, 0, graphTex.base.arrayLayers };
-				blitInfo.srcOffsets[0] = { 0, 0, 0 };
-				blitInfo.dstOffsets[0] = { 0, 0, 0 };
-				blitInfo.srcOffsets[1] = { std::max(int32_t(sizeX >> (m - 1)), 1), std::max(int32_t(sizeY >> (m - 1)), 1), std::max(int32_t(sizeZ >> (m - 1)), 1) };
-				blitInfo.dstOffsets[1] = { std::max(int32_t(sizeX >> m), 1), std::max(int32_t(sizeY >> m), 1), std::max(int32_t(sizeZ >> m), 1) };
+				const VulkanRenderGraphBeginRenderPassData &opData = *static_cast<VulkanRenderGraphBeginRenderPassData*>(opDataPtr);
+				cmdBuffer->vulkan_beginRenderPass(opData.renderPass, opData.framebuffer, { 0, 0, opData.size.x, opData.size.y }, opData.clearValues, opData.subpassContents);
+				cmdBuffer->setScissors(0, { {0, 0, opData.size.x, opData.size.y} });
+				cmdBuffer->setViewports(0, { {0, 0, (float)opData.size.x, (float) opData.size.y, 0, 1} });
 
-				cmdBuffer->setTextureLayout(graphTex.attTex, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL, { m, 1, 0, graphTex.base.arrayLayers }, PIPELINE_STAGE_ALL_COMMANDS_BIT, PIPELINE_STAGE_TRANSFER_BIT);
-				cmdBuffer->blitTexture(graphTex.attTex, TEXTURE_LAYOUT_TRANSFER_SRC_OPTIMAL, graphTex.attTex, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL, { blitInfo }, SAMPLER_FILTER_LINEAR);
-				cmdBuffer->setTextureLayout(graphTex.attTex, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL, TEXTURE_LAYOUT_TRANSFER_SRC_OPTIMAL, { m, 1, 0, graphTex.base.arrayLayers }, PIPELINE_STAGE_TRANSFER_BIT, PIPELINE_STAGE_TRANSFER_BIT);
+				break;
 			}
+			case VKRG_OPCODE_END_RENDER_PASS:
+			{
+				cmdBuffer->vulkan_endRenderPass();
 
-			cmdBuffer->setTextureLayout(graphTex.attTex, TEXTURE_LAYOUT_TRANSFER_SRC_OPTIMAL, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, { 0, graphTex.base.mipLevels, 0, graphTex.base.arrayLayers }, PIPELINE_STAGE_TRANSFER_BIT, PIPELINE_STAGE_ALL_COMMANDS_BIT);
-			*/
-			break;
-		}
-		case VKRG_OPCODE_CALL_RENDER_FUNC:
-		{
-			const VulkanRenderGraphCallRenderFuncOpData &opData = *static_cast<VulkanRenderGraphCallRenderFuncOpData*>(opDataPtr);
+				break;
+			}
+			case VKRG_OPCODE_NEXT_SUBPASS:
+			{
+				cmdBuffer->vulkan_nextSubpass(VK_SUBPASS_CONTENTS_INLINE);
 
-			RenderGraphRenderFunctionData renderData = {};
+				break;
+			}
+			case VKRG_OPCODE_POST_BLIT:
+			{
+				break;
+				const VulkanRenderGraphPostBlitOpData &opData = *static_cast<VulkanRenderGraphPostBlitOpData*>(opDataPtr);
+				VulkanRenderGraphImage graphTex = graphImages[opData.graphImageIndex];
 
-			cmdBuffer->beginDebugRegion(passes[opData.passIndex]->getNodeName(), glm::vec4(0, 0.5f, 1, 1));
-			passes[opData.passIndex]->getRenderFunction()(cmdBuffer, renderData);
-			cmdBuffer->endDebugRegion();
+				uint32_t sizeX = graphTex.attachment.namedRelativeSize == "" ? uint32_t(graphTex.attachment.sizeX) : uint32_t(namedSizes[graphTex.attachment.namedRelativeSize].x * graphTex.attachment.sizeX);
+				uint32_t sizeY = graphTex.attachment.namedRelativeSize == "" ? uint32_t(graphTex.attachment.sizeY) : uint32_t(namedSizes[graphTex.attachment.namedRelativeSize].y * graphTex.attachment.sizeY);
+				uint32_t sizeZ = (uint32_t) graphTex.attachment.sizeZ;
 
-			break;
-		}
+				/*
+				cmdBuffer->setTextureLayout(graphTex.imageHandle, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, TEXTURE_LAYOUT_TRANSFER_SRC_OPTIMAL, { 0, 1, 0, graphTex.base.arrayLayers }, PIPELINE_STAGE_ALL_COMMANDS_BIT, PIPELINE_STAGE_TRANSFER_BIT);
+
+				for (uint32_t m = 1; m < graphTex.base.mipLevels; m++)
+				{
+					TextureBlitInfo blitInfo = {};
+					blitInfo.srcSubresource = { m - 1, 0, graphTex.base.arrayLayers };
+					blitInfo.dstSubresource = { m, 0, graphTex.base.arrayLayers };
+					blitInfo.srcOffsets[0] = { 0, 0, 0 };
+					blitInfo.dstOffsets[0] = { 0, 0, 0 };
+					blitInfo.srcOffsets[1] = { std::max(int32_t(sizeX >> (m - 1)), 1), std::max(int32_t(sizeY >> (m - 1)), 1), std::max(int32_t(sizeZ >> (m - 1)), 1) };
+					blitInfo.dstOffsets[1] = { std::max(int32_t(sizeX >> m), 1), std::max(int32_t(sizeY >> m), 1), std::max(int32_t(sizeZ >> m), 1) };
+
+					cmdBuffer->setTextureLayout(graphTex.attTex, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL, { m, 1, 0, graphTex.base.arrayLayers }, PIPELINE_STAGE_ALL_COMMANDS_BIT, PIPELINE_STAGE_TRANSFER_BIT);
+					cmdBuffer->blitTexture(graphTex.attTex, TEXTURE_LAYOUT_TRANSFER_SRC_OPTIMAL, graphTex.attTex, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL, { blitInfo }, SAMPLER_FILTER_LINEAR);
+					cmdBuffer->setTextureLayout(graphTex.attTex, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL, TEXTURE_LAYOUT_TRANSFER_SRC_OPTIMAL, { m, 1, 0, graphTex.base.arrayLayers }, PIPELINE_STAGE_TRANSFER_BIT, PIPELINE_STAGE_TRANSFER_BIT);
+				}
+
+				cmdBuffer->setTextureLayout(graphTex.attTex, TEXTURE_LAYOUT_TRANSFER_SRC_OPTIMAL, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, { 0, graphTex.base.mipLevels, 0, graphTex.base.arrayLayers }, PIPELINE_STAGE_TRANSFER_BIT, PIPELINE_STAGE_ALL_COMMANDS_BIT);
+				*/
+				break;
+			}
+			case VKRG_OPCODE_CALL_RENDER_FUNC:
+			{
+				const VulkanRenderGraphCallRenderFuncOpData &opData = *static_cast<VulkanRenderGraphCallRenderFuncOpData*>(opDataPtr);
+
+				RenderGraphRenderFunctionData renderData = {};
+
+				if (passes[opData.passIndex]->getPipelineType() == RG_PIPELINE_COMPUTE)
+				{
+					for (size_t o = 0; o < passes[opData.passIndex]->getColorOutputs().size(); o++)
+					{
+						//Texture output = resourceImageViews[passes[opData.passIndex]->getColorOutputs()[o].first]->parentTexture;
+						
+						//cmdBuffer->transitionTextureLayout(output, (TextureLayout) VK_IMAGE_LAYOUT_UNDEFINED, TEXTURE_LAYOUT_GENERAL, {0, output->mipCount, 0, output->layerCount});
+					}
+				}
+
+				cmdBuffer->beginDebugRegion(passes[opData.passIndex]->getNodeName(), glm::vec4(0, 0.5f, 1, 1));
+				passes[opData.passIndex]->getRenderFunction()(cmdBuffer, renderData);
+				cmdBuffer->endDebugRegion();
+
+				if (passes[opData.passIndex]->getPipelineType() == RG_PIPELINE_COMPUTE)
+				{
+					for (size_t o = 0; o < passes[opData.passIndex]->getColorOutputs().size(); o++)
+					{
+						//Texture output = resourceImageViews[passes[opData.passIndex]->getColorOutputs()[o].first]->parentTexture;
+
+						//cmdBuffer->transitionTextureLayout(output, TEXTURE_LAYOUT_GENERAL, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, {0, output->mipCount, 0, output->layerCount});
+					}
+				}
+
+				break;
+			}
 		}
 	}
 
@@ -214,7 +234,8 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 
 			allAttachments.emplace(pass.getColorOutputs()[o]);
 
-			attachmentUsages[s] |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			if (pass.getPipelineType() == RG_PIPELINE_GRAPHICS)
+				attachmentUsages[s] |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 			if (pass.getColorOutputs()[o].second.genMipsWithPostBlit)
 				attachmentUsages[s] |= VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -776,6 +797,16 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 			//printf("VKRG_OPCODE_CALL_RENDER_FUNC \"%s\"\n", passes[static_cast<VulkanRenderGraphCallRenderFuncOpData*>(execCodes[i].second)->passIndex]->getNodeName().c_str());
 			break;
 		}
+	}
+
+	RenderGraphDescriptorUpdateFunctionData descUpdateFuncData = {};
+	descUpdateFuncData.graphTextureViews = resourceImageViews;
+
+	for (size_t p = 0; p < passStack.size(); p++)
+	{
+		RendererGraphRenderPass &pass = *passes[passStack[p]];
+
+		pass.getDescriptorUpdateFunction()(descUpdateFuncData);
 	}
 }
 
