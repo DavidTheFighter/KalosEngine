@@ -12,9 +12,21 @@
 typedef struct
 {
 	RenderPassAttachment attachment;
-	ID3D12Resource *textureHeap;
+	D3D12Texture *rendererTexture;
 
 } D3D12RenderGraphTexture;
+
+typedef struct
+{
+	size_t passIndex;
+
+	std::vector<D3D12_RESOURCE_BARRIER> beforeRenderBarriers;
+	std::vector<D3D12_RESOURCE_BARRIER> afterRenderBarriers;
+
+	uint32_t sizeX;
+	uint32_t sizeY;
+
+} D3D12RenderGraphRenderPassData;
 
 class D3D12Renderer;
 
@@ -24,15 +36,15 @@ public:
 	D3D12RenderGraph(D3D12Renderer *rendererPtr);
 	virtual ~D3D12RenderGraph();
 
-	Semaphore execute();
+	Semaphore execute(bool returnWaitableSemaphore);
 
 	TextureView getRenderGraphOutputTextureView();
 
 private:
 
-	D3D12Renderer *d3drenderer;
+	D3D12Renderer *renderer;
 
-	std::vector<size_t> finalPassStack;
+	std::vector<D3D12RenderGraphRenderPassData> finalPasses;
 	std::vector<Semaphore> executionDoneSemaphores;
 
 	std::vector<CommandPool> gfxCommandPools;
@@ -46,8 +58,8 @@ private:
 
 	std::vector<D3D12RenderGraphTexture> graphTextures;
 
-	std::map<std::string, RenderPassOutputAttachment> allAttachments;
 	std::map<std::string, TextureView> graphTextureViews;
+	std::map<std::string, D3D12_RESOURCE_STATES> graphTextureViewsInitialResourceState;
 	std::map<size_t, ID3D12DescriptorHeap*> graphRTVs;
 	std::map<size_t, ID3D12DescriptorHeap*> graphDSVs;
 

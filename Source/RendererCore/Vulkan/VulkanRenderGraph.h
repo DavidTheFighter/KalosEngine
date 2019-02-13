@@ -6,9 +6,12 @@
 
 #include <RendererCore/RendererRenderGraph.h>
 
+#include <RendererCore/Vulkan/VulkanEnums.h>
+#include <RendererCore/Vulkan/VulkanObjects.h>
+
 typedef struct
 {
-	RenderPassAttachment attachment;
+	//RenderPassAttachment attachment;
 	VkImageUsageFlags usageFlags;
 
 	VkImage imageHandle;
@@ -47,39 +50,27 @@ typedef struct
 	uint32_t counter;
 } VulkanRenderGraphCallRenderFuncOpData;
 
+class VulkanRenderer;
+
 class VulkanRenderGraph : public RendererRenderGraph
 {
-public:
-	VulkanRenderGraph(Renderer *rendererPtr);
+	public:
+
+	VulkanRenderGraph(VulkanRenderer *rendererPtr);
 	virtual ~VulkanRenderGraph();
 
-	Semaphore execute();
+	Semaphore execute(bool returnWaitableSemaphore);
 
-	void resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize);
+	virtual TextureView getRenderGraphOutputTextureView();
 
-	void assignPhysicalResources(const std::vector<size_t> &passStack);
-	void finishBuild(const std::vector<size_t> &passStack);
+	protected:
 
-	TextureView getRenderGraphOutputTextureView();
+	virtual void assignPhysicalResources(const std::vector<size_t> &passStack);
+	virtual void finishBuild(const std::vector<size_t> &passStack);
 
-private:
+	private:
 
-	std::vector<VulkanRenderGraphImage> graphImages;
-	std::map<std::string, size_t> graphImagesMap;
-
-	std::map<std::string, TextureView> resourceImageViews;
-	std::map<std::string, RenderPassOutputAttachment> allAttachments;
-
-	std::vector<std::pair<VulkanRenderGraphOpCode, void*>> execCodes;
-
-	std::vector<std::unique_ptr<VulkanRenderGraphBeginRenderPassData>> beginRenderPassOpsData;
-	std::vector<std::unique_ptr<VulkanRenderGraphPostBlitOpData>> postBlitOpsData;
-	std::vector<std::unique_ptr<VulkanRenderGraphCallRenderFuncOpData>> callRenderFuncOpsData;
-
-	std::vector<CommandPool> gfxCommandPools;
-	std::vector<Semaphore> executionDoneSemaphores;
-
-	size_t execCounter; // A counter incremented every time the execute() method is called, used for n-buffering of the command buffers
+	VulkanRenderer *renderer;
 
 	void cleanupResources();
 };

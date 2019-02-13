@@ -637,7 +637,7 @@ ShaderModule VulkanRenderer::createShaderModule (const std::string &file, Shader
 	vulkanShader->entryPoint = entryPoint;
 
 	/*
-	 * I'm formatting the debug name to trim it to the "GameData/shaders/" directory. For example:
+	 * I'm formatting the debug textureName to trim it to the "GameData/shaders/" directory. For example:
 	 * "GameData/shaders/vulkan/temp-swapchain.glsl" would turn to ".../vulkan/temp-swapchain.glsl"
 	 */
 
@@ -665,7 +665,7 @@ ShaderModule VulkanRenderer::createShaderModuleFromSource (const std::string &so
 	vulkanShader->stage = stage;
 
 	/*
-	 * I'm formatting the debug name to trim it to the "GameData/shaders/" directory. For example:
+	 * I'm formatting the debug textureName to trim it to the "GameData/shaders/" directory. For example:
 	 * "GameData/shaders/vulkan/temp-swapchain.glsl" would turn to ".../vulkan/temp-swapchain.glsl"
 	 */
 

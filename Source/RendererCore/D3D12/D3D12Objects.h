@@ -11,7 +11,6 @@ struct D3D12Texture : public RendererTexture
 
 struct D3D12TextureView : public RendererTextureView
 {
-	ID3D12Resource *parentTextureResource;
 };
 
 struct D3D12Sampler : public RendererSampler

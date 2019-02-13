@@ -23,15 +23,15 @@ ComputeTest::ComputeTest(Renderer *rendererPtr)
 		testOut.format = RESOURCE_FORMAT_R8G8B8A8_UNORM;
 		testOut.namedRelativeSize = "swapchain";
 
-		auto &test = gfxGraph->addRenderPass("test", RG_PIPELINE_COMPUTE);
-		test.addColorOutput("testOut", testOut);
+		auto &test = gfxGraph->addRenderPass("test", RENDER_GRAPH_PIPELINE_TYPE_GRAPHICS);
+		test.addColorAttachmentOutput("testOut", testOut);
 
 		test.setInitFunction(std::bind(&ComputeTest::passInit, this, std::placeholders::_1));
 		test.setDescriptorUpdateFunction(std::bind(&ComputeTest::passDescUpdate, this, std::placeholders::_1));
 		test.setRenderFunction(std::bind(&ComputeTest::passRender, this, std::placeholders::_1, std::placeholders::_2));
 
 		gfxGraph->addNamedSize("swapchain", glm::uvec3(1920, 1080, 1));
-		gfxGraph->setFrameGraphOutput("testOut");
+		gfxGraph->setRenderGraphOutput("testOut");
 
 		gfxGraph->build();
 	}
@@ -79,7 +79,7 @@ void ComputeTest::passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFun
 
 void ComputeTest::render()
 {
-	renderDoneSemaphore = gfxGraph->execute();
+	//renderDoneSemaphore = gfxGraph->execute();
 }
 
 void ComputeTest::createPipeline(const RenderGraphInitFunctionData &data)

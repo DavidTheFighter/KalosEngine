@@ -698,7 +698,6 @@ TextureView D3D12Renderer::createTextureView(Texture texture, TextureViewType vi
 {
 	D3D12TextureView *textureView = new D3D12TextureView();
 	textureView->parentTexture = texture;
-	textureView->parentTextureResource = static_cast<D3D12Texture*>(texture)->textureResource;
 	textureView->viewType = viewType;
 	textureView->viewFormat = viewFormat == RESOURCE_FORMAT_UNDEFINED ? texture->textureFormat : viewFormat;
 	textureView->baseMip = subresourceRange.baseMipLevel;
@@ -1051,7 +1050,7 @@ void D3D12Renderer::setSwapchainTexture(Window *wnd, TextureView texView, Sample
 
 	Log::get()->info("{}", srvDesc.ViewDimension);
 
-	swapchainHandler->setSwapchainSourceTexture(srvDesc, d3dtv->parentTextureResource);
+	swapchainHandler->setSwapchainSourceTexture(srvDesc, static_cast<D3D12Texture*>(d3dtv->parentTexture)->textureResource);
 }
 
 #endif

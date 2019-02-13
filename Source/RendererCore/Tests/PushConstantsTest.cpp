@@ -29,14 +29,14 @@ PushConstantsTest::PushConstantsTest(Renderer *rendererPtr)
 		testOut.format = RESOURCE_FORMAT_R8G8B8A8_UNORM;
 		testOut.namedRelativeSize = "swapchain";
 
-		auto &test = gfxGraph->addRenderPass("test", RG_PIPELINE_GRAPHICS);
-		test.addColorOutput("testOut", testOut, true, {0, 0, 0, 1});
+		auto &test = gfxGraph->addRenderPass("test", RENDER_GRAPH_PIPELINE_TYPE_GRAPHICS);
+		test.addColorAttachmentOutput("testOut", testOut, true, {0, 0, 0, 1});
 
 		test.setInitFunction(std::bind(&PushConstantsTest::passInit, this, std::placeholders::_1));
 		test.setRenderFunction(std::bind(&PushConstantsTest::passRender, this, std::placeholders::_1, std::placeholders::_2));
 
 		gfxGraph->addNamedSize("swapchain", glm::uvec3(1920, 1080, 1));
-		gfxGraph->setFrameGraphOutput("testOut");
+		gfxGraph->setRenderGraphOutput("testOut");
 
 		gfxGraph->build();
 	}
@@ -85,7 +85,7 @@ void PushConstantsTest::passRender(CommandBuffer cmdBuffer, const RenderGraphRen
 
 void PushConstantsTest::render()
 {
-	renderDoneSemaphore = gfxGraph->execute();
+	renderDoneSemaphore = gfxGraph->execute(true);
 
 	rotateCounter += 1 / 60.0f;
 }

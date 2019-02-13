@@ -6,6 +6,8 @@
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
+class Renderer;
+
 class CubeTest
 {
 	public:

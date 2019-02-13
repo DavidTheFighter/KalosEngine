@@ -425,5 +425,6 @@ typedef RendererSemaphore *Semaphore;
 #include <RendererCore/RendererCommandBuffer.h>
 #include <RendererCore/RendererDescriptorPool.h>
 #include <RendererCore/RendererRenderGraph.h>
+#include <RendererCore/RenderGraphRenderPass.h>
 
 #endif /* RENDERING_RENDERER_RENDEREROBJECTS_H_ */

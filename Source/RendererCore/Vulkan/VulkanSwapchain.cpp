@@ -193,8 +193,8 @@ void VulkanSwapchain::presentToSwapchain (Window *wnd, std::vector<VkSemaphore> 
 
 	for (size_t i = 0; i < externalWaitSemaphores.size(); i++)
 	{
-		//waitStages.push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-		//waitSemaphores.push_back(externalWaitSemaphores[i]);
+		waitStages.push_back(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+		waitSemaphores.push_back(externalWaitSemaphores[i]);
 	}
 
 	VkSubmitInfo submitInfo = {};

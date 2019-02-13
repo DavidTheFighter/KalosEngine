@@ -41,15 +41,15 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 		testOutDepth.format = RESOURCE_FORMAT_D16_UNORM;
 		testOutDepth.namedRelativeSize = "swapchain";
 
-		auto &test = gfxGraph->addRenderPass("test", RG_PIPELINE_GRAPHICS);
-		test.addColorOutput("testOut", testOut, true, {1.0f, 1.0f, 1.0f, 1.0f});
-		test.setDepthStencilOutput("testOutDepth", testOutDepth, true, {1, 0});
+		auto &test = gfxGraph->addRenderPass("test", RENDER_GRAPH_PIPELINE_TYPE_GRAPHICS);
+		test.addColorAttachmentOutput("testOut", testOut, true, {1.0f, 1.0f, 1.0f, 1.0f});
+		test.setDepthStencilAttachmentOutput("testOutDepth", testOutDepth, true, {1, 0});
 
 		test.setInitFunction(std::bind(&CubeTest::passInit, this, std::placeholders::_1));
 		test.setRenderFunction(std::bind(&CubeTest::passRender, this, std::placeholders::_1, std::placeholders::_2));
 
 		gfxGraph->addNamedSize("swapchain", glm::uvec3(1920, 1080, 1));
-		gfxGraph->setFrameGraphOutput("testOut");
+		gfxGraph->setRenderGraphOutput("testOut");
 
 		double sT = glfwGetTime();
 		gfxGraph->build();
@@ -128,7 +128,7 @@ void CubeTest::render()
 {
 	rotateCounter += 1 / 60.0f;
 
-	renderDoneSemaphore = gfxGraph->execute();
+	renderDoneSemaphore = gfxGraph->execute(true);
 }
 
 void CubeTest::createBuffers()

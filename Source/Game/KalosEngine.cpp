@@ -140,6 +140,7 @@ void KalosEngine::update()
 	{
 		renderer->recreateSwapchain(mainWindow.get());
 
+		/*
 		if (doingRenderingTest)
 		{
 			switch (currentRenderingTest)
@@ -171,6 +172,7 @@ void KalosEngine::update()
 					break;
 			}
 		}
+		*/
 	}
 
 	if (true)
@@ -216,7 +218,7 @@ void KalosEngine::render()
 				break;
 			case RENDERER_TEST_CUBE:
 				cubeTest->render();
-				renderer->presentToSwapchain(mainWindow.get(), {});
+				renderer->presentToSwapchain(mainWindow.get(), {cubeTest->renderDoneSemaphore});
 				break;
 			case RENDERER_TEST_COMPUTE:
 				computeTest->render();

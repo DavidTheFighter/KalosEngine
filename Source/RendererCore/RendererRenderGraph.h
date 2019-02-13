@@ -1,19 +1,11 @@
 #ifndef RENDERERCORE_RENDERERRENDERGRAPH_H_
 #define RENDERERCORE_RENDERERRENDERGRAPH_H_
 
-#include <common.h>
-#include <RendererCore/RendererGraphRenderPass.h>
+#include <RendererCore/renderer_common.h>
+#include <RendererCore/RendererEnums.h>
+#include <RendererCore/RendererObjects.h>
 
-class Renderer;
-class RendererGraphRenderPass;
-
-typedef enum
-{
-	RG_PIPELINE_GRAPHICS = 0,
-	RG_PIPELINE_COMPUTE = 1,
-	//FG_PIPELINE_TRANSFER = 2,
-	RG_PIPELINE_MAX_ENUM
-} FrameGraphPipelineType;
+class RenderGraphRenderPass;
 
 class RendererRenderGraph
 {
@@ -21,35 +13,36 @@ class RendererRenderGraph
 
 	virtual ~RendererRenderGraph();
 
-	void setFrameGraphOutput(const std::string &textureName);
-	void addNamedSize(const std::string &sizeName, glm::uvec3 initialSize);
-	glm::uvec3 getNamedSize(const std::string &name);
+	RenderGraphRenderPass &addRenderPass(const std::string &name, RenderGraphPipelineType pipelineType);
 
-	virtual void resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize) = 0;
+	virtual bool validate();
 
-	RendererGraphRenderPass &addRenderPass(const std::string &name, FrameGraphPipelineType pipelineType);
+	// Implemented in RendererRenderGraphBuilder.cpp
+	virtual void build(bool doValidation = true);
 
-	bool validate();
-	void build(bool doValidation = true);
-	virtual Semaphore execute() = 0;
+	virtual Semaphore execute(bool returnWaitableSemaphore) = 0;
+
+	void setRenderGraphOutput(const std::string &textureName);
+	void addNamedSize(const std::string &sizeName, glm::uvec2 initialSize);
+
+	glm::uvec2 getNamedSize(const std::string &sizeName);
+	const std::string &getRenderGraphOutput();
 
 	virtual TextureView getRenderGraphOutputTextureView() = 0;
-
+	
 	protected:
 
-	Renderer *renderer;
-
-	std::string renderGraphOutputAttachment;
-	std::vector<std::unique_ptr<RendererGraphRenderPass>> passes;
-	std::map<std::string, glm::uvec3> namedSizes;
+	std::vector<std::unique_ptr<RenderGraphRenderPass>> passes;
+	std::map<std::string, glm::uvec2> namedSizes;
 
 	std::map<std::string, glm::uvec2> attachmentUsageLifetimes; // A list of usage lifetimes for attachments, in format [firstUsePassIndex, lastUsePassIndex]. Used to determine resource aliasing
-	std::vector<std::pair<std::string, std::string>> attachmentAliasingCandidates;
 
-	bool enableSubpassMerging;
+	std::string outputAttachmentName;
+
+	bool enableRenderPassMerging; // Whether the merging of passes into subpasses should be allowed
 	bool enableResourceAliasing;
 
-	void findPotentialResourceAliases(const std::vector<size_t> &passStack);
+	virtual void findResourceAliasingCandidates(const std::vector<size_t> &passStack);
 	virtual void assignPhysicalResources(const std::vector<size_t> &passStack) = 0;
 	virtual void finishBuild(const std::vector<size_t> &passStack) = 0;
 };

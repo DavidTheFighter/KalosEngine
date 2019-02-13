@@ -1,7 +1,7 @@
-#ifndef RENDERERCORE_RENDERERGRAPHRENDERPASS_H_
-#define RENDERERCORE_RENDERERGRAPHRENDERPASS_H_
+#ifndef RENDERERCORE_RENDERGRAPHRENDERPASS_H_
+#define RENDERERCORE_RENDERGRAPHRENDERPASS_H_
 
-#include <common.h>
+#include <RendererCore/renderer_common.h>
 #include <RendererCore/RendererEnums.h>
 #include <RendererCore/RendererObjects.h>
 
@@ -9,7 +9,7 @@ typedef struct RenderPassAttachment
 {
 	/*
 	Allows this attachment to have a size that is relative to a "named size" defined in the frame graph. This can be used for keeping a bunch of
-	attachments the same size as the swapchain, or half the swapchain resolution. Essentially you can provide a single size, and have multiple 
+	attachments the same size as the swapchain, or half the swapchain resolution. Essentially you can provide a single size, and have multiple
 	attachments that keep that size and update when that size is updated. If "namedRelativeSize" is an empty string, it is its own independent
 	resolution as defined by (sizeX, sizeY, sizeZ). When is it's relative, then (sizeX, sizeY, sizeZ) are all multipliers of that relative size.
 	*/
@@ -36,14 +36,25 @@ typedef struct RenderPassAttachment
 
 typedef struct
 {
+	std::string textureName;
 	RenderPassAttachment attachment;
 
 	bool clearAttachment;
-	bool genMipsWithPostBlit;
-
 	ClearValue attachmentClearValue;
 
 } RenderPassOutputAttachment;
+
+typedef struct
+{
+	std::string textureName;
+	RenderPassAttachment attachment;
+
+	bool canReadAsInput;
+	bool canWriteAsOutput;
+	TextureLayout passBeginLayout; // The layout this texture should be when the render function of this pass is called
+	TextureLayout passEndLayout; // The layout that this texture will be in when the render function of this pass ends (should not change unless it is changed manually within the render func)
+
+} RenderPassStorageTexture;
 
 typedef struct
 {
@@ -61,21 +72,20 @@ typedef struct
 
 } RenderGraphRenderFunctionData;
 
-class RendererGraphRenderPass
+class RenderGraphRenderPass
 {
 	public:
 
-	RendererGraphRenderPass(const std::string &passName, uint32_t pipelineType);
-	virtual ~RendererGraphRenderPass();
+	RenderGraphRenderPass(const std::string &passName, RenderGraphPipelineType pipelineType);
+	virtual ~RenderGraphRenderPass();
 
-	void addColorOutput(const std::string &name, const RenderPassAttachment &info, bool clearAttachment = true, ClearValue textureClearValue = {0, 0, 0, 0}, bool genMipsWithPostBlit = false);
-	void setDepthStencilOutput(const std::string &name, const RenderPassAttachment &info, bool clearAttachment = true, ClearValue textureClearValue = {1, 0}, bool genMipsWithPostBlit = false);
+	void addColorAttachmentOutput(const std::string &textureName, const RenderPassAttachment &info, bool clearAttachment = false, ClearValue textureClearValue = {0, 0, 0, 1});
+	void setDepthStencilAttachmentOutput(const std::string &textureName, const RenderPassAttachment &info, bool clearAttachment = false, ClearValue textureClearValue = {1, 0});
 
-	void addColorInput(const std::string &name);
-	void addDepthStencilInput(const std::string &name);
+	void addSampledTextureInput(const std::string &name);
+	void addInputAttachmentInput(const std::string &name);
 
-	void addColorFragmentInputAttachment(const std::string &name);
-	void addDepthStencilFragmentInputAttachment(const std::string &name);
+	void addStorageTexture(const std::string &name, const RenderPassAttachment &info, bool canReadAsInput, bool canWriteAsOutput);
 
 	void setInitFunction(std::function<void(const RenderGraphInitFunctionData&)> callbackFunc);
 	void setDescriptorUpdateFunction(std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> updateFunc);
@@ -85,35 +95,36 @@ class RendererGraphRenderPass
 	std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> getDescriptorUpdateFunction();
 	std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> getRenderFunction();
 
-	std::string getNodeName() const;
-	uint32_t getPipelineType() const;
-
 	bool hasDepthStencilOutput() const;
 
-	const std::vector<std::pair<std::string, RenderPassOutputAttachment>> &getColorOutputs() const;
-	const std::pair<std::string, RenderPassOutputAttachment> &getDepthStencilOutput() const;
+	const std::vector<RenderPassOutputAttachment> &getColorAttachmentOutputs() const;
+	const RenderPassOutputAttachment &getDepthStencilAttachmentOutput() const;
 
-	const std::vector<std::string> &getColorInputs() const;
-	const std::vector<std::string> &getColorFragmentInputAttachments() const;
-	const std::vector<std::string> &getDepthStencilInputs() const;
-	const std::vector<std::string> &getDepthStencilFragmentInputAttachments() const;
+	const std::vector<std::string> &getSampledTextureInputs() const;
+	const std::vector<std::string> &getInputAttachmentInputs() const;
+
+	const std::vector<RenderPassStorageTexture> &getStorageTextures() const;
+
+	const std::string &getPassName() const;
+	RenderGraphPipelineType getPipelineType() const;
 
 	private:
 
-	std::string nodeName;
-	uint32_t pipelineType;
+	std::string passName;
+	RenderGraphPipelineType pipelineType;
+	bool hasDepthStencilAttachment;
 
-	std::vector<std::pair<std::string, RenderPassOutputAttachment>> colorOutputs;
-	std::pair<std::string, RenderPassOutputAttachment> depthStencilOutput;
+	std::vector<RenderPassOutputAttachment> colorAttachmentOutputs;
+	RenderPassOutputAttachment depthStencilAttachmentOutput;
 
-	std::vector<std::string> colorInputs;
-	std::vector<std::string> depthStencilInputs;
-	std::vector<std::string> colorInputAttachments;
-	std::vector<std::string> depthStencilInputAttachments;
+	std::vector<std::string> sampledTextureInputs;
+	std::vector<std::string> inputAttachmentInputs;
+
+	std::vector<RenderPassStorageTexture> storageTextures;
 
 	std::function<void(const RenderGraphInitFunctionData&)> initFunction;
 	std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> descriptorUpdateFunction;
 	std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> renderFunction;
 };
 
-#endif /* RENDERERCORE_FRAMEGRAPHRENDERPASS_H_ */
+#endif /* RENDERERCORE_RENDERGRAPHRENDERPASS_H_ */
