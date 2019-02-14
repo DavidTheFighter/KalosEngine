@@ -17,8 +17,6 @@ struct VulkanTexture : public RendererTexture
 {
 		VkImage imageHandle;
 		VmaAllocation imageMemory;
-
-		VkFormat imageFormat;
 };
 
 struct VulkanTextureView : public RendererTextureView

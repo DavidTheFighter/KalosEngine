@@ -44,6 +44,9 @@ void RendererRenderGraph::findResourceAliasingCandidates(const std::vector<size_
 
 			glm::uvec2 &lifetime = attachmentUsageLifetimes[passResources[s]];
 			lifetime = glm::uvec2(std::min<uint32_t>(lifetime.x, i), std::max<uint32_t>(lifetime.y, i));
+
+			if (passResources[s] == outputAttachmentName)
+				lifetime.y = ~0u;
 		}
 	}
 

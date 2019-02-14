@@ -269,7 +269,7 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 
 		D3D12TextureView *graphTextureView = new D3D12TextureView();
 		graphTextureView->parentTexture = graphTexture.rendererTexture;
-		graphTextureView->viewType = TEXTURE_VIEW_TYPE_2D;
+		graphTextureView->viewType = data.attachment.viewType;
 		graphTextureView->viewFormat = data.attachment.format;
 		graphTextureView->baseMip = 0;
 		graphTextureView->mipCount = data.attachment.mipLevels;
@@ -282,7 +282,7 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 		{
 			graphTextureView = new D3D12TextureView();
 			graphTextureView->parentTexture = graphTexture.rendererTexture;
-			graphTextureView->viewType = TEXTURE_VIEW_TYPE_2D;
+			graphTextureView->viewType = data.attachment.viewType;
 			graphTextureView->viewFormat = data.attachment.format;
 			graphTextureView->baseMip = m;
 			graphTextureView->mipCount = 1;
@@ -296,7 +296,7 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 		{
 			graphTextureView = new D3D12TextureView();
 			graphTextureView->parentTexture = graphTexture.rendererTexture;
-			graphTextureView->viewType = TEXTURE_VIEW_TYPE_2D;
+			graphTextureView->viewType = data.attachment.viewType;
 			graphTextureView->viewFormat = data.attachment.format;
 			graphTextureView->baseMip = 0;
 			graphTextureView->mipCount = 1;

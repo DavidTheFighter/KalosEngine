@@ -749,7 +749,6 @@ Texture VulkanRenderer::createTexture (suvec3 extent, ResourceFormat format, Tex
 #endif
 
 	VulkanTexture *tex = new VulkanTexture();
-	tex->imageFormat = toVkFormat(format);
 	tex->width = extent.x;
 	tex->height = extent.y;
 	tex->depth = extent.z;
@@ -793,7 +792,7 @@ TextureView VulkanRenderer::createTextureView (Texture texture, TextureViewType 
 	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	imageViewCreateInfo.image = vkTex->imageHandle;
 	imageViewCreateInfo.viewType = toVkImageViewType(viewType);
-	imageViewCreateInfo.format = viewFormat == RESOURCE_FORMAT_UNDEFINED ? vkTex->imageFormat : toVkFormat(viewFormat);
+	imageViewCreateInfo.format = viewFormat == RESOURCE_FORMAT_UNDEFINED ? toVkFormat(vkTex->textureFormat) : toVkFormat(viewFormat);
 	imageViewCreateInfo.subresourceRange.aspectMask = isVkDepthFormat(imageViewCreateInfo.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 	imageViewCreateInfo.subresourceRange.baseMipLevel = subresourceRange.baseMipLevel;
 	imageViewCreateInfo.subresourceRange.levelCount = subresourceRange.levelCount;

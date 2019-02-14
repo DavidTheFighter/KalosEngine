@@ -9,48 +9,38 @@
 #include <RendererCore/Vulkan/VulkanEnums.h>
 #include <RendererCore/Vulkan/VulkanObjects.h>
 
+class VulkanRenderer;
+
 typedef struct
 {
-	//RenderPassAttachment attachment;
-	VkImageUsageFlags usageFlags;
-
-	VkImage imageHandle;
-	VmaAllocation imageMemory;
+	RenderPassAttachment attachment;
+	VulkanTexture *rendererTexture;
 
 } VulkanRenderGraphImage;
 
-typedef enum
+typedef struct
 {
-	VKRG_OPCODE_BEGIN_RENDER_PASS,
-	VKRG_OPCODE_END_RENDER_PASS,
-	VKRG_OPCODE_NEXT_SUBPASS,
-	VKRG_OPCODE_POST_BLIT,
-	VKRG_OPCODE_CALL_RENDER_FUNC,
-	VKRG_OPCODE_MAX_ENUM
-} VulkanRenderGraphOpCode;
+	RenderPassAttachment attachment;
+	TextureView textureView;
+
+} VulkanRenderGraphTextureView;
 
 typedef struct
 {
-	VkRenderPass renderPass;
-	VkFramebuffer framebuffer;
-	suvec3 size; // {width, height, arrayLayers}
-	std::vector<VkClearValue> clearValues;
+	RenderGraphPipelineType pipelineType;
+	VkRenderPass renderPassHandle;
+	VkFramebuffer framebufferHandle;
 	VkSubpassContents subpassContents;
+	glm::uvec3 renderArea; // {width, height, arrayLayers}
 
-} VulkanRenderGraphBeginRenderPassData;
+	std::vector<size_t> passIndices;
+	std::vector<VkClearValue> clearValues;
 
-typedef struct
-{
-	size_t graphImageIndex;
-} VulkanRenderGraphPostBlitOpData;
+	std::vector<VkImageMemoryBarrier> imageBarriers;
+	std::vector<VkBufferMemoryBarrier> bufferBarriers;
+	std::vector<VkMemoryBarrier> memoryBarriers;
 
-typedef struct
-{
-	size_t passIndex;
-	uint32_t counter;
-} VulkanRenderGraphCallRenderFuncOpData;
-
-class VulkanRenderer;
+} VulkanRenderGraphRenderPass;
 
 class VulkanRenderGraph : public RendererRenderGraph
 {
@@ -61,18 +51,26 @@ class VulkanRenderGraph : public RendererRenderGraph
 
 	Semaphore execute(bool returnWaitableSemaphore);
 
-	virtual TextureView getRenderGraphOutputTextureView();
-
-	protected:
-
-	virtual void assignPhysicalResources(const std::vector<size_t> &passStack);
-	virtual void finishBuild(const std::vector<size_t> &passStack);
+	TextureView getRenderGraphOutputTextureView();
 
 	private:
 
 	VulkanRenderer *renderer;
 
-	void cleanupResources();
+	size_t execCounter; // A counter incremented every time the execute() method is called, used for n-buffering of the command buffers
+
+	std::vector<CommandPool> gfxCommandPools;
+	std::vector<CommandBuffer> gfxCommandBuffers;
+	std::vector<Semaphore> executionDoneSemaphores;
+
+	std::vector<VulkanRenderGraphImage> graphTextures;
+	std::vector<VulkanRenderGraphRenderPass> finalRenderPasses;
+
+	std::map<std::string, VulkanRenderGraphTextureView> graphTextureViews;
+	std::map<std::string, VkImageLayout> graphImageViewsInitialImageLayout;
+
+	void assignPhysicalResources(const std::vector<size_t> &passStack);
+	void finishBuild(const std::vector<size_t> &passStack);
 };
 
 #endif

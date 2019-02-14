@@ -45,6 +45,10 @@ class RendererRenderGraph
 	virtual void findResourceAliasingCandidates(const std::vector<size_t> &passStack);
 	virtual void assignPhysicalResources(const std::vector<size_t> &passStack) = 0;
 	virtual void finishBuild(const std::vector<size_t> &passStack) = 0;
+
+	void recursiveFindWritePasses(const std::string &resourceName, std::vector<size_t> &passStack);
+	void optimizePassOrder(std::vector<size_t> &passStack);
+	bool checkIsMergeValid(size_t passIndex, size_t writePassIndex, const std::vector<size_t> &passStack);
 };
 
 typedef RendererRenderGraph *RenderGraph;

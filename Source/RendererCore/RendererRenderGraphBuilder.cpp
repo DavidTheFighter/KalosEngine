@@ -1,9 +1,5 @@
 #include "RendererCore/RenderGraphRenderPass.h"
 
-inline void recursiveFindWritePasses(const std::string &resourceName, std::vector<size_t> &passStack, const std::vector<std::unique_ptr<RenderGraphRenderPass>> &passes);
-inline void optimizePassOrder(std::vector<size_t> &passStack, bool enablePassMerging, const std::vector<std::unique_ptr<RenderGraphRenderPass>> &passes);
-
-inline bool checkIsMergeValid(size_t passIndex, size_t writePassIndex, const std::vector<size_t> &passStack, const std::vector<std::unique_ptr<RenderGraphRenderPass>> &passes);
 inline bool attachmentContainsPassInDependencyChain(const std::string &name, size_t pass, const std::vector<std::unique_ptr<RenderGraphRenderPass>> &passes);
 inline std::vector<size_t> getPassesThatWriteToResource(const std::string &resourceName, const std::vector<std::unique_ptr<RenderGraphRenderPass>> &passes);
 inline bool passContainsPassInDependencyChain(size_t passIndex, size_t writePassIndex, const std::vector<std::unique_ptr<RenderGraphRenderPass>> &passes);
@@ -22,17 +18,17 @@ void RendererRenderGraph::build(bool doValidation)
 
 	std::vector<size_t> passStack;
 
-	recursiveFindWritePasses(outputAttachmentName, passStack, passes);
+	recursiveFindWritePasses(outputAttachmentName, passStack);
 	std::reverse(passStack.begin(), passStack.end());
 
-	optimizePassOrder(passStack, enableRenderPassMerging, passes);
+	optimizePassOrder(passStack);
 
 	findResourceAliasingCandidates(passStack);
 	assignPhysicalResources(passStack);
 	finishBuild(passStack);
 }
 
-inline void recursiveFindWritePasses(const std::string &resourceName, std::vector<size_t> &passStack, const std::vector<std::unique_ptr<RenderGraphRenderPass>> &passes)
+void RendererRenderGraph::recursiveFindWritePasses(const std::string &resourceName, std::vector<size_t> &passStack)
 {
 	std::vector<size_t> writePasses = getPassesThatWriteToResource(resourceName, passes);
 
@@ -52,18 +48,18 @@ inline void recursiveFindWritePasses(const std::string &resourceName, std::vecto
 		RenderGraphRenderPass &renderPass = *passes[writePasses[i]].get();
 
 		for (size_t j = 0; j < renderPass.getSampledTextureInputs().size(); j++)
-			recursiveFindWritePasses(renderPass.getSampledTextureInputs()[j], passStack, passes);
+			recursiveFindWritePasses(renderPass.getSampledTextureInputs()[j], passStack);
 
 		for (size_t j = 0; j < renderPass.getInputAttachmentInputs().size(); j++)
-			recursiveFindWritePasses(renderPass.getInputAttachmentInputs()[j], passStack, passes);
+			recursiveFindWritePasses(renderPass.getInputAttachmentInputs()[j], passStack);
 
 		for (size_t j = 0; j < renderPass.getStorageTextures().size(); j++)
 			if (renderPass.getStorageTextures()[j].canReadAsInput)
-				recursiveFindWritePasses(renderPass.getStorageTextures()[j].textureName, passStack, passes);
+				recursiveFindWritePasses(renderPass.getStorageTextures()[j].textureName, passStack);
 	}
 }
 
-inline void optimizePassOrder(std::vector<size_t> &passStack, bool enablePassMerging, const std::vector<std::unique_ptr<RenderGraphRenderPass>> &passes)
+void RendererRenderGraph::optimizePassOrder(std::vector<size_t> &passStack)
 {
 	std::vector<size_t> unscheduledPasses(passStack);
 	std::vector<size_t> scheduledPasses;
@@ -100,7 +96,7 @@ inline void optimizePassOrder(std::vector<size_t> &passStack, bool enablePassMer
 
 			uint32_t overlapScore = 0;
 
-			if (enablePassMerging && checkIsMergeValid(scheduledPasses.back(), unscheduledPasses[i], unscheduledPasses, passes))
+			if (enableRenderPassMerging && checkIsMergeValid(scheduledPasses.back(), unscheduledPasses[i], unscheduledPasses))
 			{
 				overlapScore = ~0u;
 			}
@@ -135,7 +131,7 @@ inline void optimizePassOrder(std::vector<size_t> &passStack, bool enablePassMer
 	passStack = scheduledPasses;
 }
 
-inline bool checkIsMergeValid(size_t passIndex, size_t writePassIndex, const std::vector<size_t> &passStack, const std::vector<std::unique_ptr<RenderGraphRenderPass>> &passes)
+bool RendererRenderGraph::checkIsMergeValid(size_t passIndex, size_t writePassIndex, const std::vector<size_t> &passStack)
 {
 	if (passIndex == writePassIndex)
 		return false;
@@ -214,7 +210,7 @@ inline bool checkIsMergeValid(size_t passIndex, size_t writePassIndex, const std
 
 	for (size_t p = 0; p < passStack.size(); p++)
 	{
-		if (checkIsMergeValid(writePassIndex, p, passStack, passes))
+		if (checkIsMergeValid(writePassIndex, p, passStack))
 		{
 			RenderGraphRenderPass &writeWritePass = *passes[p];
 
