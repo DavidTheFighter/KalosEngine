@@ -77,6 +77,9 @@ void VulkanCommandPool::resetCommandPoolAndFreeCommandBuffers (const std::vector
 void VulkanCommandPool::resetCommandPool ()
 {
 	VK_CHECK_RESULT(vkResetCommandPool(device, poolHandle, 0));
+
+	for (size_t i = 0; i < allocatedCmdLists.size(); i++)
+		allocatedCmdLists[i]->startedRecording = false;
 }
 
 #endif

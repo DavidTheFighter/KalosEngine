@@ -59,6 +59,7 @@ class VulkanCommandBuffer : public RendererCommandBuffer
 		bool startedRecording;
 
 		friend class VulkanRenderer;
+		friend class VulkanCommandPool;
 };
 
 #endif
