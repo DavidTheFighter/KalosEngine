@@ -23,8 +23,8 @@ ComputeTest::ComputeTest(Renderer *rendererPtr)
 		testOut.format = RESOURCE_FORMAT_R8G8B8A8_UNORM;
 		testOut.namedRelativeSize = "swapchain";
 
-		auto &test = gfxGraph->addRenderPass("test", RENDER_GRAPH_PIPELINE_TYPE_GRAPHICS);
-		test.addColorAttachmentOutput("testOut", testOut);
+		auto &test = gfxGraph->addRenderPass("test", RENDER_GRAPH_PIPELINE_TYPE_COMPUTE);
+		test.addStorageTexture("testOut", testOut, false, true);
 
 		test.setInitFunction(std::bind(&ComputeTest::passInit, this, std::placeholders::_1));
 		test.setDescriptorUpdateFunction(std::bind(&ComputeTest::passDescUpdate, this, std::placeholders::_1));
@@ -79,7 +79,7 @@ void ComputeTest::passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFun
 
 void ComputeTest::render()
 {
-	//renderDoneSemaphore = gfxGraph->execute();
+	renderDoneSemaphore = gfxGraph->execute(true);
 }
 
 void ComputeTest::createPipeline(const RenderGraphInitFunctionData &data)
@@ -99,6 +99,8 @@ void ComputeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	info.shader = compShaderStage;
 	info.inputPushConstants = {0, 0};
 	info.inputSetLayouts = {set0};
+
+	compPipeline = renderer->createComputePipeline(info);
 
 	renderer->destroyShaderModule(compShaderStage.shaderModule);
 

@@ -36,9 +36,13 @@ typedef struct
 	std::vector<size_t> passIndices;
 	std::vector<VkClearValue> clearValues;
 
-	std::vector<VkImageMemoryBarrier> imageBarriers;
-	std::vector<VkBufferMemoryBarrier> bufferBarriers;
-	std::vector<VkMemoryBarrier> memoryBarriers;
+	std::vector<VkImageMemoryBarrier> beforeRenderImageBarriers;
+	std::vector<VkBufferMemoryBarrier> beforeRenderBufferBarriers;
+	std::vector<VkMemoryBarrier> beforeRenderMemoryBarriers;
+
+	std::vector<VkImageMemoryBarrier> afterRenderImageBarriers;
+	std::vector<VkBufferMemoryBarrier> afterRenderBufferBarriers;
+	std::vector<VkMemoryBarrier> afterRenderMemoryBarriers;
 
 } VulkanRenderGraphRenderPass;
 

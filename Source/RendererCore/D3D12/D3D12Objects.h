@@ -51,6 +51,8 @@ struct D3D12DescriptorSet : public RendererDescriptorSet
 	uint32_t samplerCount;
 	uint32_t constantBufferCount;
 	uint32_t inputAtttachmentCount;
+	uint32_t storageBufferCount;
+	uint32_t storageTextureCount;
 	uint32_t sampledTextureCount;
 
 	DescriptorPool parentPool;

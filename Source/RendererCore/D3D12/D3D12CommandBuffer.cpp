@@ -70,11 +70,19 @@ void D3D12CommandBuffer::bindPipeline(PipelineBindPoint point, Pipeline pipeline
 	D3D12Pipeline *d3dpipeline = static_cast<D3D12Pipeline*>(pipeline);
 	cxt_currentGraphicsPipeline = d3dpipeline;
 
-	cmdList->SetGraphicsRootSignature(d3dpipeline->rootSignature);
-	cmdList->SetPipelineState(d3dpipeline->pipeline);
+	if (point == PIPELINE_BIND_POINT_GRAPHICS)
+	{
+		cmdList->SetGraphicsRootSignature(d3dpipeline->rootSignature);
+		cmdList->SetPipelineState(d3dpipeline->pipeline);
 
-	cmdList->IASetPrimitiveTopology(primitiveTopologyToD3DPrimitiveTopology(d3dpipeline->gfxPipelineInfo.inputAssemblyInfo.topology, d3dpipeline->gfxPipelineInfo.tessellationPatchControlPoints));
-	cmdList->OMSetBlendFactor(d3dpipeline->gfxPipelineInfo.colorBlendInfo.blendConstants);
+		cmdList->IASetPrimitiveTopology(primitiveTopologyToD3DPrimitiveTopology(d3dpipeline->gfxPipelineInfo.inputAssemblyInfo.topology, d3dpipeline->gfxPipelineInfo.tessellationPatchControlPoints));
+		cmdList->OMSetBlendFactor(d3dpipeline->gfxPipelineInfo.colorBlendInfo.blendConstants);
+	}
+	else if (point == PIPELINE_BIND_POINT_COMPUTE)
+	{
+		cmdList->SetComputeRootSignature(d3dpipeline->rootSignature);
+		cmdList->SetPipelineState(d3dpipeline->pipeline);
+	}
 }
 
 void D3D12CommandBuffer::bindIndexBuffer(Buffer buffer, size_t offset, bool uses32BitIndices)
@@ -148,6 +156,7 @@ void D3D12CommandBuffer::drawIndexed(uint32_t indexCount, uint32_t instanceCount
 
 void D3D12CommandBuffer::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 {
+	cmdList->Dispatch(groupCountX, groupCountY, groupCountZ);
 }
 
 void D3D12CommandBuffer::pushConstants(uint32_t offset, uint32_t size, const void *data)
@@ -195,7 +204,10 @@ void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t fi
 			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetGPUDescriptorHandleForHeapStart();
 			descHandle.ptr += renderer->cbvSrvUavDescriptorSize * (d3dset->srvUavCbvStartDescriptorSlot);
 
-			cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);
+			if (point == PIPELINE_BIND_POINT_GRAPHICS)
+				cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);
+			else if (point == PIPELINE_BIND_POINT_COMPUTE)
+				cmdList->SetComputeRootDescriptorTable(baseRootParameter, descHandle);
 
 			baseRootParameter++;
 		}
@@ -205,7 +217,10 @@ void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t fi
 			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->samplerHeap->GetGPUDescriptorHandleForHeapStart();
 			descHandle.ptr += renderer->samplerDescriptorSize * (d3dset->samplerStartDescriptorSlot);
 
-			cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);
+			if (point == PIPELINE_BIND_POINT_GRAPHICS)
+				cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);
+			else if (point == PIPELINE_BIND_POINT_COMPUTE)
+				cmdList->SetComputeRootDescriptorTable(baseRootParameter, descHandle);
 
 			baseRootParameter++;
 		}

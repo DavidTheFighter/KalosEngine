@@ -54,8 +54,8 @@ Semaphore VulkanRenderGraph::execute(bool returnWaitableSemaphore)
 	{
 		const VulkanRenderGraphRenderPass &passData = finalRenderPasses[pass];
 
-		//if ((passData.imageBarriers.size() + passData.bufferBarriers.size() + passData.memoryBarriers.size()) > 0)
-
+		if ((passData.beforeRenderImageBarriers.size() + passData.beforeRenderBufferBarriers.size() + passData.beforeRenderMemoryBarriers.size()) > 0)
+			vkCmdPipelineBarrier(cmdBuffer->bufferHandle, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, (uint32_t) passData.beforeRenderMemoryBarriers.size(), passData.beforeRenderMemoryBarriers.data(), (uint32_t) passData.beforeRenderBufferBarriers.size(), passData.beforeRenderBufferBarriers.data(), (uint32_t) passData.beforeRenderImageBarriers.size(), passData.beforeRenderImageBarriers.data());
 
 		if (passData.pipelineType == RENDER_GRAPH_PIPELINE_TYPE_GRAPHICS)
 		{
@@ -73,6 +73,9 @@ Semaphore VulkanRenderGraph::execute(bool returnWaitableSemaphore)
 
 		if (passData.pipelineType == RENDER_GRAPH_PIPELINE_TYPE_GRAPHICS)
 			cmdBuffer->vulkan_endRenderPass();
+
+		if ((passData.afterRenderImageBarriers.size() + passData.afterRenderBufferBarriers.size() + passData.afterRenderMemoryBarriers.size()) > 0)
+			vkCmdPipelineBarrier(cmdBuffer->bufferHandle, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, (uint32_t) passData.afterRenderMemoryBarriers.size(), passData.afterRenderMemoryBarriers.data(), (uint32_t) passData.afterRenderBufferBarriers.size(), passData.afterRenderBufferBarriers.data(), (uint32_t) passData.afterRenderImageBarriers.size(), passData.afterRenderImageBarriers.data());
 	}
 
 	cmdBuffer->endCommands();
@@ -595,12 +598,113 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 		}
 		else if (passData.pipelineType == RENDER_GRAPH_PIPELINE_TYPE_COMPUTE)
 		{
+			const RenderGraphRenderPass &pass = *passes[passStack[passStackIndex]];
+
+			for (size_t i = 0; i < pass.getSampledTextureInputs().size(); i++)
+			{
+				const std::string &textureName = pass.getSampledTextureInputs()[i];
+				bool textureIsInDepthFormat = isDepthFormat(graphTextureViews[textureName].textureView->viewFormat);
+				VkImageLayout currentLayout = resourceStates[textureName].currentLayout;
+				VkImageLayout requiredLayout = textureIsInDepthFormat ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+				if (currentLayout != requiredLayout)
+				{
+					VkImageMemoryBarrier barrier = {};
+					barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+					barrier.pNext = nullptr;
+					barrier.srcAccessMask = getAccessFlagsForImageLayoutTransition(currentLayout);
+					barrier.dstAccessMask = getAccessFlagsForImageLayoutTransition(requiredLayout);
+					barrier.oldLayout = currentLayout;
+					barrier.newLayout = requiredLayout;
+					barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					barrier.image = static_cast<VulkanTexture*>(graphTextureViews[textureName].textureView->parentTexture)->imageHandle;
+					barrier.subresourceRange.aspectMask = textureIsInDepthFormat ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+					barrier.subresourceRange.baseMipLevel = 0;
+					barrier.subresourceRange.levelCount = graphTextureViews[textureName].attachment.mipLevels;
+					barrier.subresourceRange.baseArrayLayer = 0;
+					barrier.subresourceRange.layerCount = graphTextureViews[textureName].attachment.arrayLayers;
+
+					passData.beforeRenderImageBarriers.push_back(barrier);
+				}
+
+				resourceStates[textureName].currentLayout = requiredLayout;
+			}
+
+			for (size_t st = 0; st < pass.getStorageTextures().size(); st++)
+			{
+				const RenderPassStorageTexture &storageTexture = pass.getStorageTextures()[st];
+				bool textureIsInDepthFormat = isDepthFormat(graphTextureViews[storageTexture.textureName].textureView->viewFormat);
+				VkImageLayout currentLayout = resourceStates[storageTexture.textureName].currentLayout;
+				VkImageLayout requiredLayout = toVkImageLayout(storageTexture.passBeginLayout);
+
+				if (currentLayout != requiredLayout)
+				{
+					VkImageMemoryBarrier barrier = {};
+					barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+					barrier.pNext = nullptr;
+					barrier.srcAccessMask = getAccessFlagsForImageLayoutTransition(currentLayout);
+					barrier.dstAccessMask = getAccessFlagsForImageLayoutTransition(requiredLayout);
+					barrier.oldLayout = currentLayout;
+					barrier.newLayout = requiredLayout;
+					barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					barrier.image = static_cast<VulkanTexture*>(graphTextureViews[storageTexture.textureName].textureView->parentTexture)->imageHandle;
+					barrier.subresourceRange.aspectMask = textureIsInDepthFormat ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+					barrier.subresourceRange.baseMipLevel = 0;
+					barrier.subresourceRange.levelCount = graphTextureViews[storageTexture.textureName].attachment.mipLevels;
+					barrier.subresourceRange.baseArrayLayer = 0;
+					barrier.subresourceRange.layerCount = graphTextureViews[storageTexture.textureName].attachment.arrayLayers;
+
+					passData.beforeRenderImageBarriers.push_back(barrier);
+				}
+
+				resourceStates[storageTexture.textureName].currentLayout = toVkImageLayout(storageTexture.passEndLayout);
+
+				if (storageTexture.textureName == outputAttachmentName)
+				{
+					VkImageMemoryBarrier barrier = {};
+					barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+					barrier.pNext = nullptr;
+					barrier.srcAccessMask = getAccessFlagsForImageLayoutTransition(requiredLayout);
+					barrier.dstAccessMask = getAccessFlagsForImageLayoutTransition(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+					barrier.oldLayout = requiredLayout;
+					barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					barrier.image = static_cast<VulkanTexture*>(graphTextureViews[storageTexture.textureName].textureView->parentTexture)->imageHandle;
+					barrier.subresourceRange.aspectMask = textureIsInDepthFormat ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+					barrier.subresourceRange.baseMipLevel = 0;
+					barrier.subresourceRange.levelCount = graphTextureViews[storageTexture.textureName].attachment.mipLevels;
+					barrier.subresourceRange.baseArrayLayer = 0;
+					barrier.subresourceRange.layerCount = graphTextureViews[storageTexture.textureName].attachment.arrayLayers;
+
+					passData.afterRenderImageBarriers.push_back(barrier);
+
+					resourceStates[storageTexture.textureName].currentLayout = barrier.newLayout;
+				}
+			}
+
 			passData.passIndices.push_back(passStack[passStackIndex]);
 
+			RenderGraphInitFunctionData initData = {};
+			initData.renderPassHandle = nullptr;
+			initData.baseSubpass = 0;
+
+			passes[passStack[passStackIndex]]->getInitFunction()(initData);
 		}
 
 		finalRenderPasses.push_back(passData);
 	}
+
+	RenderGraphDescriptorUpdateFunctionData descUpdateData = {};
+	
+	for (auto textureViewIt = graphTextureViews.begin(); textureViewIt != graphTextureViews.end(); textureViewIt++)
+		descUpdateData.graphTextureViews[textureViewIt->first] = textureViewIt->second.textureView;
+
+	for (size_t i = 0; i < finalRenderPasses.size(); i++)
+		for (size_t p = 0; p < finalRenderPasses[i].passIndices.size(); p++)
+			passes[finalRenderPasses[i].passIndices[p]]->getDescriptorUpdateFunction()(descUpdateData);
 }
 
 TextureView VulkanRenderGraph::getRenderGraphOutputTextureView()

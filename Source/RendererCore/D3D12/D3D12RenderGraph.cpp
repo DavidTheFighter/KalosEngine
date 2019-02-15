@@ -259,11 +259,13 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 
 		D3D12_RESOURCE_STATES textureState = graphTextureViewsInitialResourceState[it->first];
 
+		bool useClearValue = (texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) || (texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+
 		D3D12_CLEAR_VALUE optClearValue = {};
 		optClearValue.Format = texDesc.Format;
 		memcpy(optClearValue.Color, data.clearValue.color.float32, sizeof(optClearValue.Color));
 
-		DX_CHECK_RESULT(renderer->device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &texDesc, textureState, &optClearValue, IID_PPV_ARGS(&graphTexture.rendererTexture->textureResource)));
+		DX_CHECK_RESULT(renderer->device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &texDesc, textureState, useClearValue ? &optClearValue : nullptr, IID_PPV_ARGS(&graphTexture.rendererTexture->textureResource)));
 
 		graphTextures.push_back(graphTexture);
 
@@ -614,6 +616,12 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 
 		finalPasses.push_back(passData);
 	}
+
+	RenderGraphDescriptorUpdateFunctionData descUpdateData = {};
+	descUpdateData.graphTextureViews = graphTextureViews;
+
+	for (size_t i = 0; i < finalPasses.size(); i++)
+		passes[finalPasses[i].passIndex]->getDescriptorUpdateFunction()(descUpdateData);
 }
 
 #endif

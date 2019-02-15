@@ -328,7 +328,10 @@ typedef struct RendererDescriptorSet
 
 typedef struct RendererPipeline
 {
+	PipelineBindPoint pipelineBindPoint;
+
 	GraphicsPipelineInfo gfxPipelineInfo;
+	ComputePipelineInfo computePipelineInfo;
 } RendererPipeline;
 
 typedef struct RendererFramebuffer

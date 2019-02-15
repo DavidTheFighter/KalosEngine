@@ -16,7 +16,8 @@ class D3D12PipelineHelper
 	D3D12PipelineHelper(D3D12Renderer *rendererPtr);
 	virtual ~D3D12PipelineHelper();
 
-	Pipeline createGraphicsPipeline(const GraphicsPipelineInfo & pipelineInfo, RenderPass renderPass, uint32_t subpass);
+	Pipeline createGraphicsPipeline(const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass);
+	Pipeline createComputePipeline(const ComputePipelineInfo &pipelineInfo);
 
 	private:
 

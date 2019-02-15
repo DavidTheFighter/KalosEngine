@@ -454,13 +454,86 @@ inline D3D12_SHADER_RESOURCE_VIEW_DESC createSRVDescFromTextureView(TextureView 
 	return viewDesc;
 }
 
+inline D3D12_UNORDERED_ACCESS_VIEW_DESC createUAVDescFromTextureView(TextureView view)
+{
+	D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc = {};
+	viewDesc.Format = ResourceFormatToDXGIFormat(view->viewFormat);
+	viewDesc.ViewDimension = textureViewTypeToD3D12UAVDimension(view->viewType);
+
+	switch (view->viewType)
+	{
+		case TEXTURE_VIEW_TYPE_1D:
+		{
+			D3D12_TEX1D_UAV tex = {};
+			tex.MipSlice = view->baseMip;
+
+			viewDesc.Texture1D = tex;
+			break;
+		}
+		case TEXTURE_VIEW_TYPE_1D_ARRAY:
+		{
+			D3D12_TEX1D_ARRAY_UAV tex = {};
+			tex.MipSlice = view->baseMip;
+			tex.FirstArraySlice = view->baseLayer;
+			tex.ArraySize = view->layerCount;
+
+			viewDesc.Texture1DArray = tex;
+			break;
+		}
+		case TEXTURE_VIEW_TYPE_2D:
+		{
+			D3D12_TEX2D_UAV tex = {};
+			tex.MipSlice = view->baseMip;
+			tex.PlaneSlice = 0;
+
+			viewDesc.Texture2D = tex;
+			break;
+		}
+		case TEXTURE_VIEW_TYPE_2D_ARRAY:
+		case TEXTURE_VIEW_TYPE_CUBE:
+		case TEXTURE_VIEW_TYPE_CUBE_ARRAY:
+		{
+			D3D12_TEX2D_ARRAY_UAV tex = {};
+			tex.MipSlice = view->baseMip;
+			tex.FirstArraySlice = view->baseLayer;
+			tex.ArraySize = view->layerCount;
+			tex.PlaneSlice = 0;
+
+			viewDesc.Texture2DArray = tex;
+			break;
+		}
+		case TEXTURE_VIEW_TYPE_3D:
+		{
+			D3D12_TEX3D_UAV tex = {};
+			tex.MipSlice = view->baseMip;
+			tex.FirstWSlice = 0;
+			tex.WSize = view->parentTexture->depth;
+
+			viewDesc.Texture3D = tex;
+			break;
+		}
+		default:
+		{
+			D3D12_TEX2D_UAV tex = {};
+			tex.MipSlice = 0;
+			tex.PlaneSlice = 0;
+
+			viewDesc.Texture2D = tex;
+			break;
+		}
+	}
+
+	return viewDesc;
+}
+
 void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<DescriptorWriteInfo>& writes)
 {
 	D3D12DescriptorSet *d3dset = static_cast<D3D12DescriptorSet*>(dstSet);
 
 	uint32_t constantBufferOffset = 0;
 	uint32_t inputAttachmentOffset = constantBufferOffset + d3dset->constantBufferCount;
-	uint32_t sampledTextureOffset = inputAttachmentOffset + d3dset->inputAtttachmentCount;
+	uint32_t storageTextureOffset = inputAttachmentOffset + d3dset->sampledTextureCount;
+	uint32_t sampledTextureOffset = storageTextureOffset + d3dset->inputAtttachmentCount;
 
 	for (size_t i = 0; i < writes.size(); i++)
 	{
@@ -498,6 +571,17 @@ void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<
 				D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.inputAttachmentInfo.view);
 
 				device->CreateShaderResourceView(static_cast<D3D12Texture*>(writeInfo.inputAttachmentInfo.view->parentTexture)->textureResource, &viewDesc, descHandle);
+
+				break;
+			}
+			case DESCRIPTOR_TYPE_STORAGE_TEXTURE:
+			{
+				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
+				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + storageTextureOffset);
+
+				D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc = createUAVDescFromTextureView(writeInfo.sampledTextureInfo.view);
+
+				device->CreateUnorderedAccessView(static_cast<D3D12Texture*>(writeInfo.sampledTextureInfo.view->parentTexture)->textureResource, nullptr, &viewDesc, descHandle);
 
 				break;
 			}
@@ -548,6 +632,7 @@ ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string &sour
 
 	std::string modSource = source;
 	modSource = std::string(D3D12_HLSL_SAMPLED_TEXTURE_PREPROCESSOR) + "\n" + modSource;
+	modSource = std::string(D3D12_HLSL_STORAGE_TEXTURE_PREPROCESSOR) + "\n" + modSource;
 	modSource = std::string(D3D12_HLSL_INPUT_ATTACHMENT_PREPROCESSOR) + "\n" + modSource;
 	modSource = std::string(D3D12_HLSL_CBUFFER_PREPROCESSOR) + "\n" + modSource;
 	modSource = std::string(D3D12_HLSL_SAMPLER_PREPROCESSOR) + "\n" + modSource;
@@ -584,11 +669,7 @@ Pipeline D3D12Renderer::createGraphicsPipeline(const GraphicsPipelineInfo & pipe
 
 Pipeline D3D12Renderer::createComputePipeline(const ComputePipelineInfo &pipelineInfo)
 {
-	D3D12Pipeline *pipeline = new D3D12Pipeline();
-
-
-
-	return pipeline;
+	return pipelineHelper->createComputePipeline(pipelineInfo);
 }
 
 DescriptorPool D3D12Renderer::createDescriptorPool(const DescriptorSetLayoutDescription &descriptorSetLayout, uint32_t poolBlockAllocSize)

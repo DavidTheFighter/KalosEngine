@@ -57,8 +57,8 @@ int main(int argc, char *argv[])
 	//launchArgs.push_back("-triangle_test");
 	//launchArgs.push_back("-vertex_index_buffer_test");
 	//launchArgs.push_back("-push_constants_test");
-	launchArgs.push_back("-cube_test");
-	//launchArgs.push_back("-compute_test");
+	//launchArgs.push_back("-cube_test");
+	launchArgs.push_back("-compute_test");
 
 	Log::setInstance(new Log());
 
