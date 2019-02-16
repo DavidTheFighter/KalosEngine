@@ -28,8 +28,11 @@ class ComputeTest
 
 	Pipeline compPipeline;
 
+	CommandPool cmdPool;
 	DescriptorPool descPool;
 	DescriptorSet descSet;
+
+	Buffer testStorageBuffer;
 
 	void createPipeline(const RenderGraphInitFunctionData &data);
 

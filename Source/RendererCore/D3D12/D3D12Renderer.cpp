@@ -532,8 +532,9 @@ void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<
 
 	uint32_t constantBufferOffset = 0;
 	uint32_t inputAttachmentOffset = constantBufferOffset + d3dset->constantBufferCount;
-	uint32_t storageTextureOffset = inputAttachmentOffset + d3dset->sampledTextureCount;
-	uint32_t sampledTextureOffset = storageTextureOffset + d3dset->inputAtttachmentCount;
+	uint32_t storageBufferOffset = inputAttachmentOffset + d3dset->inputAtttachmentCount;
+	uint32_t storageTextureOffset = storageBufferOffset + d3dset->storageBufferCount;
+	uint32_t sampledTextureOffset = storageTextureOffset + d3dset->storageTextureCount;
 
 	for (size_t i = 0; i < writes.size(); i++)
 	{
@@ -571,6 +572,26 @@ void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<
 				D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.inputAttachmentInfo.view);
 
 				device->CreateShaderResourceView(static_cast<D3D12Texture*>(writeInfo.inputAttachmentInfo.view->parentTexture)->textureResource, &viewDesc, descHandle);
+
+				break;
+			}
+			case DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			{
+				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
+				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + storageBufferOffset);
+
+				D3D12_BUFFER_UAV buffer = {};
+				buffer.FirstElement = writeInfo.bufferInfo.offset / 4;
+				buffer.NumElements = writeInfo.bufferInfo.range / 4;
+				buffer.StructureByteStride = 0;
+				buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+
+				D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc = {};
+				viewDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+				viewDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+				viewDesc.Buffer = buffer;
+
+				device->CreateUnorderedAccessView(static_cast<D3D12Buffer*>(writeInfo.bufferInfo.buffer)->bufferResource, nullptr, &viewDesc, descHandle);
 
 				break;
 			}
@@ -633,6 +654,7 @@ ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string &sour
 	std::string modSource = source;
 	modSource = std::string(D3D12_HLSL_SAMPLED_TEXTURE_PREPROCESSOR) + "\n" + modSource;
 	modSource = std::string(D3D12_HLSL_STORAGE_TEXTURE_PREPROCESSOR) + "\n" + modSource;
+	modSource = std::string(D3D12_HLSL_STORAGE_BUFFER_PREPROCESSOR) + "\n" + modSource;
 	modSource = std::string(D3D12_HLSL_INPUT_ATTACHMENT_PREPROCESSOR) + "\n" + modSource;
 	modSource = std::string(D3D12_HLSL_CBUFFER_PREPROCESSOR) + "\n" + modSource;
 	modSource = std::string(D3D12_HLSL_SAMPLER_PREPROCESSOR) + "\n" + modSource;
@@ -857,7 +879,26 @@ Buffer D3D12Renderer::createBuffer(size_t size, BufferUsageType usage, bool canB
 		}
 	}
 
-	DX_CHECK_RESULT(device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(heapType), D3D12_HEAP_FLAG_NONE, &CD3DX12_RESOURCE_DESC::Buffer(size), initialState, nullptr, IID_PPV_ARGS(&buffer->bufferResource)));
+	D3D12_RESOURCE_DESC bufferDesc = {};
+	bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	bufferDesc.Alignment = 0;
+	bufferDesc.Width = size;
+	bufferDesc.Height = 1;
+	bufferDesc.DepthOrArraySize = 1;
+	bufferDesc.MipLevels = 1;
+	bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
+	bufferDesc.SampleDesc = {1, 0};
+	bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	switch (usage)
+	{
+		case BUFFER_USAGE_STORAGE_BUFFER:
+			bufferDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+			break;
+	}
+
+	DX_CHECK_RESULT(device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(heapType), D3D12_HEAP_FLAG_NONE, &bufferDesc, initialState, nullptr, IID_PPV_ARGS(&buffer->bufferResource)));
 
 	return buffer;
 }

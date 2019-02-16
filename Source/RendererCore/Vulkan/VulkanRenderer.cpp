@@ -877,6 +877,9 @@ Buffer VulkanRenderer::createBuffer(size_t size, BufferUsageType usage, bool can
 		case BUFFER_USAGE_INDIRECT_BUFFER:
 			bufferInfo.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
 			break;
+		case BUFFER_USAGE_STORAGE_BUFFER:
+			bufferInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+			break;
 	}
 
 	VmaAllocationCreateInfo allocInfo = {};

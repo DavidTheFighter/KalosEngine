@@ -13,8 +13,33 @@ ComputeTest::ComputeTest(Renderer *rendererPtr)
 	renderer = rendererPtr;
 
 	compPipeline = nullptr;
+	cmdPool = renderer->createCommandPool(QUEUE_TYPE_GRAPHICS, COMMAND_POOL_TRANSIENT_BIT);
 
 	renderTargetSampler = renderer->createSampler();
+
+	float storageData[64];
+	storageData[0] = 1.0f;
+	storageData[1] = 0.5f;
+
+	testStorageBuffer = renderer->createBuffer(256, BUFFER_USAGE_STORAGE_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
+	StagingBuffer storageStagingBuffer = renderer->createAndFillStagingBuffer(256, storageData);
+
+	Fence tempFence = renderer->createFence();
+
+	CommandBuffer cmdBuffer = cmdPool->allocateCommandBuffer();
+	cmdBuffer->beginCommands(COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	cmdBuffer->stageBuffer(storageStagingBuffer, testStorageBuffer);
+
+	cmdBuffer->endCommands();
+
+	renderer->submitToQueue(QUEUE_TYPE_GRAPHICS, {cmdBuffer}, {}, {}, {}, tempFence);
+
+	renderer->waitForFence(tempFence, 5);
+
+	cmdPool->resetCommandPoolAndFreeCommandBuffer(cmdBuffer);
+	renderer->destroyStagingBuffer(storageStagingBuffer);
+	renderer->destroyFence(tempFence);
 
 	{
 		gfxGraph = renderer->createRenderGraph();
@@ -41,7 +66,10 @@ ComputeTest::~ComputeTest()
 {
 	renderer->destroySampler(renderTargetSampler);
 
+	renderer->destroyBuffer(testStorageBuffer);
+
 	renderer->destroyDescriptorPool(descPool);
+	renderer->destroyCommandPool(cmdPool);
 
 	renderer->destroyPipeline(compPipeline);
 
@@ -62,10 +90,19 @@ void ComputeTest::passDescUpdate(const RenderGraphDescriptorUpdateFunctionData& 
 	testOutputInfo.layout = TEXTURE_LAYOUT_GENERAL;
 	testOutputInfo.view = data.graphTextureViews.at("testOut");
 
-	std::vector<DescriptorWriteInfo> writes(1);
+	DescriptorBufferInfo testStorageBufferInfo = {};
+	testStorageBufferInfo.buffer = testStorageBuffer;
+	testStorageBufferInfo.offset = 0;
+	testStorageBufferInfo.range = 256;
+
+	std::vector<DescriptorWriteInfo> writes(2);
 	writes[0].descriptorType = DESCRIPTOR_TYPE_STORAGE_TEXTURE;
 	writes[0].dstBinding = 0;
 	writes[0].sampledTextureInfo = testOutputInfo;
+
+	writes[1].descriptorType = DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	writes[1].dstBinding = 0;
+	writes[1].bufferInfo = testStorageBufferInfo;
 
 	renderer->writeDescriptorSets(descSet, writes);
 }
@@ -90,9 +127,9 @@ void ComputeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	compShaderStage.shaderModule = compShader;
 
 	DescriptorSetLayoutDescription set0 = {};
-	set0.storageBufferDescriptorCount = 0;
+	set0.storageBufferDescriptorCount = 1;
 	set0.storageTextureDescriptorCount = 1;
-	set0.storageBufferBindingsShaderStageAccess = {};
+	set0.storageBufferBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT};
 	set0.storageTextureBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT};
 
 	ComputePipelineInfo info = {};

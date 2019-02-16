@@ -241,6 +241,36 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 				allDescriptorStages |= setDesc.inputAttachmentBindingsShaderStageAccess[d];
 		}
 
+		if (setDesc.storageBufferDescriptorCount > 0)
+		{
+			D3D12_DESCRIPTOR_RANGE descRange = {};
+			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+			descRange.NumDescriptors = setDesc.storageBufferDescriptorCount;
+			descRange.BaseShaderRegister = 0;
+			descRange.RegisterSpace = (UINT) s;
+			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			ranges.push_back(descRange);
+
+			for (size_t d = 0; d < setDesc.storageBufferDescriptorCount; d++)
+				allDescriptorStages |= setDesc.storageBufferBindingsShaderStageAccess[d];
+		}
+
+		if (setDesc.storageTextureDescriptorCount > 0)
+		{
+			D3D12_DESCRIPTOR_RANGE descRange = {};
+			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+			descRange.NumDescriptors = setDesc.storageTextureDescriptorCount;
+			descRange.BaseShaderRegister = 10;
+			descRange.RegisterSpace = (UINT) s;
+			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			ranges.push_back(descRange);
+
+			for (size_t d = 0; d < setDesc.storageTextureDescriptorCount; d++)
+				allDescriptorStages |= setDesc.storageTextureBindingsShaderStageAccess[d];
+		}
+
 		if (setDesc.textureDescriptorCount > 0)
 		{
 			D3D12_DESCRIPTOR_RANGE descRange = {};
@@ -450,12 +480,27 @@ Pipeline D3D12PipelineHelper::createComputePipeline(const ComputePipelineInfo &p
 				allDescriptorStages |= setDesc.inputAttachmentBindingsShaderStageAccess[d];
 		}
 
+		if (setDesc.storageBufferDescriptorCount > 0)
+		{
+			D3D12_DESCRIPTOR_RANGE descRange = {};
+			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+			descRange.NumDescriptors = setDesc.storageBufferDescriptorCount;
+			descRange.BaseShaderRegister = 0;
+			descRange.RegisterSpace = (UINT) s;
+			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			ranges.push_back(descRange);
+
+			for (size_t d = 0; d < setDesc.storageBufferDescriptorCount; d++)
+				allDescriptorStages |= setDesc.storageBufferBindingsShaderStageAccess[d];
+		}
+
 		if (setDesc.storageTextureDescriptorCount > 0)
 		{
 			D3D12_DESCRIPTOR_RANGE descRange = {};
 			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 			descRange.NumDescriptors = setDesc.storageTextureDescriptorCount;
-			descRange.BaseShaderRegister = 0;
+			descRange.BaseShaderRegister = 10;
 			descRange.RegisterSpace = (UINT) s;
 			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
