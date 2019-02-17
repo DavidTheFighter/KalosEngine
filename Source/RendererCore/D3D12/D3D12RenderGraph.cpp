@@ -69,7 +69,8 @@ Semaphore D3D12RenderGraph::execute(bool returnWaitableSemaphore)
 
 		RenderGraphRenderFunctionData renderData = {};
 
-		pass.getRenderFunction()(cmdBuffer, renderData);
+		if (pass.hasRenderFunction())
+			pass.getRenderFunction()(cmdBuffer, renderData);
 
 		cmdBuffer->d3d12_resourceBarrier(passData.afterRenderBarriers);
 	}
@@ -390,7 +391,8 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 		initData.baseSubpass = 0;
 		initData.renderPassHandle = tempRenderPass.get();
 
-		pass.getInitFunction()(initData);
+		if (pass.hasInitFunction())
+			pass.getInitFunction()(initData);
 	}
 
 	typedef struct
@@ -621,7 +623,8 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 	descUpdateData.graphTextureViews = graphTextureViews;
 
 	for (size_t i = 0; i < finalPasses.size(); i++)
-		passes[finalPasses[i].passIndex]->getDescriptorUpdateFunction()(descUpdateData);
+		if (passes[finalPasses[i].passIndex]->hasDescriptorUpdateFunction())
+			passes[finalPasses[i].passIndex]->getDescriptorUpdateFunction()(descUpdateData);
 }
 
 #endif

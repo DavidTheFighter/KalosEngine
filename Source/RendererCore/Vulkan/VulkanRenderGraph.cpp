@@ -68,7 +68,8 @@ Semaphore VulkanRenderGraph::execute(bool returnWaitableSemaphore)
 		{
 			RenderGraphRenderFunctionData renderData = {};
 
-			passes[passData.passIndices[i]]->getRenderFunction()(cmdBuffer, renderData);
+			if (passes[passData.passIndices[i]]->hasRenderFunction())
+				passes[passData.passIndices[i]]->getRenderFunction()(cmdBuffer, renderData);
 		}
 
 		if (passData.pipelineType == RENDER_GRAPH_PIPELINE_TYPE_GRAPHICS)
@@ -593,7 +594,8 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 				initData.renderPassHandle = &tempRenderPass;
 				initData.baseSubpass = 0;
 
-				passes[passStack[p]]->getInitFunction()(initData);
+				if (passes[passStack[p]]->hasInitFunction())
+					passes[passStack[p]]->getInitFunction()(initData);
 			}
 		}
 		else if (passData.pipelineType == RENDER_GRAPH_PIPELINE_TYPE_COMPUTE)
@@ -691,7 +693,8 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 			initData.renderPassHandle = nullptr;
 			initData.baseSubpass = 0;
 
-			passes[passStack[passStackIndex]]->getInitFunction()(initData);
+			if (passes[passStack[passStackIndex]]->hasInitFunction())
+				passes[passStack[passStackIndex]]->getInitFunction()(initData);
 		}
 
 		finalRenderPasses.push_back(passData);
@@ -704,7 +707,8 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 
 	for (size_t i = 0; i < finalRenderPasses.size(); i++)
 		for (size_t p = 0; p < finalRenderPasses[i].passIndices.size(); p++)
-			passes[finalRenderPasses[i].passIndices[p]]->getDescriptorUpdateFunction()(descUpdateData);
+			if (passes[finalRenderPasses[i].passIndices[p]]->hasDescriptorUpdateFunction())
+				passes[finalRenderPasses[i].passIndices[p]]->getDescriptorUpdateFunction()(descUpdateData);
 }
 
 TextureView VulkanRenderGraph::getRenderGraphOutputTextureView()

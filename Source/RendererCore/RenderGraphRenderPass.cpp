@@ -5,6 +5,10 @@ RenderGraphRenderPass::RenderGraphRenderPass(const std::string &passName, Render
 	this->passName = passName;
 	this->pipelineType = pipelineType;
 	this->hasDepthStencilAttachment = false;
+
+	hasInitFunc = false;
+	hasDescUpdateFunc = false;
+	hasRenderFunc = false;
 }
 
 RenderGraphRenderPass::~RenderGraphRenderPass()
@@ -62,16 +66,19 @@ void RenderGraphRenderPass::addStorageTexture(const std::string &name, const Ren
 void RenderGraphRenderPass::setInitFunction(std::function<void(const RenderGraphInitFunctionData&)> callbackFunc)
 {
 	initFunction = callbackFunc;
+	hasInitFunc = true;
 }
 
 void RenderGraphRenderPass::setDescriptorUpdateFunction(std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> updateFunc)
 {
 	descriptorUpdateFunction = updateFunc;
+	hasDescUpdateFunc = true;
 }
 
 void RenderGraphRenderPass::setRenderFunction(std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> renderFunc)
 {
 	renderFunction = renderFunc;
+	hasRenderFunc = true;
 }
 
 std::function<void(const RenderGraphInitFunctionData&)> RenderGraphRenderPass::getInitFunction()
@@ -87,6 +94,21 @@ std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> RenderGraphR
 std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> RenderGraphRenderPass::getRenderFunction()
 {
 	return renderFunction;
+}
+
+bool RenderGraphRenderPass::hasInitFunction() const
+{
+	return hasInitFunc;
+}
+
+bool RenderGraphRenderPass::hasDescriptorUpdateFunction() const
+{
+	return hasDescUpdateFunc;
+}
+
+bool RenderGraphRenderPass::hasRenderFunction() const
+{
+	return hasRenderFunc;
 }
 
 bool RenderGraphRenderPass::hasDepthStencilOutput() const

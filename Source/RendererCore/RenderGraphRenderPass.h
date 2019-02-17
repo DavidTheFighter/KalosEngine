@@ -95,6 +95,10 @@ class RenderGraphRenderPass
 	std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> getDescriptorUpdateFunction();
 	std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> getRenderFunction();
 
+	bool hasInitFunction() const;
+	bool hasDescriptorUpdateFunction() const;
+	bool hasRenderFunction() const;
+
 	bool hasDepthStencilOutput() const;
 
 	const std::vector<RenderPassOutputAttachment> &getColorAttachmentOutputs() const;
@@ -125,6 +129,10 @@ class RenderGraphRenderPass
 	std::function<void(const RenderGraphInitFunctionData&)> initFunction;
 	std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> descriptorUpdateFunction;
 	std::function<void(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData&)> renderFunction;
+
+	bool hasInitFunc;
+	bool hasDescUpdateFunc;
+	bool hasRenderFunc;
 };
 
 #endif /* RENDERERCORE_RENDERGRAPHRENDERPASS_H_ */
