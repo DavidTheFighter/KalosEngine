@@ -194,9 +194,9 @@ void CubeTest::createBuffers()
 
 	glm::mat4 cbufferData[] = {glm::mat4(1)};
 
-	cubeBuffer = renderer->createBuffer(sizeof(cubeBufferData), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
-	cubeIndexBuffer = renderer->createBuffer(sizeof(indexBufferData), BUFFER_USAGE_INDEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
-	cubeCBuffer = renderer->createBuffer(sizeof(cbufferData), BUFFER_USAGE_CONSTANT_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
+	cubeBuffer = renderer->createBuffer(sizeof(cubeBufferData), BUFFER_USAGE_VERTEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT, BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL, MEMORY_USAGE_GPU_ONLY);
+	cubeIndexBuffer = renderer->createBuffer(sizeof(indexBufferData), BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT, BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL, MEMORY_USAGE_GPU_ONLY);
+	cubeCBuffer = renderer->createBuffer(sizeof(cbufferData), BUFFER_USAGE_CONSTANT_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT, BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL, MEMORY_USAGE_GPU_ONLY);
 
 	StagingBuffer stagingCubeBuffer = renderer->createAndFillStagingBuffer(sizeof(cubeBufferData), cubeBufferData);
 	StagingBuffer stagingIndexBuffer = renderer->createAndFillStagingBuffer(sizeof(indexBufferData), indexBufferData);
@@ -210,6 +210,26 @@ void CubeTest::createBuffers()
 	cmdBuffer->stageBuffer(stagingCubeBuffer, cubeBuffer);
 	cmdBuffer->stageBuffer(stagingIndexBuffer, cubeIndexBuffer);
 	cmdBuffer->stageBuffer(stagingCubeCBuffer, cubeCBuffer);
+
+	ResourceBarrier cubeBufferBarrier = {};
+	cubeBufferBarrier.barrierType = RESOURCE_BARRIER_TYPE_BUFFER_TRANSITION;
+	cubeBufferBarrier.bufferTransition.buffer = cubeBuffer;
+	cubeBufferBarrier.bufferTransition.oldLayout = BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL;
+	cubeBufferBarrier.bufferTransition.newLayout = BUFFER_LAYOUT_VERTEX_BUFFER;
+
+	ResourceBarrier cubeIndexBufferBarrier = {};
+	cubeIndexBufferBarrier.barrierType = RESOURCE_BARRIER_TYPE_BUFFER_TRANSITION;
+	cubeIndexBufferBarrier.bufferTransition.buffer = cubeIndexBuffer;
+	cubeIndexBufferBarrier.bufferTransition.oldLayout = BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL;
+	cubeIndexBufferBarrier.bufferTransition.newLayout = BUFFER_LAYOUT_INDEX_BUFFER;
+
+	ResourceBarrier cubeCBufferBarrier = {};
+	cubeCBufferBarrier.barrierType = RESOURCE_BARRIER_TYPE_BUFFER_TRANSITION;
+	cubeCBufferBarrier.bufferTransition.buffer = cubeCBuffer;
+	cubeCBufferBarrier.bufferTransition.oldLayout = BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL;
+	cubeCBufferBarrier.bufferTransition.newLayout = BUFFER_LAYOUT_CONSTANT_BUFFER;
+
+	cmdBuffer->resourceBarriers({cubeBufferBarrier, cubeIndexBufferBarrier, cubeCBufferBarrier});
 
 	cmdBuffer->endCommands();
 
@@ -253,9 +273,23 @@ void CubeTest::createTextures()
 	CommandBuffer cmdBuffer = cmdPool->allocateCommandBuffer();
 	cmdBuffer->beginCommands(COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-	cmdBuffer->transitionTextureLayout(cubeTestTexture, TEXTURE_LAYOUT_INITIAL_STATE, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	ResourceBarrier prestageTextureBarrier = {};
+	prestageTextureBarrier.barrierType = RESOURCE_BARRIER_TYPE_TEXTURE_TRANSITION;
+	prestageTextureBarrier.textureTransition.texture = cubeTestTexture;
+	prestageTextureBarrier.textureTransition.oldLayout = TEXTURE_LAYOUT_INITIAL_STATE;
+	prestageTextureBarrier.textureTransition.newLayout = TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	prestageTextureBarrier.textureTransition.subresourceRange = {0, 1, 0, 1};
+
+	ResourceBarrier poststageTextureBarrier = {};
+	poststageTextureBarrier.barrierType = RESOURCE_BARRIER_TYPE_TEXTURE_TRANSITION;
+	poststageTextureBarrier.textureTransition.texture = cubeTestTexture;
+	poststageTextureBarrier.textureTransition.oldLayout = TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	poststageTextureBarrier.textureTransition.newLayout = TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	poststageTextureBarrier.textureTransition.subresourceRange = {0, 1, 0, 1};
+
+	cmdBuffer->resourceBarriers({prestageTextureBarrier});
 	cmdBuffer->stageTextureSubresources(stagingTexture, cubeTestTexture, {0, 1, 0, 1});
-	cmdBuffer->transitionTextureLayout(cubeTestTexture, TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	cmdBuffer->resourceBarriers({poststageTextureBarrier});
 
 	cmdBuffer->endCommands();
 

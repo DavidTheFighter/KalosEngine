@@ -61,9 +61,8 @@ typedef struct RendererStagingTexture
 typedef struct RendererBuffer
 {
 	size_t bufferSize;
-	BufferUsageType usage;
-	bool canBeTransferSrc;
-	bool canBeTransferDst;
+	BufferUsageFlags usage;
+
 } RendererBuffer;
 
 // Note at least for now I'm disregarding stencil operations
@@ -407,6 +406,34 @@ typedef struct RendererSemaphore
 {
 
 } RendererSemaphore;
+
+typedef struct RendererTextureTransitionBarrier
+{
+	RendererTexture *texture;
+	TextureLayout oldLayout;
+	TextureLayout newLayout;
+	TextureSubresourceRange subresourceRange;
+
+} TextureTransitionBarrier;
+
+typedef struct RendererBufferTransitionBarrier
+{
+	RendererBuffer *buffer;
+	BufferLayout oldLayout;
+	BufferLayout newLayout;
+
+} BufferTransitionBarrier;
+
+typedef struct RendererResourceBarrier
+{
+	ResourceBarrierType barrierType;
+
+	union
+	{
+		TextureTransitionBarrier textureTransition;
+		BufferTransitionBarrier bufferTransition;
+	};
+} ResourceBarrier;
 
 typedef RendererRenderPass *RenderPass;
 typedef RendererPipeline *Pipeline;

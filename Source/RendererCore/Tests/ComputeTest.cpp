@@ -21,7 +21,7 @@ ComputeTest::ComputeTest(Renderer *rendererPtr)
 	storageData[0] = 1.0f;
 	storageData[1] = 0.5f;
 
-	testStorageBuffer = renderer->createBuffer(256, BUFFER_USAGE_STORAGE_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
+	testStorageBuffer = renderer->createBuffer(256, BUFFER_USAGE_STORAGE_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT, BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL, MEMORY_USAGE_GPU_ONLY);
 	StagingBuffer storageStagingBuffer = renderer->createAndFillStagingBuffer(256, storageData);
 
 	Fence tempFence = renderer->createFence();
@@ -30,6 +30,14 @@ ComputeTest::ComputeTest(Renderer *rendererPtr)
 	cmdBuffer->beginCommands(COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	cmdBuffer->stageBuffer(storageStagingBuffer, testStorageBuffer);
+
+	ResourceBarrier storageBufferBarrier = {};
+	storageBufferBarrier.barrierType = RESOURCE_BARRIER_TYPE_BUFFER_TRANSITION;
+	storageBufferBarrier.bufferTransition.buffer = testStorageBuffer;
+	storageBufferBarrier.bufferTransition.oldLayout = BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL;
+	storageBufferBarrier.bufferTransition.newLayout = BUFFER_LAYOUT_GENERAL;
+
+	cmdBuffer->resourceBarriers({storageBufferBarrier});
 
 	cmdBuffer->endCommands();
 

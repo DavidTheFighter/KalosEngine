@@ -51,7 +51,7 @@ class Renderer
 		virtual TextureView createTextureView (Texture texture, TextureViewType viewType = TEXTURE_VIEW_TYPE_2D, TextureSubresourceRange subresourceRange = {0, 1, 0, 1}, ResourceFormat viewFormat = RESOURCE_FORMAT_UNDEFINED) = 0;
 		virtual Sampler createSampler (SamplerAddressMode addressMode = SAMPLER_ADDRESS_MODE_REPEAT, SamplerFilter minFilter = SAMPLER_FILTER_LINEAR, SamplerFilter magFilter = SAMPLER_FILTER_LINEAR, float anisotropy = 1.0f, svec3 min_max_biasLod = {0, 0, 0}, SamplerMipmapMode mipmapMode = SAMPLER_MIPMAP_MODE_LINEAR) = 0;
 
-		virtual Buffer createBuffer(size_t size, BufferUsageType usage, bool canBeTransferDst, bool canBeTransferSrc, MemoryUsage memUsage, bool ownMemory = false) = 0;
+		virtual Buffer createBuffer(size_t size, BufferUsageFlags usage, BufferLayout initialLayout, MemoryUsage memUsage, bool ownMemory = false) = 0;
 		virtual void *mapBuffer (Buffer buffer) = 0;
 		virtual void unmapBuffer (Buffer buffer) = 0;
 

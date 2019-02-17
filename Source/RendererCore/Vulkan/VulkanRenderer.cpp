@@ -843,13 +843,11 @@ Sampler VulkanRenderer::createSampler (SamplerAddressMode addressMode, SamplerFi
 	return vkSampler;
 }
 
-Buffer VulkanRenderer::createBuffer(size_t size, BufferUsageType usage, bool canBeTransferDst, bool canBeTransferSrc, MemoryUsage memUsage, bool ownMemory)
+Buffer VulkanRenderer::createBuffer(size_t size, BufferUsageFlags usage, BufferLayout initialLayout, MemoryUsage memUsage, bool ownMemory)
 {
 	VulkanBuffer *vkBuffer = new VulkanBuffer();
 	vkBuffer->memorySize = static_cast<VkDeviceSize>(size);
 	vkBuffer->usage = usage;
-	vkBuffer->canBeTransferSrc = canBeTransferSrc;
-	vkBuffer->canBeTransferDst = canBeTransferDst;
 
 	VkBufferCreateInfo bufferInfo = {};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -857,30 +855,67 @@ Buffer VulkanRenderer::createBuffer(size_t size, BufferUsageType usage, bool can
 	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	bufferInfo.usage = 0;
 
-	if (canBeTransferSrc)
+	if (usage & BUFFER_USAGE_TRANSFER_SRC_BIT)
 		bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-	if (canBeTransferDst)
+	if (usage & BUFFER_USAGE_TRANSFER_DST_BIT)
 		bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	if (usage & BUFFER_USAGE_CONSTANT_BUFFER_BIT)
+		bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	if (usage & BUFFER_USAGE_STORAGE_BUFFER_BIT)
+		bufferInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	if (usage & BUFFER_USAGE_INDEX_BUFFER_BIT)
+		bufferInfo.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	if (usage & BUFFER_USAGE_VERTEX_BUFFER_BIT)
+		bufferInfo.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	if (usage & BUFFER_USAGE_INDIRECT_BUFFER_BIT)
+		bufferInfo.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
-	switch (usage)
+#if VULKAN_DEBUG_COMPATIBILITY_CHECKS
+	switch (initialLayout)
 	{
-		case BUFFER_USAGE_CONSTANT_BUFFER:
-			bufferInfo.usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		case BUFFER_LAYOUT_VERTEX_BUFFER:
+			if (!(usage & BUFFER_USAGE_VERTEX_BUFFER_BIT))
+				Log::get()->error("VulkanRenderer: Buffer cannot be in layout BUFFER_LAYOUT_VERTEX_BUFFER without its usage containing BUFFER_USAGE_VERTEX_BUFFER_BIT");
 			break;
-		case BUFFER_USAGE_VERTEX_BUFFER:
-			bufferInfo.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		case BUFFER_LAYOUT_INDEX_BUFFER:
+			if (!(usage & BUFFER_USAGE_INDEX_BUFFER_BIT))
+				Log::get()->error("VulkanRenderer: Buffer cannot be in layout BUFFER_LAYOUT_INDEX_BUFFER without its usage containing BUFFER_INDEX_VERTEX_BUFFER_BIT");
 			break;
-		case BUFFER_USAGE_INDEX_BUFFER:
-			bufferInfo.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		case BUFFER_LAYOUT_CONSTANT_BUFFER:
+			if (!(usage & BUFFER_USAGE_CONSTANT_BUFFER_BIT))
+				Log::get()->error("VulkanRenderer: Buffer cannot be in layout BUFFER_LAYOUT_CONSTANT_BUFFER without its usage containing BUFFER_USAGE_CONSTANT_BUFFER_BIT");
 			break;
-		case BUFFER_USAGE_INDIRECT_BUFFER:
-			bufferInfo.usage |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+		case BUFFER_LAYOUT_VERTEX_CONSTANT_BUFFER:
+			if (!(usage & BUFFER_USAGE_VERTEX_BUFFER_BIT) || !(usage & BUFFER_USAGE_CONSTANT_BUFFER_BIT))
+				Log::get()->error("VulkanRenderer: Buffer cannot be in layout BUFFER_LAYOUT_VERTEX_CONSTANT_BUFFER without its usage containing BUFFER_USAGE_VERTEX_BUFFER_BIT and BUFFER_USAGE_CONSTANT_BUFFER_BIT");
 			break;
-		case BUFFER_USAGE_STORAGE_BUFFER:
-			bufferInfo.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		case BUFFER_LAYOUT_VERTEX_INDEX_BUFFER:
+			if (!(usage & BUFFER_USAGE_VERTEX_BUFFER_BIT) || !(usage & BUFFER_USAGE_INDEX_BUFFER_BIT))
+				Log::get()->error("VulkanRenderer: Buffer cannot be in layout BUFFER_LAYOUT_VERTEX_INDEX_BUFFER without its usage containing BUFFER_USAGE_VERTEX_BUFFER_BIT and BUFFER_USAGE_INDEX_BUFFER_BIT");
+			break;
+		case BUFFER_LAYOUT_VERTEX_INDEX_CONSTANT_BUFFER:
+			if (!(usage & BUFFER_USAGE_VERTEX_BUFFER_BIT) && !(usage & BUFFER_USAGE_INDEX_BUFFER_BIT) && !(usage & BUFFER_USAGE_CONSTANT_BUFFER_BIT))
+				Log::get()->error("VulkanRenderer: Buffer cannot be in layout BUFFER_LAYOUT_VERTEX_INDEX_CONSTANT_BUFFER without its usage containing BUFFER_USAGE_VERTEX_BUFFER_BIT and BUFFER_USAGE_INDEX_BUFFER_BIT and BUFFER_USAGE_CONSTANT_BUFFER_BIT");
+			break;
+		case BUFFER_LAYOUT_GENERAL:
+			if (!(usage & BUFFER_USAGE_STORAGE_BUFFER_BIT))
+				Log::get()->error("VulkanRenderer: Buffer cannot be in layout BUFFER_LAYOUT_GENERAL without its usage containing BUFFER_USAGE_STORAGE_BUFFER_BIT");
+			break;
+		case BUFFER_LAYOUT_INDIRECT_BUFFER:
+			if (!(usage & BUFFER_USAGE_INDIRECT_BUFFER_BIT))
+				Log::get()->error("VulkanRenderer: Buffer cannot be in layout BUFFER_LAYOUT_INDIRECT_BUFFER without its usage containing BUFFER_USAGE_INDIRECT_BUFFER_BIT");
+			break;
+		case BUFFER_LAYOUT_TRANSFER_SRC_OPTIMAL:
+			if (!(usage & BUFFER_USAGE_TRANSFER_SRC_BIT))
+				Log::get()->error("VulkanRenderer: Buffer cannot be in layout BUFFER_LAYOUT_TRANSFER_SRC_OPTIMAL without its usage containing BUFFER_USAGE_TRANSFER_SRC_BIT");
+			break;
+		case BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL:
+			if (!(usage & BUFFER_USAGE_TRANSFER_DST_BIT))
+				Log::get()->error("VulkanRenderer: Buffer cannot be in layout BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL without its usage containing BUFFER_USAGE_TRANSFER_DST_BIT");
 			break;
 	}
+
+#endif
 
 	VmaAllocationCreateInfo allocInfo = {};
 	allocInfo.usage = toVmaMemoryUsage(memUsage);

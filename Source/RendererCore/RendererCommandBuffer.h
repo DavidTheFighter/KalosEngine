@@ -49,8 +49,8 @@ class RendererCommandBuffer
 		 */
 		virtual void bindDescriptorSets (PipelineBindPoint point, uint32_t firstSet, const std::vector<DescriptorSet> &sets) = 0;
 
-		virtual void transitionTextureLayout (Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource = {0, 1, 0, 1}) = 0;
-		
+		virtual void resourceBarriers(const std::vector<ResourceBarrier> &barriers) = 0;
+
 		virtual void stageBuffer (StagingBuffer stagingBuffer, Buffer dstBuffer) = 0;
 		virtual void stageTextureSubresources(StagingTexture stagingTexture, Texture dstTexture, TextureSubresourceRange subresources = {0, 1, 0, 1}) = 0;
 

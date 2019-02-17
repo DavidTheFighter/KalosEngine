@@ -69,32 +69,6 @@ inline void DestroyDebugReportCallbackEXT (VkInstance instance, VkDebugReportCal
 	}
 }
 
-inline VkAccessFlags getAccessFlagsForImageLayoutTransition(VkImageLayout layout)
-{
-	switch (layout)
-	{
-		case VK_IMAGE_LAYOUT_GENERAL:
-			return VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
-		case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-			return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-			return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
-			return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-		case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-			return VK_ACCESS_SHADER_READ_BIT;
-		case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-			return VK_ACCESS_TRANSFER_READ_BIT;
-		case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-			return VK_ACCESS_TRANSFER_WRITE_BIT;
-		case VK_IMAGE_LAYOUT_PREINITIALIZED:
-			return VK_ACCESS_HOST_WRITE_BIT;
-		case VK_IMAGE_LAYOUT_UNDEFINED:
-		default:
-			return 0;
-	}
-}
-
 #if RENDER_DEBUG_MARKERS
 inline void debugMarkerBeginRegion (VkCommandBuffer cmdBuffer, const std::string &name, const glm::vec4 &color)
 {

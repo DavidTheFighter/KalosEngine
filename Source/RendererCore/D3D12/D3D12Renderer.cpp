@@ -779,6 +779,8 @@ Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, Textu
 	if (usage & TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
 		texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
+	// TODO Apply D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE where applicable
+
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
 
 	switch (memUsage)
@@ -833,13 +835,11 @@ Sampler D3D12Renderer::createSampler(SamplerAddressMode addressMode, SamplerFilt
 	return sampler;
 }
 
-Buffer D3D12Renderer::createBuffer(size_t size, BufferUsageType usage, bool canBeTransferDst, bool canBeTransferSrc, MemoryUsage memUsage, bool ownMemory)
+Buffer D3D12Renderer::createBuffer(size_t size, BufferUsageFlags usage, BufferLayout initialLayout, MemoryUsage memUsage, bool ownMemory)
 {
 	D3D12Buffer *buffer = new D3D12Buffer();
 	buffer->bufferSize = size;
 	buffer->usage = usage;
-	buffer->canBeTransferSrc = canBeTransferSrc;
-	buffer->canBeTransferDst = canBeTransferDst;
 
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
 
@@ -854,29 +854,13 @@ Buffer D3D12Renderer::createBuffer(size_t size, BufferUsageType usage, bool canB
 			break;
 	}
 
-	D3D12_RESOURCE_STATES initialState;
+	// TODO Validate layout against usage flags
+
+	D3D12_RESOURCE_STATES initialState = BufferLayoutToD3D12ResourceStates(initialLayout);
 
 	if (heapType == D3D12_HEAP_TYPE_UPLOAD)
 	{
 		initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
-	}
-	else
-	{
-		switch (usage)
-		{
-			case BUFFER_USAGE_CONSTANT_BUFFER:
-			case BUFFER_USAGE_VERTEX_BUFFER:
-				initialState = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-				break;
-			case BUFFER_USAGE_INDEX_BUFFER:
-				initialState = D3D12_RESOURCE_STATE_INDEX_BUFFER;
-				break;
-			case BUFFER_USAGE_INDIRECT_BUFFER:
-				initialState = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
-				break;
-			default:
-				initialState = D3D12_RESOURCE_STATE_GENERIC_READ;
-		}
 	}
 
 	D3D12_RESOURCE_DESC bufferDesc = {};
@@ -891,12 +875,8 @@ Buffer D3D12Renderer::createBuffer(size_t size, BufferUsageType usage, bool canB
 	bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 	bufferDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-	switch (usage)
-	{
-		case BUFFER_USAGE_STORAGE_BUFFER:
-			bufferDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-			break;
-	}
+	if (usage & BUFFER_USAGE_STORAGE_BUFFER_BIT)
+		bufferDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
 	DX_CHECK_RESULT(device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(heapType), D3D12_HEAP_FLAG_NONE, &bufferDesc, initialState, nullptr, IID_PPV_ARGS(&buffer->bufferResource)));
 

@@ -73,7 +73,7 @@ class VulkanRenderer : public Renderer
 		TextureView createTextureView (Texture texture, TextureViewType viewType, TextureSubresourceRange subresourceRange, ResourceFormat viewFormat);
 		Sampler createSampler (SamplerAddressMode addressMode, SamplerFilter minFilter, SamplerFilter magFilter, float anisotropy, svec3 min_max_biasLod, SamplerMipmapMode mipmapMode);
 
-		Buffer createBuffer (size_t size, BufferUsageType usage, bool canBeTransferDst, bool canBeTransferSrc, MemoryUsage memUsage, bool ownMemory);
+		Buffer createBuffer (size_t size, BufferUsageFlags usage, BufferLayout initialLayout, MemoryUsage memUsage, bool ownMemory);
 		void *mapBuffer (Buffer buffer);
 		void unmapBuffer (Buffer buffer);
 

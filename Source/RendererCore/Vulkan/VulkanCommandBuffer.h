@@ -32,7 +32,7 @@ class VulkanCommandBuffer : public RendererCommandBuffer
 		void pushConstants (uint32_t offset, uint32_t size, const void *data);
 		void bindDescriptorSets (PipelineBindPoint point, uint32_t firstSet, const std::vector<DescriptorSet> &sets);
 
-		void transitionTextureLayout (Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource);
+		void resourceBarriers(const std::vector<ResourceBarrier> &barriers);
 
 		void stageBuffer (StagingBuffer stagingBuffer, Texture dstTexture, TextureSubresourceLayers subresource, sivec3 offset, suvec3 extent);
 		void stageBuffer (StagingBuffer stagingBuffer, Buffer dstBuffer);

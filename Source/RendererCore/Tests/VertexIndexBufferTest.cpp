@@ -193,10 +193,10 @@ void VertexIndexBufferTest::createBuffers()
 		0, 1, 2
 	};
 
-	positionBuffers[0] = renderer->createBuffer(sizeof(positions0), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
-	positionBuffers[1] = renderer->createBuffer(sizeof(positions1), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
-	colorBuffer = renderer->createBuffer(sizeof(colors), BUFFER_USAGE_VERTEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
-	indexBuffer = renderer->createBuffer(sizeof(indexes), BUFFER_USAGE_INDEX_BUFFER, true, false, MEMORY_USAGE_GPU_ONLY);
+	positionBuffers[0] = renderer->createBuffer(sizeof(positions0), BUFFER_USAGE_VERTEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT, BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL, MEMORY_USAGE_GPU_ONLY);
+	positionBuffers[1] = renderer->createBuffer(sizeof(positions1), BUFFER_USAGE_VERTEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT, BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL, MEMORY_USAGE_GPU_ONLY);
+	colorBuffer = renderer->createBuffer(sizeof(colors), BUFFER_USAGE_VERTEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT, BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL, MEMORY_USAGE_GPU_ONLY);
+	indexBuffer = renderer->createBuffer(sizeof(indexes), BUFFER_USAGE_INDEX_BUFFER_BIT | BUFFER_USAGE_TRANSFER_DST_BIT, BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL, MEMORY_USAGE_GPU_ONLY);
 
 	StagingBuffer stagingBuffer0 = renderer->createAndFillStagingBuffer(sizeof(positions0), positions0);
 	StagingBuffer stagingBuffer1 = renderer->createAndFillStagingBuffer(sizeof(positions1), positions1);
@@ -212,6 +212,32 @@ void VertexIndexBufferTest::createBuffers()
 	cmdBuffer->stageBuffer(stagingBuffer1, positionBuffers[1]);
 	cmdBuffer->stageBuffer(stagingBuffer2, colorBuffer);
 	cmdBuffer->stageBuffer(stagingBuffer3, indexBuffer);
+
+	ResourceBarrier position0BufferBarrier = {};
+	position0BufferBarrier.barrierType = RESOURCE_BARRIER_TYPE_BUFFER_TRANSITION;
+	position0BufferBarrier.bufferTransition.buffer = positionBuffers[0];
+	position0BufferBarrier.bufferTransition.oldLayout = BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL;
+	position0BufferBarrier.bufferTransition.newLayout = BUFFER_LAYOUT_VERTEX_BUFFER;
+
+	ResourceBarrier position1BufferBarrier = {};
+	position1BufferBarrier.barrierType = RESOURCE_BARRIER_TYPE_BUFFER_TRANSITION;
+	position1BufferBarrier.bufferTransition.buffer = positionBuffers[1];
+	position1BufferBarrier.bufferTransition.oldLayout = BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL;
+	position1BufferBarrier.bufferTransition.newLayout = BUFFER_LAYOUT_VERTEX_BUFFER;
+
+	ResourceBarrier colorBufferBarrier = {};
+	colorBufferBarrier.barrierType = RESOURCE_BARRIER_TYPE_BUFFER_TRANSITION;
+	colorBufferBarrier.bufferTransition.buffer = colorBuffer;
+	colorBufferBarrier.bufferTransition.oldLayout = BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL;
+	colorBufferBarrier.bufferTransition.newLayout = BUFFER_LAYOUT_VERTEX_BUFFER;
+
+	ResourceBarrier indexBufferBarrier = {};
+	indexBufferBarrier.barrierType = RESOURCE_BARRIER_TYPE_BUFFER_TRANSITION;
+	indexBufferBarrier.bufferTransition.buffer = indexBuffer;
+	indexBufferBarrier.bufferTransition.oldLayout = BUFFER_LAYOUT_TRANSFER_DST_OPTIMAL;
+	indexBufferBarrier.bufferTransition.newLayout = BUFFER_LAYOUT_INDEX_BUFFER;
+
+	cmdBuffer->resourceBarriers({position0BufferBarrier, position1BufferBarrier, colorBufferBarrier, indexBufferBarrier});
 
 	cmdBuffer->endCommands();
 

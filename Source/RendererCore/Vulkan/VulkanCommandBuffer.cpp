@@ -105,90 +105,76 @@ void VulkanCommandBuffer::bindDescriptorSets (PipelineBindPoint point, uint32_t 
 	vkCmdBindDescriptorSets(bufferHandle, toVkPipelineBindPoint(point), static_cast<VulkanPipeline*>(context_currentBoundPipeline)->pipelineLayoutHandle, firstSet, static_cast<uint32_t>(sets.size()), vulkanSets.data(), 0, nullptr);
 }
 
-void VulkanCommandBuffer::transitionTextureLayout (Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource)
+void VulkanCommandBuffer::resourceBarriers(const std::vector<ResourceBarrier> &barriers)
 {
-	VkImageMemoryBarrier barrier = {};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = toVkImageLayout(oldLayout);
-	barrier.newLayout = toVkImageLayout(newLayout);
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = static_cast<VulkanTexture*>(texture)->imageHandle;
-	barrier.subresourceRange =
-	{ VkAccessFlags(isDepthFormat(texture->textureFormat) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT), subresource.baseMipLevel, subresource.levelCount, subresource.baseArrayLayer, subresource.layerCount};
+	std::vector<VkImageMemoryBarrier> imageBarriers;
+	std::vector<VkBufferMemoryBarrier> bufferBarriers;
+	std::vector<VkMemoryBarrier> memoryBarriers;
 
-	VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-	VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+	VkPipelineStageFlags srcStageMask = 0;
+	VkPipelineStageFlags dstStageMask = 0;
 
-	switch (oldLayout)
+	for (size_t i = 0; i < barriers.size(); i++)
 	{
-		case TEXTURE_LAYOUT_INITIAL_STATE:
-		{
-			barrier.srcAccessMask = 0;
-			srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		const ResourceBarrier &barrierInfo = barriers[i];
 
-			break;
-		}
-		case TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL:
+		switch (barrierInfo.barrierType)
 		{
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+			case RESOURCE_BARRIER_TYPE_TEXTURE_TRANSITION:
+			{
+				const TextureTransitionBarrier &textureBarrierInfo = barrierInfo.textureTransition;
 
-			break;
-		}
-		case TEXTURE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-		{
-			barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-			srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+				// Perform layout validation for the texture's usage flags
 
-			break;
-		}
-		case TEXTURE_LAYOUT_GENERAL:
-		{
-			barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-			srcStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+				VkImageMemoryBarrier imageBarrier = {};
+				imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+				imageBarrier.pNext = nullptr;
+				imageBarrier.srcAccessMask = getAccessFlagsForImageLayoutTransition(toVkImageLayout(textureBarrierInfo.oldLayout));
+				imageBarrier.dstAccessMask = getAccessFlagsForImageLayoutTransition(toVkImageLayout(textureBarrierInfo.newLayout));
+				imageBarrier.oldLayout = toVkImageLayout(textureBarrierInfo.oldLayout);
+				imageBarrier.newLayout = toVkImageLayout(textureBarrierInfo.newLayout);
+				imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				imageBarrier.image = static_cast<VulkanTexture*>(textureBarrierInfo.texture)->imageHandle;
+				imageBarrier.subresourceRange.aspectMask = isDepthFormat(textureBarrierInfo.texture->textureFormat) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+				imageBarrier.subresourceRange.baseMipLevel = textureBarrierInfo.subresourceRange.baseMipLevel;
+				imageBarrier.subresourceRange.levelCount = textureBarrierInfo.subresourceRange.levelCount;
+				imageBarrier.subresourceRange.baseArrayLayer = textureBarrierInfo.subresourceRange.baseArrayLayer;
+				imageBarrier.subresourceRange.layerCount = textureBarrierInfo.subresourceRange.layerCount;
 
-			break;
+				srcStageMask |= getPipelineStagesForImageLayout(toVkImageLayout(textureBarrierInfo.oldLayout));
+				dstStageMask |= getPipelineStagesForImageLayout(toVkImageLayout(textureBarrierInfo.newLayout));
+
+				imageBarriers.push_back(imageBarrier);
+				break;
+			}
+			case RESOURCE_BARRIER_TYPE_BUFFER_TRANSITION:
+			{
+				const BufferTransitionBarrier &bufferBarrierInfo = barrierInfo.bufferTransition;
+
+				// TODO Perform layout validation for the buffer's usage flags
+
+				VkBufferMemoryBarrier bufferBarrier = {};
+				bufferBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+				bufferBarrier.pNext = nullptr;
+				bufferBarrier.srcAccessMask = getAccessFlagsForBufferLayoutTransition(bufferBarrierInfo.oldLayout);
+				bufferBarrier.dstAccessMask = getAccessFlagsForBufferLayoutTransition(bufferBarrierInfo.newLayout);
+				bufferBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				bufferBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				bufferBarrier.buffer = static_cast<VulkanBuffer*>(bufferBarrierInfo.buffer)->bufferHandle;
+				bufferBarrier.offset = 0;
+				bufferBarrier.size = bufferBarrierInfo.buffer->bufferSize;
+
+				srcStageMask |= getPipelineStagesForBufferLayout(bufferBarrierInfo.oldLayout);
+				dstStageMask |= getPipelineStagesForBufferLayout(bufferBarrierInfo.newLayout);
+
+				bufferBarriers.push_back(bufferBarrier);
+				break;
+			}
 		}
-		default:
-			break;
 	}
 
-	switch (newLayout)
-	{
-		case TEXTURE_LAYOUT_TRANSFER_DST_OPTIMAL:
-		{
-			barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			dstStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-
-			break;
-		}
-		case TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-		{
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			dstStage = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-
-			break;
-		}
-		case TEXTURE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-		{
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			dstStage = VK_PIPELINE_STAGE_HOST_BIT;
-
-			break;
-		}
-		case TEXTURE_LAYOUT_GENERAL:
-		{
-			barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-			dstStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
-			break;
-		}
-		default:
-			break;
-	}
-
-	vkCmdPipelineBarrier(bufferHandle, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+	vkCmdPipelineBarrier(bufferHandle, srcStageMask, dstStageMask, 0, (uint32_t) memoryBarriers.size(), memoryBarriers.data(), (uint32_t) bufferBarriers.size(), bufferBarriers.data(), (uint32_t) imageBarriers.size(), imageBarriers.data());
 }
 
 void VulkanCommandBuffer::stageBuffer (StagingBuffer stagingBuffer, Texture dstTexture, TextureSubresourceLayers subresource, sivec3 offset, suvec3 extent)

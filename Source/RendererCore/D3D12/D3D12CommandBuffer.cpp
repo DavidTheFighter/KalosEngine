@@ -227,42 +227,74 @@ void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t fi
 	}
 }
 
-void D3D12CommandBuffer::transitionTextureLayout(Texture texture, TextureLayout oldLayout, TextureLayout newLayout, TextureSubresourceRange subresource)
+void D3D12CommandBuffer::resourceBarriers(const std::vector<ResourceBarrier> &barriers)
 {
-#if D3D12_DEBUG_COMPATIBILITY_CHECKS
+	std::vector<D3D12_RESOURCE_BARRIER> d3dbarriers = {};
 
-	if (newLayout == TEXTURE_LAYOUT_INITIAL_STATE)
+	for (size_t i = 0; i < barriers.size(); i++)
 	{
-		Log::get()->error("D3D12CommandBuffer: Cannot transition a texture layout into it's initial state (TEXTURE_LAYOUT_INITIAL_STATE). This state can be transitioned out of right after the texture has been initialized but has no other use");
-		throw std::runtime_error("d3d12 error: invalid newLayout in resource barrier");
-	}
+		const ResourceBarrier &barrierInfo = barriers[i];
 
-#endif
-
-	D3D12Texture *d3dtexture = static_cast<D3D12Texture*>(texture);
-
-	std::vector<D3D12_RESOURCE_BARRIER> barriers;
-
-	for (uint32_t layer = subresource.baseArrayLayer; layer < subresource.baseArrayLayer + subresource.layerCount; layer++)
-	{
-		for (uint32_t mip = subresource.baseMipLevel; mip < subresource.baseMipLevel + subresource.levelCount; mip++)
+		switch (barrierInfo.barrierType)
 		{
-			D3D12_RESOURCE_TRANSITION_BARRIER transBarrier = {};
-			transBarrier.pResource = d3dtexture->textureResource;
-			transBarrier.Subresource = layer * d3dtexture->mipCount + mip;
-			transBarrier.StateBefore = TextureLayoutToD3D12ResourceStates(oldLayout);
-			transBarrier.StateAfter = TextureLayoutToD3D12ResourceStates(newLayout);
+			case RESOURCE_BARRIER_TYPE_TEXTURE_TRANSITION:
+			{
+				const TextureSubresourceRange &subresource = barrierInfo.textureTransition.subresourceRange;
+				D3D12Texture *texture = static_cast<D3D12Texture*>(barrierInfo.textureTransition.texture);
 
-			D3D12_RESOURCE_BARRIER barrier = {};
-			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			barrier.Transition = transBarrier;
+				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
+				transitionBarrier.pResource = texture->textureResource;
+				transitionBarrier.StateBefore = TextureLayoutToD3D12ResourceStates(barrierInfo.textureTransition.oldLayout);
+				transitionBarrier.StateAfter = TextureLayoutToD3D12ResourceStates(barrierInfo.textureTransition.newLayout);
 
-			barriers.push_back(barrier);
+				D3D12_RESOURCE_BARRIER d3dbarrierInfo = {};
+				d3dbarrierInfo.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				d3dbarrierInfo.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+				if (subresource.baseMipLevel == 0 && subresource.baseArrayLayer == 0 && subresource.levelCount == texture->mipCount && subresource.layerCount == texture->layerCount)
+				{
+					transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+					d3dbarrierInfo.Transition = transitionBarrier;
+
+					d3dbarriers.push_back(d3dbarrierInfo);
+				}
+				else
+				{
+					for (uint32_t layer = subresource.baseArrayLayer; layer < subresource.baseArrayLayer + subresource.layerCount; layer++)
+					{
+						for (uint32_t level = subresource.baseMipLevel; level < subresource.baseMipLevel + subresource.levelCount; level++)
+						{
+							transitionBarrier.Subresource = layer * subresource.levelCount + level;
+							d3dbarrierInfo.Transition = transitionBarrier;
+
+							d3dbarriers.push_back(d3dbarrierInfo);
+						}
+					}
+				}
+
+				break;
+			}
+			case RESOURCE_BARRIER_TYPE_BUFFER_TRANSITION:
+			{
+				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
+				transitionBarrier.pResource = static_cast<D3D12Buffer*>(barrierInfo.bufferTransition.buffer)->bufferResource;
+				transitionBarrier.StateBefore = BufferLayoutToD3D12ResourceStates(barrierInfo.bufferTransition.oldLayout);
+				transitionBarrier.StateAfter = BufferLayoutToD3D12ResourceStates(barrierInfo.bufferTransition.newLayout);
+				transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+				D3D12_RESOURCE_BARRIER d3dbarrierInfo = {};
+				d3dbarrierInfo.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+				d3dbarrierInfo.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+				d3dbarrierInfo.Transition = transitionBarrier;
+
+				d3dbarriers.push_back(d3dbarrierInfo);
+
+				break;
+			}
 		}
 	}
 
-	cmdList->ResourceBarrier((UINT) barriers.size(), barriers.data());
+	cmdList->ResourceBarrier((UINT) d3dbarriers.size(), d3dbarriers.data());
 }
 
 void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Buffer dstBuffer)
@@ -270,51 +302,7 @@ void D3D12CommandBuffer::stageBuffer(StagingBuffer stagingBuffer, Buffer dstBuff
 	D3D12StagingBuffer *d3dstagingBuffer = static_cast<D3D12StagingBuffer*>(stagingBuffer);
 	D3D12Buffer *d3ddstBuffer = static_cast<D3D12Buffer*>(dstBuffer);
 
-	DEBUG_ASSERT(d3ddstBuffer->canBeTransferDst);
-
-	D3D12_RESOURCE_STATES stateBefore;
-
-	switch (d3ddstBuffer->usage)
-	{
-		case BUFFER_USAGE_CONSTANT_BUFFER:
-		case BUFFER_USAGE_VERTEX_BUFFER:
-			stateBefore = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
-			break;
-		case BUFFER_USAGE_INDEX_BUFFER:
-			stateBefore = D3D12_RESOURCE_STATE_INDEX_BUFFER;
-			break;
-		case BUFFER_USAGE_INDIRECT_BUFFER:
-			stateBefore = D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
-			break;
-		default:
-			stateBefore = D3D12_RESOURCE_STATE_GENERIC_READ;
-	}
-
-	D3D12_RESOURCE_TRANSITION_BARRIER tbarrier0 = {};
-	tbarrier0.pResource = d3ddstBuffer->bufferResource;
-	tbarrier0.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	tbarrier0.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
-	tbarrier0.StateBefore = stateBefore;
-
-	D3D12_RESOURCE_BARRIER barrier0 = {};
-	barrier0.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier0.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier0.Transition = tbarrier0;
-	
-	D3D12_RESOURCE_TRANSITION_BARRIER tbarrier1 = {};
-	tbarrier1.pResource = d3ddstBuffer->bufferResource;
-	tbarrier1.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	tbarrier1.StateAfter = stateBefore;
-	tbarrier1.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-
-	D3D12_RESOURCE_BARRIER barrier1 = {};
-	barrier1.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	barrier1.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier1.Transition = tbarrier1;
-
-	cmdList->ResourceBarrier(1, &barrier0);
 	cmdList->CopyBufferRegion(d3ddstBuffer->bufferResource, 0, d3dstagingBuffer->bufferResource, 0, std::min<uint32_t>(d3dstagingBuffer->bufferSize, d3ddstBuffer->bufferSize));
-	cmdList->ResourceBarrier(1, &barrier1);
 }
 
 void D3D12CommandBuffer::stageTextureSubresources(StagingTexture stagingTexture, Texture dstTexture, TextureSubresourceRange subresources)
