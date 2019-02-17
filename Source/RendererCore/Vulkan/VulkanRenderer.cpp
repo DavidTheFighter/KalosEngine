@@ -1215,11 +1215,13 @@ void VulkanRenderer::setObjectDebugName (void *obj, RendererObjectType objType, 
 
 		switch (objType)
 		{
-			case OBJECT_TYPE_UNKNOWN:
-				objHandle = 0;
-				break;
+			case OBJECT_TYPE_SEMAPHORE:
+				objHandle = (uint64_t) static_cast<VulkanSemaphore*>(obj)->semHandle;
 			case OBJECT_TYPE_COMMAND_BUFFER:
 				objHandle = (uint64_t) static_cast<VulkanCommandBuffer*>(obj)->bufferHandle;
+				break;
+			case OBJECT_TYPE_FENCE:
+				objHandle = (uint64_t) static_cast<VulkanFence*>(obj)->fenceHandle;
 				break;
 			case OBJECT_TYPE_BUFFER:
 				objHandle = (uint64_t) static_cast<VulkanBuffer*>(obj)->bufferHandle;
@@ -1233,9 +1235,6 @@ void VulkanRenderer::setObjectDebugName (void *obj, RendererObjectType objType, 
 			case OBJECT_TYPE_SHADER_MODULE:
 				objHandle = (uint64_t) static_cast<VulkanShaderModule*>(obj)->module;
 				break;
-			case OBJECT_TYPE_RENDER_PASS:
-				objHandle = (uint64_t) static_cast<VulkanRenderPass*>(obj)->renderPassHandle;
-				break;
 			case OBJECT_TYPE_PIPELINE:
 				objHandle = (uint64_t) static_cast<VulkanPipeline*>(obj)->pipelineHandle;
 				break;
@@ -1245,16 +1244,10 @@ void VulkanRenderer::setObjectDebugName (void *obj, RendererObjectType objType, 
 			case OBJECT_TYPE_DESCRIPTOR_SET:
 				objHandle = (uint64_t) static_cast<VulkanDescriptorSet*>(obj)->setHandle;
 				break;
-			case OBJECT_TYPE_FRAMEBUFFER:
-				objHandle = (uint64_t) static_cast<VulkanFramebuffer*>(obj)->framebufferHandle;
-				break;
 			case OBJECT_TYPE_COMMAND_POOL:
 				objHandle = (uint64_t) static_cast<VulkanCommandPool*>(obj)->poolHandle;
 				break;
-
-			default:
-
-				break;
+			
 		}
 
 		VkDebugMarkerObjectNameInfoEXT nameInfo = {};

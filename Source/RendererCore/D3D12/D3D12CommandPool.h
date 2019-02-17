@@ -34,6 +34,7 @@ class D3D12CommandPool : public RendererCommandPool
 	std::vector<D3D12CommandBuffer*> allocatedCmdLists;
 	D3D12_COMMAND_LIST_TYPE cmdListType;
 
+	friend class D3D12Renderer;
 	friend class D3D12CommandBuffer;
 };
 

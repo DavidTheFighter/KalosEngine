@@ -268,6 +268,8 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 
 		DX_CHECK_RESULT(renderer->device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &texDesc, textureState, useClearValue ? &optClearValue : nullptr, IID_PPV_ARGS(&graphTexture.rendererTexture->textureResource)));
 
+		renderer->setObjectDebugName(graphTexture.rendererTexture, OBJECT_TYPE_TEXTURE, it->first);
+
 		graphTextures.push_back(graphTexture);
 
 		D3D12TextureView *graphTextureView = new D3D12TextureView();

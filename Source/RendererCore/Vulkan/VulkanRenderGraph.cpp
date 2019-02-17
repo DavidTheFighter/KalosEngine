@@ -68,8 +68,12 @@ Semaphore VulkanRenderGraph::execute(bool returnWaitableSemaphore)
 		{
 			RenderGraphRenderFunctionData renderData = {};
 
+			cmdBuffer->beginDebugRegion(passes[passData.passIndices[i]]->getPassName(), glm::vec4(0.0f, 0.5f, 1.0f, 1.0f));
+
 			if (passes[passData.passIndices[i]]->hasRenderFunction())
 				passes[passData.passIndices[i]]->getRenderFunction()(cmdBuffer, renderData);
+
+			cmdBuffer->endDebugRegion();
 		}
 
 		if (passData.pipelineType == RENDER_GRAPH_PIPELINE_TYPE_GRAPHICS)
@@ -210,6 +214,8 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 
 		VK_CHECK_RESULT(vmaCreateImage(renderer->memAllocator, &imageCreateInfo, &allocInfo, &vulkanTexture->imageHandle, &vulkanTexture->imageMemory, nullptr));
 
+		renderer->setObjectDebugName(vulkanTexture, OBJECT_TYPE_TEXTURE, it->first);
+
 		VulkanRenderGraphImage graphImage = {};
 		graphImage.attachment = data.attachment;
 		graphImage.rendererTexture = vulkanTexture;
@@ -238,6 +244,8 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 
 		VK_CHECK_RESULT(vkCreateImageView(renderer->device, &imageViewCreateInfo, nullptr, &vulkanTextureView->imageView));
 
+		renderer->setObjectDebugName(vulkanTextureView, OBJECT_TYPE_TEXTURE_VIEW, it->first);
+
 		VulkanRenderGraphTextureView graphTextureView = {};
 		graphTextureView.attachment = data.attachment;
 		graphTextureView.textureView = vulkanTextureView;
@@ -263,6 +271,8 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 
 			VK_CHECK_RESULT(vkCreateImageView(renderer->device, &imageViewCreateInfo, nullptr, &vulkanTextureView->imageView));
 
+			renderer->setObjectDebugName(vulkanTextureView, OBJECT_TYPE_TEXTURE_VIEW, it->first + viewSelectMipPostfix + toString(m));
+
 			graphTextureView.textureView = vulkanTextureView;
 			graphTextureViews[it->first + viewSelectMipPostfix + toString(m)] = graphTextureView;
 		}
@@ -282,6 +292,8 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 			imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
 
 			VK_CHECK_RESULT(vkCreateImageView(renderer->device, &imageViewCreateInfo, nullptr, &vulkanTextureView->imageView));
+
+			renderer->setObjectDebugName(vulkanTextureView, OBJECT_TYPE_TEXTURE_VIEW, it->first + viewSelectLayerPostfix + toString(l));
 
 			graphTextureView.textureView = vulkanTextureView;
 			graphTextureViews[it->first + viewSelectLayerPostfix + toString(l)] = graphTextureView;

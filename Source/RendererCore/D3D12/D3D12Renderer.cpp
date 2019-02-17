@@ -1121,8 +1121,41 @@ void D3D12Renderer::destroyStagingTexture(StagingTexture stagingTexture)
 	delete d3d12StagingTexture;
 }
 
-void D3D12Renderer::setObjectDebugName(void * obj, RendererObjectType objType, const std::string & name)
+void D3D12Renderer::setObjectDebugName(void *obj, RendererObjectType objType, const std::string & name)
 {
+	switch (objType)
+	{
+		case OBJECT_TYPE_SEMAPHORE:
+			static_cast<D3D12Semaphore*>(obj)->semFence->SetName(utf8_to_utf16(name).c_str());
+			break;
+		case OBJECT_TYPE_COMMAND_BUFFER:
+			static_cast<D3D12CommandBuffer*>(obj)->cmdList->SetName(utf8_to_utf16(name).c_str());
+			break;
+		case OBJECT_TYPE_FENCE:
+			static_cast<D3D12Fence*>(obj)->fence->SetName(utf8_to_utf16(name).c_str());
+			break;
+		case OBJECT_TYPE_BUFFER:
+			static_cast<D3D12Buffer*>(obj)->bufferResource->SetName(utf8_to_utf16(name).c_str());
+			break;
+		case OBJECT_TYPE_TEXTURE:
+			static_cast<D3D12Texture*>(obj)->textureResource->SetName(utf8_to_utf16(name).c_str());
+			break;
+		case OBJECT_TYPE_TEXTURE_VIEW:
+			break;
+		case OBJECT_TYPE_SHADER_MODULE:
+			break;
+		case OBJECT_TYPE_PIPELINE:
+			static_cast<D3D12Pipeline*>(obj)->pipeline->SetName(utf8_to_utf16(name).c_str());
+			break;
+		case OBJECT_TYPE_SAMPLER:
+			break;
+		case OBJECT_TYPE_DESCRIPTOR_SET:
+			break;
+		case OBJECT_TYPE_COMMAND_POOL:
+			static_cast<D3D12CommandPool*>(obj)->cmdAlloc->SetName(utf8_to_utf16(name).c_str());
+			static_cast<D3D12CommandPool*>(obj)->cmdAlloc->SetName(utf8_to_utf16(name + "_bundle").c_str());
+			break;
+	}
 }
 
 void D3D12Renderer::initSwapchain(Window *wnd)
