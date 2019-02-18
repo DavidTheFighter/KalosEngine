@@ -9,10 +9,17 @@
 
 class VulkanRenderer;
 
+typedef struct VulkanDescriptorSetLayoutCacheInfo
+{
+	DescriptorSetLayoutDescription description;
+	VkDescriptorSetLayout setLayoutHandle;
+	std::vector<VkSampler> staticSamplerHandles;
+
+} VulkanDescriptorSetLayoutCacheInfo;
+
 class VulkanPipelineHelper
 {
 	public:
-
 
 		VulkanPipelineHelper (VulkanRenderer *parentVulkanRenderer);
 		virtual ~VulkanPipelineHelper ();
@@ -27,7 +34,7 @@ class VulkanPipelineHelper
 		VulkanRenderer *renderer;
 
 		// I'm also letting the renderer backend handle descriptor set layout caches, so the front end only gives the layout info and gets it easy
-		std::vector<std::pair<DescriptorSetLayoutDescription, VkDescriptorSetLayout> > descriptorSetLayoutCache;
+		std::vector<VulkanDescriptorSetLayoutCacheInfo> descriptorSetLayoutCache;
 
 		/*
 		 * All of these functions are converter functions for the generic renderer data to vulkan renderer data. Note that

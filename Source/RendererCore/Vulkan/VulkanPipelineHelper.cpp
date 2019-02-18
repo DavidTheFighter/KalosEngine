@@ -13,7 +13,10 @@ VulkanPipelineHelper::~VulkanPipelineHelper ()
 {
 	for (auto descriptorSetLayout : descriptorSetLayoutCache)
 	{
-		vkDestroyDescriptorSetLayout(renderer->device, descriptorSetLayout.second, nullptr);
+		vkDestroyDescriptorSetLayout(renderer->device, descriptorSetLayout.setLayoutHandle, nullptr);
+
+		for (VkSampler sampler : descriptorSetLayout.staticSamplerHandles)
+			vkDestroySampler(renderer->device, sampler, nullptr);
 	}
 }
 
@@ -261,10 +264,12 @@ VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const Des
 
 	// Search the cache and see if we have an existing descriptor set layout to use
 	for (size_t i = 0; i < descriptorSetLayoutCache.size(); i++)
-		if (descriptorSetLayoutCache[i].first == setDescription)
-			return descriptorSetLayoutCache[i].second;
+		if (descriptorSetLayoutCache[i].description == setDescription)
+			return descriptorSetLayoutCache[i].setLayoutHandle;
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
+	std::vector<VkSampler> staticSamplerHandles;
+	staticSamplerHandles.reserve(setDescription.staticSamplers.size());
 
 	for (uint32_t i = 0; i < setDescription.samplerDescriptorCount; i++)
 	{
@@ -273,6 +278,39 @@ VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const Des
 		vulkanBinding.binding = HLSL_SPV_SAMPLER_OFFSET + i;
 		vulkanBinding.descriptorCount = 1;
 		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+
+		for (size_t s = 0; s < setDescription.staticSamplers.size(); s++)
+		{
+			const DescriptorStaticSampler &samplerInfo = setDescription.staticSamplers[s];
+
+			if (samplerInfo.samplerBinding == i)
+			{
+				VkSamplerCreateInfo samplerCreateInfo = {};
+				samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+				samplerCreateInfo.pNext = nullptr;
+				samplerCreateInfo.flags = 0;
+				samplerCreateInfo.minFilter = toVkFilter(samplerInfo.minFilter);
+				samplerCreateInfo.magFilter = toVkFilter(samplerInfo.magFilter);
+				samplerCreateInfo.addressModeU = toVkSamplerAddressMode(samplerInfo.addressMode);
+				samplerCreateInfo.addressModeV = toVkSamplerAddressMode(samplerInfo.addressMode);
+				samplerCreateInfo.addressModeW = toVkSamplerAddressMode(samplerInfo.addressMode);
+				samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+				samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+				samplerCreateInfo.compareEnable = VK_FALSE;
+				samplerCreateInfo.mipmapMode = toVkSamplerMipmapMode(samplerInfo.mipmapMode);
+				samplerCreateInfo.mipLodBias = samplerInfo.mipLodBias;
+				samplerCreateInfo.minLod = samplerInfo.minLod;
+				samplerCreateInfo.maxLod = samplerInfo.maxLod;
+
+				VkSampler samplerHandle;
+				VK_CHECK_RESULT(vkCreateSampler(renderer->device, &samplerCreateInfo, nullptr, &samplerHandle));
+
+				staticSamplerHandles.push_back(samplerHandle);
+
+				vulkanBinding.pImmutableSamplers = &staticSamplerHandles.back();
+				break;
+			}
+		}
 
 		bindings.push_back(vulkanBinding);
 	}
@@ -341,7 +379,12 @@ VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const Des
 
 	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(renderer->device, &setLayoutCreateInfo, nullptr, &setLayout));
 
-	descriptorSetLayoutCache.push_back(std::make_pair(setDescription, setLayout));
+	VulkanDescriptorSetLayoutCacheInfo setLayoutCacheInfo = {};
+	setLayoutCacheInfo.description = setDescription;
+	setLayoutCacheInfo.setLayoutHandle = setLayout;
+	setLayoutCacheInfo.staticSamplerHandles = staticSamplerHandles;
+
+	descriptorSetLayoutCache.push_back(setLayoutCacheInfo);
 
 	return setLayout;
 }

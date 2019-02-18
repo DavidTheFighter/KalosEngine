@@ -109,6 +109,49 @@ typedef struct RendererRenderPass
 		std::vector<SubpassDependency> subpassDependencies;
 } RendererRenderPass;
 
+typedef struct RendererDescriptorStaticSampler
+{
+	uint32_t samplerBinding;
+	SamplerAddressMode addressMode = SAMPLER_ADDRESS_MODE_REPEAT;
+	SamplerFilter minFilter = SAMPLER_FILTER_LINEAR;
+	SamplerFilter magFilter = SAMPLER_FILTER_LINEAR;
+	float anisotropy = 1.0f;
+	float minLod = 0.0f;
+	float maxLod = 0.0f;
+	float mipLodBias = 0.0f;
+	SamplerMipmapMode mipmapMode = SAMPLER_MIPMAP_MODE_LINEAR;
+
+	bool operator==(const RendererDescriptorStaticSampler &other)
+	{
+		if (samplerBinding != other.samplerBinding)
+			return false;
+		if (addressMode != other.addressMode)
+			return false;
+		if (minFilter != other.minFilter)
+			return false;
+		if (magFilter != other.magFilter)
+			return false;
+		if (anisotropy != other.anisotropy)
+			return false;
+		if (minLod != other.minLod)
+			return false;
+		if (maxLod != other.maxLod)
+			return false;
+		if (mipLodBias != other.mipLodBias)
+			return false;
+		if (mipmapMode != other.mipmapMode)
+			return false;
+
+		return true;
+	}
+
+	bool operator!=(const RendererDescriptorStaticSampler &other)
+	{
+		return !(operator==(other));
+	}
+
+} DescriptorStaticSampler;
+
 typedef struct RendererDescriptorSetLayoutDescription
 {
 	uint32_t samplerDescriptorCount;
@@ -124,6 +167,8 @@ typedef struct RendererDescriptorSetLayoutDescription
 	std::vector<ShaderStageFlags> textureBindingsShaderStageAccess;
 	std::vector<ShaderStageFlags> storageBufferBindingsShaderStageAccess;
 	std::vector<ShaderStageFlags> storageTextureBindingsShaderStageAccess;
+
+	std::vector<DescriptorStaticSampler> staticSamplers;
 
 	bool operator==(const RendererDescriptorSetLayoutDescription &other)
 	{
@@ -152,6 +197,9 @@ typedef struct RendererDescriptorSetLayoutDescription
 		if (storageTextureBindingsShaderStageAccess.size() != other.storageTextureBindingsShaderStageAccess.size())
 			return false;
 
+		if (staticSamplers.size() != other.staticSamplers.size())
+			return false;
+
 		for (size_t i = 0; i < samplerBindingsShaderStageAccess.size(); i++)
 			if (samplerBindingsShaderStageAccess[i] != other.samplerBindingsShaderStageAccess[i])
 				return false;
@@ -176,7 +224,16 @@ typedef struct RendererDescriptorSetLayoutDescription
 			if (storageTextureBindingsShaderStageAccess[i] != other.storageTextureBindingsShaderStageAccess[i])
 				return false;
 		
+		for (size_t i = 0; i < staticSamplers.size(); i++)
+			if (staticSamplers[i] != other.staticSamplers[i])
+				return false;
+
 		return true;
+	}
+
+	bool operator!=(const RendererDescriptorSetLayoutDescription &other)
+	{
+		return !(operator!=(other));
 	}
 
 } DescriptorSetLayoutDescription;

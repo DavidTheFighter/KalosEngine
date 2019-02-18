@@ -145,6 +145,7 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 		psoDesc.DSVFormat = ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].depthStencilAttachment.attachment].format);
 
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+	std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers;
 
 	if (pipelineInfo.inputPushConstants.size > 0)
 	{
@@ -196,16 +197,96 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 		std::vector<D3D12_DESCRIPTOR_RANGE> &ranges = allRanges[s];
 		ShaderStageFlags allDescriptorStages = 0;
 
+		for (size_t i = 0; i < setDesc.staticSamplers.size(); i++)
+		{
+			const DescriptorStaticSampler &setSamplerDesc = setDesc.staticSamplers[i];
+			D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
+			samplerDesc.Filter = samplerFilterToD3D12Filter(setSamplerDesc.minFilter, setSamplerDesc.magFilter, setSamplerDesc.mipmapMode);
+			samplerDesc.AddressU = samplerAddressModeToD3D12TextureAddressMode(setSamplerDesc.addressMode);
+			samplerDesc.AddressV = samplerAddressModeToD3D12TextureAddressMode(setSamplerDesc.addressMode);
+			samplerDesc.AddressW = samplerAddressModeToD3D12TextureAddressMode(setSamplerDesc.addressMode);
+			samplerDesc.MipLODBias = setSamplerDesc.mipLodBias;
+			samplerDesc.MaxAnisotropy = UINT(setSamplerDesc.anisotropy);
+			samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+			samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+			samplerDesc.MinLOD = setSamplerDesc.minLod;
+			samplerDesc.MaxLOD = setSamplerDesc.maxLod;
+			samplerDesc.ShaderRegister = setSamplerDesc.samplerBinding;
+			samplerDesc.RegisterSpace = (UINT) s;
+			
+			switch (setDesc.samplerBindingsShaderStageAccess[setSamplerDesc.samplerBinding])
+			{
+				case SHADER_STAGE_VERTEX_BIT:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+					break;
+				case SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_HULL;
+					break;
+				case SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN;
+					break;
+				case SHADER_STAGE_GEOMETRY_BIT:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+					break;
+				case SHADER_STAGE_FRAGMENT_BIT:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+					break;
+				case SHADER_STAGE_ALL_GRAPHICS:
+				case SHADER_STAGE_ALL:
+				default:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+			}
+
+			staticSamplers.push_back(samplerDesc);
+		}
+
 		if (setDesc.samplerDescriptorCount > 0)
 		{
-			D3D12_DESCRIPTOR_RANGE descRange = {};
-			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-			descRange.NumDescriptors = setDesc.samplerDescriptorCount;
-			descRange.BaseShaderRegister = 0;
-			descRange.RegisterSpace = (UINT) s;
-			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+			// This basically just finds ranges of non-static samplers and records them as D3D12_DESCRIPTOR_RANGE's
+			for (uint32_t si = 0; si < setDesc.samplerDescriptorCount; si++)
+			{
+				bool foundNonStaticSampler = true;
+				for (size_t i = 0; i < setDesc.staticSamplers.size(); i++)
+				{
+					if (setDesc.staticSamplers[i].samplerBinding == si)
+					{
+						foundNonStaticSampler = false;
+						break;
+					}
+				}
 
-			samplerRanges.push_back(descRange);
+				if (foundNonStaticSampler)
+				{
+					uint32_t siStart = si;
+
+					for (; si < setDesc.samplerDescriptorCount; si++)
+					{
+						for (size_t i = 0; i < setDesc.staticSamplers.size(); i++)
+						{
+							if (setDesc.staticSamplers[i].samplerBinding == si)
+							{
+								foundNonStaticSampler = false;
+								break;
+							}
+						}
+
+						if (foundNonStaticSampler)
+						{
+							uint32_t siEnd = si;
+							D3D12_DESCRIPTOR_RANGE descRange = {};
+							descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+							descRange.NumDescriptors = siEnd - siStart + 1;
+							descRange.BaseShaderRegister = siStart;
+							descRange.RegisterSpace = (UINT) s;
+							descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+							samplerRanges.push_back(descRange);
+
+							break;
+						}
+					}
+				}
+			}
 
 			for (size_t d = 0; d < setDesc.samplerDescriptorCount; d++)
 				samplerDescriptorStages |= setDesc.samplerBindingsShaderStageAccess[d];
@@ -362,12 +443,14 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
 	rootSigDesc.NumParameters = (UINT) rootParams.size();
 	rootSigDesc.pParameters = rootParams.data();
-	rootSigDesc.NumStaticSamplers = 0;
-	rootSigDesc.pStaticSamplers = nullptr;
+	rootSigDesc.NumStaticSamplers = (UINT) staticSamplers.size();
+	rootSigDesc.pStaticSamplers = staticSamplers.data();
 	rootSigDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
 	if (pipelineInfo.vertexInputInfo.vertexInputAttribs.size() > 0)
 		rootSigDesc.Flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	// TODO Add root sig deny flags where applicable
 
 	ID3DBlob* signature = nullptr;
 	DX_CHECK_RESULT(D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr));
@@ -401,6 +484,7 @@ Pipeline D3D12PipelineHelper::createComputePipeline(const ComputePipelineInfo &p
 	psoDesc.NodeMask = 0;
 
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
+	std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers;
 
 	if (pipelineInfo.inputPushConstants.size > 0)
 	{
@@ -435,16 +519,96 @@ Pipeline D3D12PipelineHelper::createComputePipeline(const ComputePipelineInfo &p
 		std::vector<D3D12_DESCRIPTOR_RANGE> &ranges = allRanges[s];
 		ShaderStageFlags allDescriptorStages = 0;
 
+		for (size_t i = 0; i < setDesc.staticSamplers.size(); i++)
+		{
+			const DescriptorStaticSampler &setSamplerDesc = setDesc.staticSamplers[i];
+			D3D12_STATIC_SAMPLER_DESC samplerDesc = {};
+			samplerDesc.Filter = samplerFilterToD3D12Filter(setSamplerDesc.minFilter, setSamplerDesc.magFilter, setSamplerDesc.mipmapMode);
+			samplerDesc.AddressU = samplerAddressModeToD3D12TextureAddressMode(setSamplerDesc.addressMode);
+			samplerDesc.AddressV = samplerAddressModeToD3D12TextureAddressMode(setSamplerDesc.addressMode);
+			samplerDesc.AddressW = samplerAddressModeToD3D12TextureAddressMode(setSamplerDesc.addressMode);
+			samplerDesc.MipLODBias = setSamplerDesc.mipLodBias;
+			samplerDesc.MaxAnisotropy = UINT(setSamplerDesc.anisotropy);
+			samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+			samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+			samplerDesc.MinLOD = setSamplerDesc.minLod;
+			samplerDesc.MaxLOD = setSamplerDesc.maxLod;
+			samplerDesc.ShaderRegister = setSamplerDesc.samplerBinding;
+			samplerDesc.RegisterSpace = (UINT) s;
+
+			switch (setDesc.samplerBindingsShaderStageAccess[setSamplerDesc.samplerBinding])
+			{
+				case SHADER_STAGE_VERTEX_BIT:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+					break;
+				case SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_HULL;
+					break;
+				case SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_DOMAIN;
+					break;
+				case SHADER_STAGE_GEOMETRY_BIT:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+					break;
+				case SHADER_STAGE_FRAGMENT_BIT:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+					break;
+				case SHADER_STAGE_ALL_GRAPHICS:
+				case SHADER_STAGE_ALL:
+				default:
+					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+			}
+
+			staticSamplers.push_back(samplerDesc);
+		}
+
 		if (setDesc.samplerDescriptorCount > 0)
 		{
-			D3D12_DESCRIPTOR_RANGE descRange = {};
-			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
-			descRange.NumDescriptors = setDesc.samplerDescriptorCount;
-			descRange.BaseShaderRegister = 0;
-			descRange.RegisterSpace = (UINT) s;
-			descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+			// This basically just finds ranges of non-static samplers and records them as D3D12_DESCRIPTOR_RANGE's
+			for (uint32_t si = 0; si < setDesc.samplerDescriptorCount; si++)
+			{
+				bool foundNonStaticSampler = true;
+				for (size_t i = 0; i < setDesc.staticSamplers.size(); i++)
+				{
+					if (setDesc.staticSamplers[i].samplerBinding == si)
+					{
+						foundNonStaticSampler = false;
+						break;
+					}
+				}
 
-			samplerRanges.push_back(descRange);
+				if (foundNonStaticSampler)
+				{
+					uint32_t siStart = si;
+
+					for (; si < setDesc.samplerDescriptorCount; si++)
+					{
+						for (size_t i = 0; i < setDesc.staticSamplers.size(); i++)
+						{
+							if (setDesc.staticSamplers[i].samplerBinding == si)
+							{
+								foundNonStaticSampler = false;
+								break;
+							}
+						}
+
+						if (foundNonStaticSampler)
+						{
+							uint32_t siEnd = si;
+							D3D12_DESCRIPTOR_RANGE descRange = {};
+							descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+							descRange.NumDescriptors = siEnd - siStart + 1;
+							descRange.BaseShaderRegister = siStart;
+							descRange.RegisterSpace = (UINT) s;
+							descRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+							samplerRanges.push_back(descRange);
+
+							break;
+						}
+					}
+				}
+			}
 
 			for (size_t d = 0; d < setDesc.samplerDescriptorCount; d++)
 				samplerDescriptorStages |= setDesc.samplerBindingsShaderStageAccess[d];

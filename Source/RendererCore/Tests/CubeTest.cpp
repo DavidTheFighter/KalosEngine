@@ -17,7 +17,7 @@ Specifically this tests:
 - Buffer uploading/staging
 - Propery face culling order
 - Viewports/scissors, essentially everythign the triangle test does
-
+- Static samplers (well, a single static sampler)
 */
 
 CubeTest::CubeTest(Renderer *rendererPtr)
@@ -246,8 +246,8 @@ void CubeTest::createBuffers()
 
 void CubeTest::createTextures()
 {
-	const uint32_t testTextureWidth = 256;
-	const uint32_t testTextureHeight = 256;
+	const uint32_t testTextureWidth = 32;
+	const uint32_t testTextureHeight = 32;
 
 	cubeTestTexture = renderer->createTexture({testTextureWidth, testTextureHeight, 1}, RESOURCE_FORMAT_R8G8B8A8_UNORM, TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT, MEMORY_USAGE_GPU_ONLY);
 	cubeTestTextureView = renderer->createTextureView(cubeTestTexture);
@@ -365,14 +365,20 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	info.colorBlendInfo = colorBlend;
 
 	DescriptorSetLayoutDescription set0 = {};
-	set0.samplerDescriptorCount = 1;
+	set0.samplerDescriptorCount = 2;
 	set0.constantBufferDescriptorCount = 1;
 	set0.inputAttachmentDescriptorCount = 0;
 	set0.textureDescriptorCount = 1;
-	set0.samplerBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT};
+	set0.samplerBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT, SHADER_STAGE_FRAGMENT_BIT};
 	set0.constantBufferBindingsShaderStageAccess = {SHADER_STAGE_VERTEX_BIT};
 	set0.inputAttachmentBindingsShaderStageAccess = {};
 	set0.textureBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT};
+
+	DescriptorStaticSampler staticSampler = {};
+	staticSampler.samplerBinding = 1;
+	staticSampler.magFilter = SAMPLER_FILTER_NEAREST;
+
+	set0.staticSamplers.push_back(staticSampler);
 
 	info.inputPushConstants = {sizeof(glm::mat4), SHADER_STAGE_VERTEX_BIT};
 	info.inputSetLayouts = {set0};
