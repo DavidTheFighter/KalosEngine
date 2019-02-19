@@ -9,21 +9,7 @@
 #include <Peripherals/Window.h>
 
 #include <RendererCore/Renderer.h>
-
-class TriangleTest;
-class VertexIndexBufferTest;
-class PushConstantsTest;
-class CubeTest;
-class ComputeTest;
-
-typedef enum
-{
-	RENDERER_TEST_TRIANGLE, // Tests the bare basics, as little as possible to get something rendered to the screen
-	RENDERER_TEST_VERTEX_INDEX_BUFFER, // Tests vertex and index buffers by drawing two triangles
-	RENDERER_TEST_PUSH_CONSTANTS, // Tests push constants by making a 3D rotating triangle
-	RENDERER_TEST_CUBE, // Combines vertex/index buffer, push constants, depth buffer + more to make a rotating cube like the vkcube.exe demo
-	RENDERER_TEST_COMPUTE // Tests compute shaders, pipelines, resource binding for compute
-} RendererTest;
+#include <RendererCore/Tests/RenderTestHandler.h>
 
 class KalosEngine
 {
@@ -68,13 +54,7 @@ class KalosEngine
 	uint32_t updateFrequencyCap;
 
 	bool doingRenderingTest;
-	RendererTest currentRenderingTest;
-
-	std::unique_ptr<TriangleTest> triangleTest;
-	std::unique_ptr<VertexIndexBufferTest> vertexIndexBufferTest;
-	std::unique_ptr<PushConstantsTest> pushConstantsTest;
-	std::unique_ptr<CubeTest> cubeTest;
-	std::unique_ptr<ComputeTest> computeTest;
+	std::unique_ptr<RenderTestHandler> renderTestHandler;
 };
 
 #endif /* GAME_KALOSENGINE_H_ */

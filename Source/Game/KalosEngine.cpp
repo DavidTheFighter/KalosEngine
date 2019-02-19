@@ -4,11 +4,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include <RendererCore/Tests/TriangleTest.h>
-#include <RendererCore/Tests/VertexIndexBufferTest.h>
-#include <RendererCore/Tests/PushConstantsTest.h>
-#include <RendererCore/Tests/CubeTest.h>
-#include <RendererCore/Tests/ComputeTest.h>
+#include <RendererCore/Tests/RenderTestHandler.h>
 
 KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBackend rendererBackendType, uint32_t engineUpdateFrequencyCap)
 {
@@ -34,6 +30,8 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 
 	doingRenderingTest = true;
 
+	RendererTest currentRenderingTest;
+
 	if (std::find(launchArgs.begin(), launchArgs.end(), "-triangle_test") != launchArgs.end())
 		currentRenderingTest = RENDERER_TEST_TRIANGLE;
 	else if (std::find(launchArgs.begin(), launchArgs.end(), "-vertex_index_buffer_test") != launchArgs.end())
@@ -48,36 +46,7 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 		doingRenderingTest = false;
 
 	if (doingRenderingTest)
-	{
-		switch (currentRenderingTest)
-		{
-			case RENDERER_TEST_TRIANGLE:
-				triangleTest = std::unique_ptr<TriangleTest>(new TriangleTest(renderer.get()));
-
-				renderer->setSwapchainTexture(mainWindow.get(), triangleTest->gfxGraph->getRenderGraphOutputTextureView(), triangleTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-				break;
-			case RENDERER_TEST_VERTEX_INDEX_BUFFER:
-				vertexIndexBufferTest = std::unique_ptr<VertexIndexBufferTest>(new VertexIndexBufferTest(renderer.get()));
-
-				renderer->setSwapchainTexture(mainWindow.get(), vertexIndexBufferTest->gfxGraph->getRenderGraphOutputTextureView(), vertexIndexBufferTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-				break;
-			case RENDERER_TEST_PUSH_CONSTANTS:
-				pushConstantsTest = std::unique_ptr<PushConstantsTest>(new PushConstantsTest(renderer.get()));
-
-				renderer->setSwapchainTexture(mainWindow.get(), pushConstantsTest->gfxGraph->getRenderGraphOutputTextureView(), pushConstantsTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-				break;
-			case RENDERER_TEST_CUBE:
-				cubeTest = std::unique_ptr<CubeTest>(new CubeTest(renderer.get()));
-
-				renderer->setSwapchainTexture(mainWindow.get(), cubeTest->gfxGraph->getRenderGraphOutputTextureView(), cubeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-				break;
-			case RENDERER_TEST_COMPUTE:
-				computeTest = std::unique_ptr<ComputeTest>(new ComputeTest(renderer.get()));
-
-				renderer->setSwapchainTexture(mainWindow.get(), computeTest->gfxGraph->getRenderGraphOutputTextureView(), computeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-				break;
-		}
-	}
+		renderTestHandler = std::unique_ptr<RenderTestHandler>(new RenderTestHandler(renderer.get(), mainWindow.get(), currentRenderingTest));
 }
 
 KalosEngine::~KalosEngine()
@@ -202,29 +171,7 @@ void KalosEngine::render()
 {
 	if (doingRenderingTest)
 	{
-		switch (currentRenderingTest)
-		{
-			case RENDERER_TEST_TRIANGLE:
-				triangleTest->render();
-				renderer->presentToSwapchain(mainWindow.get(), {triangleTest->renderDoneSemaphore});
-				break;
-			case RENDERER_TEST_VERTEX_INDEX_BUFFER:
-				vertexIndexBufferTest->render();
-				renderer->presentToSwapchain(mainWindow.get(), {vertexIndexBufferTest->renderDoneSemaphore});
-				break;
-			case RENDERER_TEST_PUSH_CONSTANTS:
-				pushConstantsTest->render();
-				renderer->presentToSwapchain(mainWindow.get(), {pushConstantsTest->renderDoneSemaphore});
-				break;
-			case RENDERER_TEST_CUBE:
-				cubeTest->render();
-				renderer->presentToSwapchain(mainWindow.get(), {cubeTest->renderDoneSemaphore});
-				break;
-			case RENDERER_TEST_COMPUTE:
-				computeTest->render();
-				renderer->presentToSwapchain(mainWindow.get(), {computeTest->renderDoneSemaphore});
-				break;
-		}
+		renderTestHandler->render();
 	}
 	else if (!gameStates.empty())
 	{
