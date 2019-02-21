@@ -9,6 +9,7 @@
 #include <RendererCore/Tests/PushConstantsTest.h>
 #include <RendererCore/Tests/CubeTest.h>
 #include <RendererCore/Tests/ComputeTest.h>
+#include <RendererCore/Tests/MSAATest.h>
 
 RenderTestHandler::RenderTestHandler(Renderer *rendererPtr, Window *mainWindowPtr, RendererTest testType)
 {
@@ -43,6 +44,11 @@ RenderTestHandler::RenderTestHandler(Renderer *rendererPtr, Window *mainWindowPt
 
 			renderer->setSwapchainTexture(mainWindow, computeTest->gfxGraph->getRenderGraphOutputTextureView(), computeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			break;
+		case RENDERER_TEST_MSAA:
+			msaaTest = std::unique_ptr<MSAATest>(new MSAATest(renderer));
+
+			renderer->setSwapchainTexture(mainWindow, msaaTest->gfxGraph->getRenderGraphOutputTextureView(), msaaTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			break;
 	}
 }
 
@@ -74,6 +80,10 @@ void RenderTestHandler::render()
 		case RENDERER_TEST_COMPUTE:
 			computeTest->render();
 			renderer->presentToSwapchain(mainWindow, {computeTest->renderDoneSemaphore});
+			break;
+		case RENDERER_TEST_MSAA:
+			msaaTest->render();
+			renderer->presentToSwapchain(mainWindow, {msaaTest->renderDoneSemaphore});
 			break;
 	}
 }

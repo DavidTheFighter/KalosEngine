@@ -42,6 +42,8 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 		currentRenderingTest = RENDERER_TEST_CUBE;
 	else if (std::find(launchArgs.begin(), launchArgs.end(), "-compute_test") != launchArgs.end())
 		currentRenderingTest = RENDERER_TEST_COMPUTE;
+	else if (std::find(launchArgs.begin(), launchArgs.end(), "-msaa_test") != launchArgs.end())
+		currentRenderingTest = RENDERER_TEST_MSAA;
 	else
 		doingRenderingTest = false;
 

@@ -12,7 +12,8 @@ typedef enum
 	RENDERER_TEST_VERTEX_INDEX_BUFFER, // Tests vertex and index buffers by drawing two triangles
 	RENDERER_TEST_PUSH_CONSTANTS, // Tests push constants by making a 3D rotating triangle
 	RENDERER_TEST_CUBE, // Combines vertex/index buffer, push constants, depth buffer + more to make a rotating cube like the vkcube.exe demo
-	RENDERER_TEST_COMPUTE // Tests compute shaders, pipelines, resource binding for compute
+	RENDERER_TEST_COMPUTE, // Tests compute shaders, pipelines, resource binding for compute
+	RENDERER_TEST_MSAA
 } RendererTest;
 
 class Renderer;
@@ -23,6 +24,7 @@ class VertexIndexBufferTest;
 class PushConstantsTest;
 class CubeTest;
 class ComputeTest;
+class MSAATest;
 
 class RenderTestHandler
 {
@@ -45,6 +47,8 @@ class RenderTestHandler
 	std::unique_ptr<PushConstantsTest> pushConstantsTest;
 	std::unique_ptr<CubeTest> cubeTest;
 	std::unique_ptr<ComputeTest> computeTest;
+	std::unique_ptr<MSAATest> msaaTest;
+
 };
 
 #endif /* RENDERERCORE_TESTS_RENDERTESTHANDLER_H_ */

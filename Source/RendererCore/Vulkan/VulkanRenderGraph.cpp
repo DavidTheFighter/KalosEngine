@@ -55,7 +55,7 @@ Semaphore VulkanRenderGraph::execute(bool returnWaitableSemaphore)
 		const VulkanRenderGraphRenderPass &passData = finalRenderPasses[pass];
 
 		if ((passData.beforeRenderImageBarriers.size() + passData.beforeRenderBufferBarriers.size() + passData.beforeRenderMemoryBarriers.size()) > 0)
-			vkCmdPipelineBarrier(cmdBuffer->bufferHandle, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, (uint32_t) passData.beforeRenderMemoryBarriers.size(), passData.beforeRenderMemoryBarriers.data(), (uint32_t) passData.beforeRenderBufferBarriers.size(), passData.beforeRenderBufferBarriers.data(), (uint32_t) passData.beforeRenderImageBarriers.size(), passData.beforeRenderImageBarriers.data());
+			vkCmdPipelineBarrier(cmdBuffer->bufferHandle, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, (uint32_t) passData.beforeRenderMemoryBarriers.size(), passData.beforeRenderMemoryBarriers.data(), (uint32_t) passData.beforeRenderBufferBarriers.size(), passData.beforeRenderBufferBarriers.data(), (uint32_t) passData.beforeRenderImageBarriers.size(), passData.beforeRenderImageBarriers.data());
 
 		if (passData.pipelineType == RENDER_GRAPH_PIPELINE_TYPE_GRAPHICS)
 		{
@@ -80,7 +80,7 @@ Semaphore VulkanRenderGraph::execute(bool returnWaitableSemaphore)
 			cmdBuffer->vulkan_endRenderPass();
 
 		if ((passData.afterRenderImageBarriers.size() + passData.afterRenderBufferBarriers.size() + passData.afterRenderMemoryBarriers.size()) > 0)
-			vkCmdPipelineBarrier(cmdBuffer->bufferHandle, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, (uint32_t) passData.afterRenderMemoryBarriers.size(), passData.afterRenderMemoryBarriers.data(), (uint32_t) passData.afterRenderBufferBarriers.size(), passData.afterRenderBufferBarriers.data(), (uint32_t) passData.afterRenderImageBarriers.size(), passData.afterRenderImageBarriers.data());
+			vkCmdPipelineBarrier(cmdBuffer->bufferHandle, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, (uint32_t) passData.afterRenderMemoryBarriers.size(), passData.afterRenderMemoryBarriers.data(), (uint32_t) passData.afterRenderBufferBarriers.size(), passData.afterRenderBufferBarriers.data(), (uint32_t) passData.afterRenderImageBarriers.size(), passData.afterRenderImageBarriers.data());
 	}
 
 	cmdBuffer->endCommands();
@@ -162,7 +162,7 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 			{
 				PhysicalResourceData data = {};
 				data.attachment = pass.getStorageTextures()[o].attachment;
-				data.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+				data.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
 				if (pass.getStorageTextures()[o].textureName == outputAttachmentName)
 					data.usageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -173,7 +173,7 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 			else
 			{
 				PhysicalResourceData &data = resourceData[textureName];
-				data.usageFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
+				data.usageFlags |= VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 			}
 		}
 	}
@@ -197,8 +197,28 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageCreateInfo.usage = data.usageFlags;
 		imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 		imageCreateInfo.flags = (data.attachment.arrayLayers == 6 ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0);
+
+		switch (data.attachment.samples)
+		{
+			case 1:
+				imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+				break;
+			case 2:
+				imageCreateInfo.samples = VK_SAMPLE_COUNT_2_BIT;
+				break;
+			case 4:
+				imageCreateInfo.samples = VK_SAMPLE_COUNT_4_BIT;
+				break;
+			case 8:
+				imageCreateInfo.samples = VK_SAMPLE_COUNT_8_BIT;
+				break;
+			case 16:
+				imageCreateInfo.samples = VK_SAMPLE_COUNT_16_BIT;
+				break;
+			default:
+				imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+		}
 
 		VmaAllocationCreateInfo allocInfo = {};
 		allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -368,7 +388,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					VkAttachmentDescription attachmentDesc = {};
 					attachmentDesc.flags = 0;
 					attachmentDesc.format = toVkFormat(outputAttachment.attachment.format);
-					attachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
+					attachmentDesc.samples = sampleCountToVkSampleCount(outputAttachment.attachment.samples);
 					attachmentDesc.loadOp = outputAttachment.clearAttachment ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 					attachmentDesc.storeOp = endPassStackIndex >= attachmentUsageLifetimes[outputAttachment.textureName].y ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
 					attachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -389,7 +409,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					VkAttachmentDescription attachmentDesc = {};
 					attachmentDesc.flags = 0;
 					attachmentDesc.format = toVkFormat(outputAttachment.attachment.format);
-					attachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
+					attachmentDesc.samples = sampleCountToVkSampleCount(outputAttachment.attachment.samples);;
 					attachmentDesc.loadOp = outputAttachment.clearAttachment ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 					attachmentDesc.storeOp = endPassStackIndex >= attachmentUsageLifetimes[outputAttachment.textureName].y ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
 					attachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -610,7 +630,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					passes[passStack[p]]->getInitFunction()(initData);
 			}
 		}
-		else if (passData.pipelineType == RENDER_GRAPH_PIPELINE_TYPE_COMPUTE)
+		else if (passData.pipelineType == RENDER_GRAPH_PIPELINE_TYPE_COMPUTE || passData.pipelineType == RENDER_GRAPH_PIPELINE_TYPE_GENERAL)
 		{
 			const RenderGraphRenderPass &pass = *passes[passStack[passStackIndex]];
 

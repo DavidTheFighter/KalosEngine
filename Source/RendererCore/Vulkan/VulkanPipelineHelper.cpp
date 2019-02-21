@@ -90,7 +90,13 @@ Pipeline VulkanPipelineHelper::createGraphicsPipeline (const GraphicsPipelineInf
 	VkPipelineMultisampleStateCreateInfo multisampleState = {};
 	multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampleState.pNext = nullptr;
-	multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampleState.flags = 0;
+	multisampleState.rasterizationSamples = sampleCountToVkSampleCount(pipelineInfo.rasterizationInfo.multiSampleCount);
+	multisampleState.sampleShadingEnable = VK_FALSE;
+	multisampleState.minSampleShading = 0;
+	multisampleState.pSampleMask = nullptr;
+	multisampleState.alphaToCoverageEnable = VK_FALSE;
+	multisampleState.alphaToOneEnable = VK_FALSE;
 
 	std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
 

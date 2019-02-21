@@ -50,15 +50,15 @@ void RenderGraphRenderPass::addInputAttachmentInput(const std::string &name)
 	inputAttachmentInputs.push_back(name);
 }
 
-void RenderGraphRenderPass::addStorageTexture(const std::string &name, const RenderPassAttachment &info, bool canReadAsInput, bool canWriteAsOutput)
+void RenderGraphRenderPass::addStorageTexture(const std::string &name, const RenderPassAttachment &info, bool canReadAsInput, bool canWriteAsOutput, TextureLayout passBeginLayout, TextureLayout passEndLayout)
 {
 	RenderPassStorageTexture storageTexture = {};
 	storageTexture.textureName = name;
 	storageTexture.attachment = info;
 	storageTexture.canReadAsInput = canReadAsInput;
 	storageTexture.canWriteAsOutput = canWriteAsOutput;
-	storageTexture.passBeginLayout = TEXTURE_LAYOUT_GENERAL;
-	storageTexture.passEndLayout = TEXTURE_LAYOUT_GENERAL;
+	storageTexture.passBeginLayout = passBeginLayout;
+	storageTexture.passEndLayout = passEndLayout;
 
 	storageTextures.push_back(storageTexture);
 }

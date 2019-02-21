@@ -39,6 +39,8 @@ class RendererCommandBuffer
 
 		virtual void dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) = 0;
 
+		virtual void resolveTexture(Texture srcTexture, Texture dstTexture, TextureSubresourceRange subresources) = 0;
+
 		/*
 		 * Sets the push constants to the currently bound pipeline.
 		 */

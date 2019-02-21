@@ -21,6 +21,7 @@ typedef struct RenderPassAttachment
 	uint32_t mipLevels = 1;
 	uint32_t arrayLayers = 1;
 	TextureViewType viewType = TEXTURE_VIEW_TYPE_2D;
+	uint32_t samples = 1;
 
 	bool operator==(const RenderPassAttachment &other) const
 	{
@@ -85,7 +86,7 @@ class RenderGraphRenderPass
 	void addSampledTextureInput(const std::string &name);
 	void addInputAttachmentInput(const std::string &name);
 
-	void addStorageTexture(const std::string &name, const RenderPassAttachment &info, bool canReadAsInput, bool canWriteAsOutput);
+	void addStorageTexture(const std::string &name, const RenderPassAttachment &info, bool canReadAsInput, bool canWriteAsOutput, TextureLayout passBeginLayout = TEXTURE_LAYOUT_GENERAL, TextureLayout passEndLayout = TEXTURE_LAYOUT_GENERAL);
 
 	void setInitFunction(std::function<void(const RenderGraphInitFunctionData&)> callbackFunc);
 	void setDescriptorUpdateFunction(std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> updateFunc);

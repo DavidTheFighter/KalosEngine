@@ -315,6 +315,7 @@ typedef struct RendererPipelineRasterizationInfo
 		bool enableOutOfOrderRasterization;
 		PolygonMode polygonMode;
 		PolygonCullMode cullMode;
+		uint32_t multiSampleCount;
 		// Also some depth bias stuff I might implement later
 
 } PipelineRasterizationInfo;

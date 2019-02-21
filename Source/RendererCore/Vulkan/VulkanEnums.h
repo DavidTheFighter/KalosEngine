@@ -9,6 +9,29 @@
 #define RENDERING_VULKAN_VULKANENUMS_H_
 #if BUILD_VULKAN_BACKEND
 
+inline VkSampleCountFlagBits sampleCountToVkSampleCount(uint32_t samples)
+{
+	switch (samples)
+	{
+		case 1:
+			return VK_SAMPLE_COUNT_1_BIT;
+		case 2:
+			return VK_SAMPLE_COUNT_2_BIT;
+		case 4:
+			return VK_SAMPLE_COUNT_4_BIT;
+		case 8:
+			return VK_SAMPLE_COUNT_8_BIT;
+		case 16:
+			return VK_SAMPLE_COUNT_16_BIT;
+		case 32:
+			return VK_SAMPLE_COUNT_32_BIT;
+		case 64:
+			return VK_SAMPLE_COUNT_64_BIT;
+		default:
+			return VK_SAMPLE_COUNT_1_BIT;
+	}
+}
+
 inline VkAccessFlags getAccessFlagsForImageLayoutTransition(VkImageLayout layout)
 {
 	switch (layout)
@@ -264,8 +287,15 @@ inline VkAttachmentStoreOp toVkAttachmentStoreOp (AttachmentStoreOp op)
 
 inline VkImageLayout toVkImageLayout (TextureLayout layout)
 {
-	// Generic image layouts map directly to vulkan image layouts
-	return static_cast<VkImageLayout> (layout);
+	switch (layout)
+	{
+		case TEXTURE_LAYOUT_RESOLVE_SRC_OPTIMAL:
+			return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		case TEXTURE_LAYOUT_RESOLVE_DST_OPTIMAL:
+			return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		default:
+			return static_cast<VkImageLayout> (layout);
+	}
 }
 
 inline VkImageUsageFlags toVkImageUsageFlags(TextureUsageFlags flags)

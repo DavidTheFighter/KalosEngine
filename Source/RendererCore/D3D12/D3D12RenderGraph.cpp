@@ -46,7 +46,8 @@ Semaphore D3D12RenderGraph::execute(bool returnWaitableSemaphore)
 		const D3D12RenderGraphRenderPassData &passData = finalPasses[i];
 		RenderGraphRenderPass &pass = *passes[passData.passIndex];
 
-		cmdBuffer->d3d12_resourceBarrier(passData.beforeRenderBarriers);
+		if (passData.beforeRenderBarriers.size() > 0)
+			cmdBuffer->d3d12_resourceBarrier(passData.beforeRenderBarriers);
 
 		if (pass.getPipelineType() == RENDER_GRAPH_PIPELINE_TYPE_GRAPHICS)
 		{
@@ -72,7 +73,8 @@ Semaphore D3D12RenderGraph::execute(bool returnWaitableSemaphore)
 		if (pass.hasRenderFunction())
 			pass.getRenderFunction()(cmdBuffer, renderData);
 
-		cmdBuffer->d3d12_resourceBarrier(passData.afterRenderBarriers);
+		if (passData.afterRenderBarriers.size() > 0)
+			cmdBuffer->d3d12_resourceBarrier(passData.afterRenderBarriers);
 	}
 
 	cmdBuffer->endCommands();
@@ -214,8 +216,11 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 			{
 				PhysicalResourceData data = {};
 				data.attachment = pass.getStorageTextures()[o].attachment;
-				data.usageFlags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+				data.usageFlags = D3D12_RESOURCE_FLAG_NONE;
 				data.clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
+
+				if (data.attachment.samples <= 1)
+					data.usageFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
 				resourceData[textureName] = data;
 				graphTextureViewsInitialResourceState[textureName] = outputAttachmentName == textureName ? (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(data.attachment.format) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON)) : TextureLayoutToD3D12ResourceStates(pass.getStorageTextures()[o].passEndLayout);
@@ -223,7 +228,10 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 			else
 			{
 				PhysicalResourceData &data = resourceData[textureName];
-				data.usageFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+				if (data.attachment.samples <= 1)
+					data.usageFlags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+				graphTextureViewsInitialResourceState[textureName] = TextureLayoutToD3D12ResourceStates(pass.getStorageTextures()[o].passEndLayout);
 			}
 		}
 	}
@@ -244,9 +252,29 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 		texDesc.DepthOrArraySize = data.attachment.arrayLayers;
 		texDesc.MipLevels = data.attachment.mipLevels;
 		texDesc.Format = ResourceFormatToDXGIFormat(data.attachment.format);
-		texDesc.SampleDesc = {1, 0};
 		texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		texDesc.Flags = data.usageFlags;
+
+		switch (data.attachment.samples)
+		{
+			case 1:
+				texDesc.SampleDesc = {1, 0};
+				break;
+			case 2:
+				texDesc.SampleDesc = {2, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+				break;
+			case 4:
+				texDesc.SampleDesc = {4, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+				break;
+			case 8:
+				texDesc.SampleDesc = {8, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+				break;
+			case 16:
+				texDesc.SampleDesc = {16, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+				break;
+			default:
+				texDesc.SampleDesc = {1, 0};
+		}
 
 		D3D12RenderGraphTexture graphTexture = {};
 		graphTexture.attachment = it->second.attachment;

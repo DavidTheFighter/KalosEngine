@@ -737,7 +737,7 @@ std::vector<Semaphore> D3D12Renderer::createSemaphores(uint32_t count)
 	return sems;
 }
 
-Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, TextureUsageFlags usage, MemoryUsage memUsage, bool ownMemory, uint32_t mipLevelCount, uint32_t arrayLayerCount)
+Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, TextureUsageFlags usage, MemoryUsage memUsage, bool ownMemory, uint32_t mipLevelCount, uint32_t arrayLayerCount, uint32_t multiSampleCount)
 {
 #if D3D12_DEBUG_COMPATIBILITY_CHECKS
 	DEBUG_ASSERT(!(extent.z > 1 && arrayLayerCount > 1) && "3D Texture arrays are not supported, only one of extent.z or arrayLayerCount can be greater than 1");
@@ -760,7 +760,7 @@ Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, Textu
 	texture->textureFormat = format;
 	texture->layerCount = arrayLayerCount;
 	texture->mipCount = mipLevelCount;
-
+	
 	D3D12_RESOURCE_DESC texDesc = {};
 	texDesc.Dimension = extent.z > 1 ? D3D12_RESOURCE_DIMENSION_TEXTURE3D : (extent.y > 1 ? D3D12_RESOURCE_DIMENSION_TEXTURE2D : D3D12_RESOURCE_DIMENSION_TEXTURE1D);
 	texDesc.Alignment = 0;
@@ -769,7 +769,6 @@ Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, Textu
 	texDesc.DepthOrArraySize = std::max<uint32_t>(extent.z, arrayLayerCount);
 	texDesc.MipLevels = mipLevelCount;
 	texDesc.Format = ResourceFormatToDXGIFormat(format);
-	texDesc.SampleDesc = {1, 0};
 	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
@@ -780,6 +779,27 @@ Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, Textu
 		texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
 
 	// TODO Apply D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE where applicable
+
+	switch (multiSampleCount)
+	{
+		case 1:
+			texDesc.SampleDesc = {1, 0};
+			break;
+		case 2:
+			texDesc.SampleDesc = {2, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+			break;
+		case 4:
+			texDesc.SampleDesc = {4, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+			break;
+		case 8:
+			texDesc.SampleDesc = {8, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+			break;
+		case 16:
+			texDesc.SampleDesc = {16, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+			break;
+		default:
+			texDesc.SampleDesc = {1, 0};
+	}
 
 	D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
 

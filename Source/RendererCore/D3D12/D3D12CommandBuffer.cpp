@@ -159,6 +159,19 @@ void D3D12CommandBuffer::dispatch(uint32_t groupCountX, uint32_t groupCountY, ui
 	cmdList->Dispatch(groupCountX, groupCountY, groupCountZ);
 }
 
+void D3D12CommandBuffer::resolveTexture(Texture srcTexture, Texture dstTexture, TextureSubresourceRange subresources)
+{
+	for (uint32_t layer = subresources.baseArrayLayer; layer < subresources.baseArrayLayer + subresources.layerCount; layer++)
+	{
+		for (uint32_t level = subresources.baseMipLevel; level < subresources.baseMipLevel + subresources.levelCount; level++)
+		{
+			uint32_t subresourceIndex = layer * srcTexture->mipCount + level;
+
+			cmdList->ResolveSubresource(static_cast<D3D12Texture*>(dstTexture)->textureResource, subresourceIndex, static_cast<D3D12Texture*>(srcTexture)->textureResource, subresourceIndex, ResourceFormatToDXGIFormat(srcTexture->textureFormat));
+		}
+	}
+}
+
 void D3D12CommandBuffer::pushConstants(uint32_t offset, uint32_t size, const void *data)
 {
 	cmdList->SetGraphicsRoot32BitConstants(0, (uint32_t) std::ceil(size / 4.0), data, (uint32_t) std::ceil(offset / 4.0));

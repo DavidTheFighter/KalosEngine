@@ -68,9 +68,9 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	rastDesc.DepthBiasClamp = 0.0f;
 	rastDesc.SlopeScaledDepthBias = 0.0f;
 	rastDesc.DepthClipEnable = TRUE;
-	rastDesc.MultisampleEnable = FALSE;
+	rastDesc.MultisampleEnable = pipelineInfo.rasterizationInfo.multiSampleCount > 1 ? TRUE : FALSE;
 	rastDesc.AntialiasedLineEnable = FALSE;
-	rastDesc.ForcedSampleCount = 0;
+	rastDesc.ForcedSampleCount = 0;// pipelineInfo.rasterizationInfo.multiSampleCount;
 	rastDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 
 	D3D12_DEPTH_STENCIL_DESC depthStencilDesc = {};
@@ -134,9 +134,29 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	psoDesc.IBStripCutValue = pipelineInfo.inputAssemblyInfo.primitiveRestart ? D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF : D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 	psoDesc.PrimitiveTopologyType = primitiveTopologyToD3D12PrimitiveTopologyType(pipelineInfo.inputAssemblyInfo.topology);
 	psoDesc.NumRenderTargets = renderPass->subpasses[subpass].colorAttachments.size();
-	psoDesc.SampleDesc = {1, 0};
 	psoDesc.NodeMask = 0;
 	psoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+	switch (pipelineInfo.rasterizationInfo.multiSampleCount)
+	{
+		case 1:
+			psoDesc.SampleDesc = {1, 0};
+			break;
+		case 2:
+			psoDesc.SampleDesc = {2, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+			break;
+		case 4:
+			psoDesc.SampleDesc = {4, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+			break;
+		case 8:
+			psoDesc.SampleDesc = {8, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+			break;
+		case 16:
+			psoDesc.SampleDesc = {16, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+			break;
+		default:
+			psoDesc.SampleDesc = {1, 0};
+	}
 
 	for (UINT i = 0; i < psoDesc.NumRenderTargets; i++)
 		psoDesc.RTVFormats[i] = ResourceFormatToDXGIFormat(renderPass->attachments[renderPass->subpasses[subpass].colorAttachments[i].attachment].format);

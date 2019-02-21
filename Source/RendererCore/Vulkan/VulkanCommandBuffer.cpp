@@ -88,6 +88,27 @@ void VulkanCommandBuffer::dispatch(uint32_t groupCountX, uint32_t groupCountY, u
 	vkCmdDispatch(bufferHandle, groupCountX, groupCountY, groupCountZ);
 }
 
+void VulkanCommandBuffer::resolveTexture(Texture srcTexture, Texture dstTexture, TextureSubresourceRange subresources)
+{
+	VkImageAspectFlags imageAspect = isDepthFormat(srcTexture->textureFormat) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+
+	std::vector<VkImageResolve> regions(subresources.levelCount);
+
+	for (uint32_t level = subresources.baseMipLevel; level < subresources.baseMipLevel + subresources.levelCount; level++)
+	{
+		VkImageResolve region = {};
+		region.srcSubresource = {imageAspect, level, subresources.baseArrayLayer, subresources.layerCount};
+		region.srcOffset = {0, 0, 0};
+		region.dstSubresource = {imageAspect, level, subresources.baseArrayLayer, subresources.layerCount};
+		region.dstOffset = {0, 0, 0};
+		region.extent = {srcTexture->width, srcTexture->height, srcTexture->depth};
+
+		regions[level - subresources.baseMipLevel] = region;
+	}
+
+	vkCmdResolveImage(bufferHandle, static_cast<VulkanTexture*>(srcTexture)->imageHandle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, static_cast<VulkanTexture*>(dstTexture)->imageHandle, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t) regions.size(), regions.data());
+}
+
 void VulkanCommandBuffer::pushConstants (uint32_t offset, uint32_t size, const void *data)
 {
 	vkCmdPushConstants(bufferHandle, static_cast<VulkanPipeline*>(context_currentBoundPipeline)->pipelineLayoutHandle, toVkShaderStageFlags(context_currentBoundPipeline->gfxPipelineInfo.inputPushConstants.stageAccessFlags), offset, size, data);

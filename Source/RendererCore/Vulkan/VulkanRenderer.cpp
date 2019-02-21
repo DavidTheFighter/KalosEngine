@@ -732,7 +732,7 @@ std::vector<Semaphore> VulkanRenderer::createSemaphores (uint32_t count)
 	return sems;
 }
 
-Texture VulkanRenderer::createTexture (suvec3 extent, ResourceFormat format, TextureUsageFlags usage, MemoryUsage memUsage, bool ownMemory, uint32_t mipLevelCount, uint32_t arrayLayerCount)
+Texture VulkanRenderer::createTexture (suvec3 extent, ResourceFormat format, TextureUsageFlags usage, MemoryUsage memUsage, bool ownMemory, uint32_t mipLevelCount, uint32_t arrayLayerCount, uint32_t multiSampleCount)
 {
 #if VULKAN_DEBUG_COMPATIBILITY_CHECKS
 	DEBUG_ASSERT(!(extent.z > 1 && arrayLayerCount > 1) && "3D Texture arrays are not supported, only one of extent.z or arrayLayerCount can be greater than 1");
@@ -772,8 +772,8 @@ Texture VulkanRenderer::createTexture (suvec3 extent, ResourceFormat format, Tex
 	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	imageCreateInfo.usage = toVkImageUsageFlags(usage);
 	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageCreateInfo.flags = createFlags;
+	imageCreateInfo.samples = sampleCountToVkSampleCount(multiSampleCount);
 
 	VmaAllocationCreateInfo allocInfo = {};
 	allocInfo.usage = toVmaMemoryUsage(memUsage);
