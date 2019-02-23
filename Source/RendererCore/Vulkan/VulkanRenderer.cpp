@@ -379,11 +379,13 @@ void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vecto
 		switch (writeInfo.descriptorType)
 		{
 			case DESCRIPTOR_TYPE_CONSTANT_BUFFER:
+			case DESCRIPTOR_TYPE_STORAGE_BUFFER:
 				bf++;
 				break;
 			case DESCRIPTOR_TYPE_SAMPLER:
 			case DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 			case DESCRIPTOR_TYPE_SAMPLED_TEXTURE:
+			case DESCRIPTOR_TYPE_STORAGE_TEXTURE:
 				im++;
 				break;
 		}

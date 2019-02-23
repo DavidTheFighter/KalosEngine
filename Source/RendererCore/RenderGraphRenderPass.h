@@ -59,6 +59,19 @@ typedef struct
 
 typedef struct
 {
+	std::string bufferName;
+	uint32_t size;
+	BufferUsageFlags usage;
+
+	bool canReadAsInput;
+	bool canWriteAsOutput;
+	BufferLayout passBeginLayout;
+	BufferLayout passEndLayout;
+
+} RenderPassStorageBuffer;
+
+typedef struct
+{
 	RenderPass renderPassHandle;
 	uint32_t baseSubpass;
 } RenderGraphInitFunctionData;
@@ -66,6 +79,7 @@ typedef struct
 typedef struct
 {
 	std::map<std::string, TextureView> graphTextureViews;
+	std::map<std::string, Buffer> graphBuffers;
 } RenderGraphDescriptorUpdateFunctionData;
 
 typedef struct
@@ -86,7 +100,8 @@ class RenderGraphRenderPass
 	void addSampledTextureInput(const std::string &name);
 	void addInputAttachmentInput(const std::string &name);
 
-	void addStorageTexture(const std::string &name, const RenderPassAttachment &info, bool canReadAsInput, bool canWriteAsOutput, TextureLayout passBeginLayout = TEXTURE_LAYOUT_GENERAL, TextureLayout passEndLayout = TEXTURE_LAYOUT_GENERAL);
+	void addStorageTexture(const std::string &textureName, const RenderPassAttachment &info, bool canReadAsInput, bool canWriteAsOutput, TextureLayout passBeginLayout = TEXTURE_LAYOUT_GENERAL, TextureLayout passEndLayout = TEXTURE_LAYOUT_GENERAL);
+	void addStorageBuffer(const std::string &bufferName, uint32_t size, BufferUsageFlags usage, bool canReadAsInput, bool canWriteAsOutput, BufferLayout passBeginLayout = BUFFER_LAYOUT_GENERAL, BufferLayout passEndLayout = BUFFER_LAYOUT_GENERAL);
 
 	void setInitFunction(std::function<void(const RenderGraphInitFunctionData&)> callbackFunc);
 	void setDescriptorUpdateFunction(std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> updateFunc);
@@ -109,6 +124,7 @@ class RenderGraphRenderPass
 	const std::vector<std::string> &getInputAttachmentInputs() const;
 
 	const std::vector<RenderPassStorageTexture> &getStorageTextures() const;
+	const std::vector<RenderPassStorageBuffer> &getStorageBuffers() const;
 
 	const std::string &getPassName() const;
 	RenderGraphPipelineType getPipelineType() const;
@@ -126,6 +142,7 @@ class RenderGraphRenderPass
 	std::vector<std::string> inputAttachmentInputs;
 
 	std::vector<RenderPassStorageTexture> storageTextures;
+	std::vector<RenderPassStorageBuffer> storageBuffers;
 
 	std::function<void(const RenderGraphInitFunctionData&)> initFunction;
 	std::function<void(const RenderGraphDescriptorUpdateFunctionData&)> descriptorUpdateFunction;

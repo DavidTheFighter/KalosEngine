@@ -56,8 +56,14 @@ ComputeTest::ComputeTest(Renderer *rendererPtr)
 		testOut.format = RESOURCE_FORMAT_R8G8B8A8_UNORM;
 		testOut.namedRelativeSize = "swapchain";
 
+		auto &bufferGen = gfxGraph->addRenderPass("bufferGen", RENDER_GRAPH_PIPELINE_TYPE_COMPUTE);
+		bufferGen.addStorageBuffer("graphStorageBuffer", 64 * 64 * sizeof(float), BUFFER_USAGE_STORAGE_BUFFER_BIT, false, true);
+
+		bufferGen.setRenderFunction(std::bind(&ComputeTest::bufferGenPassRender, this, std::placeholders::_1, std::placeholders::_2));
+
 		auto &test = gfxGraph->addRenderPass("test", RENDER_GRAPH_PIPELINE_TYPE_COMPUTE);
 		test.addStorageTexture("testOut", testOut, false, true);
+		test.addStorageBuffer("graphStorageBuffer", 64 * 64 * sizeof(float), BUFFER_USAGE_STORAGE_BUFFER_BIT, true, false);
 
 		test.setInitFunction(std::bind(&ComputeTest::passInit, this, std::placeholders::_1));
 		test.setDescriptorUpdateFunction(std::bind(&ComputeTest::passDescUpdate, this, std::placeholders::_1));
@@ -80,6 +86,7 @@ ComputeTest::~ComputeTest()
 	renderer->destroyCommandPool(cmdPool);
 
 	renderer->destroyPipeline(compPipeline);
+	renderer->destroyPipeline(bufferGenPipeline);
 
 	renderer->destroyRenderGraph(gfxGraph);
 }
@@ -90,6 +97,7 @@ void ComputeTest::passInit(const RenderGraphInitFunctionData &data)
 		renderer->destroyPipeline(compPipeline);
 
 	createPipeline(data);
+	createBufferGenPipeline(data);
 }
 
 void ComputeTest::passDescUpdate(const RenderGraphDescriptorUpdateFunctionData& data)
@@ -103,7 +111,12 @@ void ComputeTest::passDescUpdate(const RenderGraphDescriptorUpdateFunctionData& 
 	testStorageBufferInfo.offset = 0;
 	testStorageBufferInfo.range = 256;
 
-	std::vector<DescriptorWriteInfo> writes(2);
+	DescriptorBufferInfo graphStorageBufferInfo = {};
+	graphStorageBufferInfo.buffer = data.graphBuffers.at("graphStorageBuffer");
+	graphStorageBufferInfo.offset = 0;
+	graphStorageBufferInfo.range = 64 * 64 * sizeof(float);
+
+	std::vector<DescriptorWriteInfo> writes(3);
 	writes[0].descriptorType = DESCRIPTOR_TYPE_STORAGE_TEXTURE;
 	writes[0].dstBinding = 0;
 	writes[0].sampledTextureInfo = testOutputInfo;
@@ -111,6 +124,10 @@ void ComputeTest::passDescUpdate(const RenderGraphDescriptorUpdateFunctionData& 
 	writes[1].descriptorType = DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	writes[1].dstBinding = 0;
 	writes[1].bufferInfo = testStorageBufferInfo;
+
+	writes[2].descriptorType = DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	writes[2].dstBinding = 1;
+	writes[2].bufferInfo = graphStorageBufferInfo;
 
 	renderer->writeDescriptorSets(descSet, writes);
 }
@@ -120,6 +137,13 @@ void ComputeTest::passRender(CommandBuffer cmdBuffer, const RenderGraphRenderFun
 	cmdBuffer->bindPipeline(PIPELINE_BIND_POINT_COMPUTE, compPipeline);
 	cmdBuffer->bindDescriptorSets(PIPELINE_BIND_POINT_COMPUTE, 0, {descSet});
 	cmdBuffer->dispatch(gfxGraph->getNamedSize("swapchain").x / 8, gfxGraph->getNamedSize("swapchain").y / 8, 1);
+}
+
+void ComputeTest::bufferGenPassRender(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData &data)
+{
+	cmdBuffer->bindPipeline(PIPELINE_BIND_POINT_COMPUTE, bufferGenPipeline);
+	cmdBuffer->bindDescriptorSets(PIPELINE_BIND_POINT_COMPUTE, 0, {descSet});
+	cmdBuffer->dispatch(8, 8, 1);
 }
 
 void ComputeTest::render()
@@ -135,9 +159,9 @@ void ComputeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	compShaderStage.shaderModule = compShader;
 
 	DescriptorSetLayoutDescription set0 = {};
-	set0.storageBufferDescriptorCount = 1;
+	set0.storageBufferDescriptorCount = 2;
 	set0.storageTextureDescriptorCount = 1;
-	set0.storageBufferBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT};
+	set0.storageBufferBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT, SHADER_STAGE_COMPUTE_BIT};
 	set0.storageTextureBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT};
 
 	ComputePipelineInfo info = {};
@@ -152,4 +176,27 @@ void ComputeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	descPool = renderer->createDescriptorPool(set0, 1);
 
 	descSet = descPool->allocateDescriptorSet();
+}
+
+void ComputeTest::createBufferGenPipeline(const RenderGraphInitFunctionData &data)
+{
+	ShaderModule compShader = renderer->createShaderModule("GameData/shaders/tests/compute_test.hlsl", SHADER_STAGE_COMPUTE_BIT, SHADER_LANGUAGE_HLSL, "ComputeBufferGenTestCS");
+
+	PipelineShaderStage compShaderStage = {};
+	compShaderStage.shaderModule = compShader;
+
+	DescriptorSetLayoutDescription set0 = {};
+	set0.storageBufferDescriptorCount = 2;
+	set0.storageTextureDescriptorCount = 1;
+	set0.storageBufferBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT, SHADER_STAGE_COMPUTE_BIT};
+	set0.storageTextureBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT};
+
+	ComputePipelineInfo info = {};
+	info.shader = compShaderStage;
+	info.inputPushConstants = {0, 0};
+	info.inputSetLayouts = {set0};
+
+	bufferGenPipeline = renderer->createComputePipeline(info);
+
+	renderer->destroyShaderModule(compShaderStage.shaderModule);
 }

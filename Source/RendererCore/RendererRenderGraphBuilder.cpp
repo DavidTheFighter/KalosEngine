@@ -56,6 +56,10 @@ void RendererRenderGraph::recursiveFindWritePasses(const std::string &resourceNa
 		for (size_t j = 0; j < renderPass.getStorageTextures().size(); j++)
 			if (renderPass.getStorageTextures()[j].canReadAsInput)
 				recursiveFindWritePasses(renderPass.getStorageTextures()[j].textureName, passStack);
+	
+		for (size_t j = 0; j < renderPass.getStorageBuffers().size(); j++)
+			if (renderPass.getStorageBuffers()[j].canReadAsInput)
+				recursiveFindWritePasses(renderPass.getStorageBuffers()[j].bufferName, passStack);
 	}
 }
 
@@ -270,6 +274,7 @@ inline std::vector<size_t> getPassesThatWriteToResource(const std::string &resou
 	{
 		const std::vector<RenderPassOutputAttachment> &colorOutputs = passes[p]->getColorAttachmentOutputs();
 		const std::vector<RenderPassStorageTexture> &storageTextures = passes[p]->getStorageTextures();
+		const std::vector<RenderPassStorageBuffer> &storageBuffers = passes[p]->getStorageBuffers();
 
 		for (size_t o = 0; o < colorOutputs.size(); o++)
 		{
@@ -283,6 +288,24 @@ inline std::vector<size_t> getPassesThatWriteToResource(const std::string &resou
 		for (size_t o = 0; o < storageTextures.size(); o++)
 		{
 			if (storageTextures[o].canWriteAsOutput && storageTextures[o].textureName == resourceName)
+			{
+				writePasses.push_back(p);
+				break;
+			}
+		}
+
+		for (size_t o = 0; o < storageTextures.size(); o++)
+		{
+			if (storageTextures[o].canWriteAsOutput && storageTextures[o].textureName == resourceName)
+			{
+				writePasses.push_back(p);
+				break;
+			}
+		}
+
+		for (size_t o = 0; o < storageBuffers.size(); o++)
+		{
+			if (storageBuffers[o].canWriteAsOutput && storageBuffers[o].bufferName == resourceName)
 			{
 				writePasses.push_back(p);
 				break;

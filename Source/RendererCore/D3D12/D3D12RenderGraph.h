@@ -59,7 +59,8 @@ private:
 	std::vector<D3D12RenderGraphTexture> graphTextures;
 
 	std::map<std::string, TextureView> graphTextureViews;
-	std::map<std::string, D3D12_RESOURCE_STATES> graphTextureViewsInitialResourceState;
+	std::map<std::string, Buffer> graphBuffers;
+	std::map<std::string, D3D12_RESOURCE_STATES> graphResourcesInitialResourceState;
 	std::map<size_t, ID3D12DescriptorHeap*> graphRTVs;
 	std::map<size_t, ID3D12DescriptorHeap*> graphDSVs;
 

@@ -41,6 +41,9 @@ VulkanRenderGraph::~VulkanRenderGraph()
 
 	for (auto viewIt = graphTextureViews.begin(); viewIt != graphTextureViews.end(); viewIt++)
 		renderer->destroyTextureView(viewIt->second.textureView);
+
+	for (auto bufferIt = graphBuffers.begin(); bufferIt != graphBuffers.end(); bufferIt++)
+		renderer->destroyBuffer(bufferIt->second);
 }
 
 Semaphore VulkanRenderGraph::execute(bool returnWaitableSemaphore)
@@ -109,9 +112,16 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 		RenderPassAttachment attachment;
 		VkImageUsageFlags usageFlags;
 
-	} PhysicalResourceData;
+	} PhysicalTextureData;
 
-	std::map<std::string, PhysicalResourceData> resourceData;
+	typedef struct
+	{
+		uint32_t size;
+		VkBufferUsageFlags usageFlags;
+	} PhysicalBufferData;
+
+	std::map<std::string, PhysicalTextureData> textureData;
+	std::map<std::string, PhysicalBufferData> bufferData;
 
 	// Gather information about each resource and how it will be used
 	for (size_t i = 0; i < passStack.size(); i++)
@@ -119,14 +129,14 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 		RenderGraphRenderPass &pass = *passes[passStack[i]];
 
 		//for (size_t i = 0; i < pass.getSampledTextureInputs().size(); i++)
-			//graphTextureViewsInitialResourceState[pass.getSampledTextureInputs()[i]] = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(graphTextureViews[pass.getSampledTextureInputs()[i]]->viewFormat) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
+			//graphResourcesInitialResourceState[pass.getSampledTextureInputs()[i]] = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(graphTextureViews[pass.getSampledTextureInputs()[i]]->viewFormat) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
 
 		//for (size_t i = 0; i < pass.getInputAttachmentInputs().size(); i++)
-			//graphTextureViewsInitialResourceState[pass.getInputAttachmentInputs()[i]] = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(graphTextureViews[pass.getInputAttachmentInputs()[i]]->viewFormat) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
+			//graphResourcesInitialResourceState[pass.getInputAttachmentInputs()[i]] = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(graphTextureViews[pass.getInputAttachmentInputs()[i]]->viewFormat) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
 
 		for (size_t o = 0; o < pass.getColorAttachmentOutputs().size(); o++)
 		{
-			PhysicalResourceData data = {};
+			PhysicalTextureData data = {};
 			data.attachment = pass.getColorAttachmentOutputs()[o].attachment;
 			data.usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
@@ -135,13 +145,13 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 
 			const std::string &textureName = pass.getColorAttachmentOutputs()[o].textureName;
 
-			resourceData[textureName] = data;
+			textureData[textureName] = data;
 			graphImageViewsInitialImageLayout[textureName] = VK_IMAGE_LAYOUT_UNDEFINED;
 		}
 
 		if (pass.hasDepthStencilOutput())
 		{
-			PhysicalResourceData data = {};
+			PhysicalTextureData data = {};
 			data.attachment = pass.getDepthStencilAttachmentOutput().attachment;
 			data.usageFlags = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
@@ -150,7 +160,7 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 
 			const std::string &textureName = pass.getDepthStencilAttachmentOutput().textureName;
 
-			resourceData[textureName] = data;
+			textureData[textureName] = data;
 			graphImageViewsInitialImageLayout[textureName] = VK_IMAGE_LAYOUT_UNDEFINED;
 		}
 
@@ -160,28 +170,42 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 
 			if (pass.getStorageTextures()[o].canWriteAsOutput)
 			{
-				PhysicalResourceData data = {};
+				PhysicalTextureData data = {};
 				data.attachment = pass.getStorageTextures()[o].attachment;
 				data.usageFlags = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
 				if (pass.getStorageTextures()[o].textureName == outputAttachmentName)
 					data.usageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-				resourceData[textureName] = data;
+				textureData[textureName] = data;
 				graphImageViewsInitialImageLayout[textureName] = VK_IMAGE_LAYOUT_UNDEFINED;
 			}
 			else
 			{
-				PhysicalResourceData &data = resourceData[textureName];
+				PhysicalTextureData &data = textureData[textureName];
 				data.usageFlags |= VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+			}
+		}
+
+		for (size_t sb = 0; sb < pass.getStorageBuffers().size(); sb++)
+		{
+			const std::string &bufferName = pass.getStorageBuffers()[sb].bufferName;
+
+			if (pass.getStorageBuffers()[sb].canWriteAsOutput)
+			{
+				PhysicalBufferData data = {};
+				data.size = pass.getStorageBuffers()[sb].size;
+				data.usageFlags = BufferUsageFlagsToVkBufferUsageFlags(pass.getStorageBuffers()[sb].usage);
+				
+				bufferData[bufferName] = data;
 			}
 		}
 	}
 
 	// Actually create all the resources
-	for (auto it = resourceData.begin(); it != resourceData.end(); it++)
+	for (auto it = textureData.begin(); it != textureData.end(); it++)
 	{
-		const PhysicalResourceData &data = it->second;
+		const PhysicalTextureData &data = it->second;
 
 		uint32_t sizeX = data.attachment.namedRelativeSize == "" ? uint32_t(data.attachment.sizeX) : uint32_t(namedSizes[data.attachment.namedRelativeSize].x * data.attachment.sizeX);
 		uint32_t sizeY = data.attachment.namedRelativeSize == "" ? uint32_t(data.attachment.sizeY) : uint32_t(namedSizes[data.attachment.namedRelativeSize].y * data.attachment.sizeY);
@@ -319,6 +343,35 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 			graphTextureViews[it->first + viewSelectLayerPostfix + toString(l)] = graphTextureView;
 		}
 	}
+
+	for (auto it = bufferData.begin(); it != bufferData.end(); it++)
+	{
+		const PhysicalBufferData &data = it->second;
+
+		VkBufferCreateInfo bufferInfo = {};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.pNext = nullptr;
+		bufferInfo.flags = 0;
+		bufferInfo.size = data.size;
+		bufferInfo.usage = data.usageFlags;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		bufferInfo.queueFamilyIndexCount = 0;
+		bufferInfo.pQueueFamilyIndices = nullptr;
+
+		VmaAllocationCreateInfo allocInfo = {};
+		allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+		allocInfo.flags = 0;
+
+		VulkanBuffer *buffer = new VulkanBuffer();
+		buffer->bufferSize = data.size;
+		buffer->memorySize = data.size;
+
+		VK_CHECK_RESULT(vmaCreateBuffer(renderer->memAllocator, &bufferInfo, &allocInfo, &buffer->bufferHandle, &buffer->bufferMemory, nullptr));
+
+		renderer->setObjectDebugName(buffer, OBJECT_TYPE_BUFFER, it->first);
+
+		graphBuffers[it->first] = buffer;
+	}
 }
 
 void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
@@ -327,9 +380,15 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 	{
 		VkImageLayout currentLayout;
 
-	} RenderPassResourceState;
+	} RenderPassTextureState;
 
-	std::map<std::string, RenderPassResourceState> resourceStates;
+	typedef struct
+	{
+		BufferLayout currentLayout;
+	} RenderPassBufferState;
+
+	std::map<std::string, RenderPassTextureState> textureStates;
+	std::map<std::string, RenderPassBufferState> bufferStates;
 
 	/*
 	Initialize all resources with the last state they would be in after a full render graph execution,
@@ -338,10 +397,18 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 	*/
 	for (auto initialResourceStatesIt = graphImageViewsInitialImageLayout.begin(); initialResourceStatesIt != graphImageViewsInitialImageLayout.end(); initialResourceStatesIt++)
 	{
-		RenderPassResourceState state = {};
+		RenderPassTextureState state = {};
 		state.currentLayout = initialResourceStatesIt->second;
 
-		resourceStates[initialResourceStatesIt->first] = state;
+		textureStates[initialResourceStatesIt->first] = state;
+	}
+
+	for (auto bufferIt = graphBuffers.begin(); bufferIt != graphBuffers.end(); bufferIt++)
+	{
+		RenderPassBufferState state = {};
+		state.currentLayout = BUFFER_LAYOUT_MAX_ENUM;
+
+		bufferStates[bufferIt->first] = state;
 	}
 
 	for (size_t passStackIndex = 0; passStackIndex < passStack.size(); passStackIndex++)
@@ -400,7 +467,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					passAttachmentImageViews.push_back(static_cast<VulkanTextureView*>(graphTextureViews[outputAttachment.textureName].textureView)->imageView);
 					passData.clearValues.push_back(*reinterpret_cast<const VkClearValue*>(&outputAttachment.attachmentClearValue));
 					imageViewPassAttachmentsIndex[outputAttachment.textureName] = passAttachments.size() - 1;
-					resourceStates[outputAttachment.textureName].currentLayout = attachmentDesc.finalLayout;
+					textureStates[outputAttachment.textureName].currentLayout = attachmentDesc.finalLayout;
 				}
 
 				if (pass.hasDepthStencilOutput())
@@ -421,7 +488,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					passAttachmentImageViews.push_back(static_cast<VulkanTextureView*>(graphTextureViews[outputAttachment.textureName].textureView)->imageView);
 					passData.clearValues.push_back(*reinterpret_cast<const VkClearValue*>(&outputAttachment.attachmentClearValue));
 					imageViewPassAttachmentsIndex[outputAttachment.textureName] = passAttachments.size() - 1;
-					resourceStates[outputAttachment.textureName].currentLayout = attachmentDesc.finalLayout;
+					textureStates[outputAttachment.textureName].currentLayout = attachmentDesc.finalLayout;
 				}
 			}
 
@@ -451,14 +518,14 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 						attachmentDesc.storeOp = endPassStackIndex >= attachmentUsageLifetimes[inputAttachmentName].y ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
 						attachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 						attachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-						attachmentDesc.initialLayout = resourceStates[inputAttachmentName].currentLayout;
+						attachmentDesc.initialLayout = textureStates[inputAttachmentName].currentLayout;
 						attachmentDesc.finalLayout = isDepthFormat(graphTextureView.attachment.format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 						passAttachments.push_back(attachmentDesc);
 						passAttachmentImageViews.push_back(static_cast<VulkanTextureView*>(graphTextureViews[inputAttachmentName].textureView)->imageView);
 						passData.clearValues.push_back({0.0f, 0.0f, 0.0f, 0.0f});
 						imageViewPassAttachmentsIndex[inputAttachmentName] = passAttachments.size() - 1;
-						resourceStates[inputAttachmentName].currentLayout = attachmentDesc.finalLayout;
+						textureStates[inputAttachmentName].currentLayout = attachmentDesc.finalLayout;
 					}
 				}
 			}
@@ -638,7 +705,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 			{
 				const std::string &textureName = pass.getSampledTextureInputs()[i];
 				bool textureIsInDepthFormat = isDepthFormat(graphTextureViews[textureName].textureView->viewFormat);
-				VkImageLayout currentLayout = resourceStates[textureName].currentLayout;
+				VkImageLayout currentLayout = textureStates[textureName].currentLayout;
 				VkImageLayout requiredLayout = textureIsInDepthFormat ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 				if (currentLayout != requiredLayout)
@@ -662,14 +729,14 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					passData.beforeRenderImageBarriers.push_back(barrier);
 				}
 
-				resourceStates[textureName].currentLayout = requiredLayout;
+				textureStates[textureName].currentLayout = requiredLayout;
 			}
 
 			for (size_t st = 0; st < pass.getStorageTextures().size(); st++)
 			{
 				const RenderPassStorageTexture &storageTexture = pass.getStorageTextures()[st];
 				bool textureIsInDepthFormat = isDepthFormat(graphTextureViews[storageTexture.textureName].textureView->viewFormat);
-				VkImageLayout currentLayout = resourceStates[storageTexture.textureName].currentLayout;
+				VkImageLayout currentLayout = textureStates[storageTexture.textureName].currentLayout;
 				VkImageLayout requiredLayout = toVkImageLayout(storageTexture.passBeginLayout);
 
 				if (currentLayout != requiredLayout)
@@ -693,7 +760,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					passData.beforeRenderImageBarriers.push_back(barrier);
 				}
 
-				resourceStates[storageTexture.textureName].currentLayout = toVkImageLayout(storageTexture.passEndLayout);
+				textureStates[storageTexture.textureName].currentLayout = toVkImageLayout(storageTexture.passEndLayout);
 
 				if (storageTexture.textureName == outputAttachmentName)
 				{
@@ -715,7 +782,32 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 
 					passData.afterRenderImageBarriers.push_back(barrier);
 
-					resourceStates[storageTexture.textureName].currentLayout = barrier.newLayout;
+					textureStates[storageTexture.textureName].currentLayout = barrier.newLayout;
+				}
+			}
+
+			for (size_t sb = 0; sb < pass.getStorageBuffers().size(); sb++)
+			{
+				const RenderPassStorageBuffer &storageBuffer = pass.getStorageBuffers()[sb];
+				BufferLayout currentLayout = bufferStates[storageBuffer.bufferName].currentLayout;
+				BufferLayout requiredLayout = storageBuffer.passBeginLayout;
+
+				if (currentLayout != requiredLayout && currentLayout != BUFFER_LAYOUT_MAX_ENUM)
+				{
+					VkBufferMemoryBarrier barrier = {};
+					barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+					barrier.pNext = nullptr;
+					barrier.srcAccessMask = getAccessFlagsForBufferLayoutTransition(currentLayout);
+					barrier.dstAccessMask = getAccessFlagsForBufferLayoutTransition(requiredLayout);
+					barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+					barrier.buffer = graphBuffers[storageBuffer.bufferName]->bufferHandle;
+					barrier.offset = 0;
+					barrier.size = storageBuffer.size;
+
+					passData.beforeRenderBufferBarriers.push_back(barrier);
+
+					bufferStates[storageBuffer.bufferName].currentLayout = storageBuffer.passEndLayout;
 				}
 			}
 
@@ -736,6 +828,9 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 	
 	for (auto textureViewIt = graphTextureViews.begin(); textureViewIt != graphTextureViews.end(); textureViewIt++)
 		descUpdateData.graphTextureViews[textureViewIt->first] = textureViewIt->second.textureView;
+
+	for (auto bufferIt = graphBuffers.begin(); bufferIt != graphBuffers.end(); bufferIt++)
+		descUpdateData.graphBuffers[bufferIt->first] = bufferIt->second;
 
 	for (size_t i = 0; i < finalRenderPasses.size(); i++)
 		for (size_t p = 0; p < finalRenderPasses[i].passIndices.size(); p++)

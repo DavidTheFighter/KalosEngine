@@ -71,6 +71,7 @@ class VulkanRenderGraph : public RendererRenderGraph
 	std::vector<VulkanRenderGraphRenderPass> finalRenderPasses;
 
 	std::map<std::string, VulkanRenderGraphTextureView> graphTextureViews;
+	std::map<std::string, VulkanBuffer*> graphBuffers;
 	std::map<std::string, VkImageLayout> graphImageViewsInitialImageLayout;
 
 	void assignPhysicalResources(const std::vector<size_t> &passStack);

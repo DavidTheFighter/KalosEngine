@@ -26,6 +26,7 @@ class ComputeTest
 
 	Renderer *renderer;
 
+	Pipeline bufferGenPipeline;
 	Pipeline compPipeline;
 
 	CommandPool cmdPool;
@@ -34,7 +35,10 @@ class ComputeTest
 
 	Buffer testStorageBuffer;
 
+	void createBufferGenPipeline(const RenderGraphInitFunctionData &data);
 	void createPipeline(const RenderGraphInitFunctionData &data);
+
+	void bufferGenPassRender(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData &data);
 
 	void passInit(const RenderGraphInitFunctionData &data);
 	void passDescUpdate(const RenderGraphDescriptorUpdateFunctionData& data);

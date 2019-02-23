@@ -9,6 +9,28 @@
 #define RENDERING_VULKAN_VULKANENUMS_H_
 #if BUILD_VULKAN_BACKEND
 
+inline VkBufferUsageFlags BufferUsageFlagsToVkBufferUsageFlags(BufferUsageFlags usage)
+{
+	VkBufferUsageFlags flags = 0;
+
+	if (usage & BUFFER_USAGE_TRANSFER_SRC_BIT)
+		flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	if (usage & BUFFER_USAGE_TRANSFER_DST_BIT)
+		flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	if (usage & BUFFER_USAGE_CONSTANT_BUFFER_BIT)
+		flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	if (usage & BUFFER_USAGE_STORAGE_BUFFER_BIT)
+		flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	if (usage & BUFFER_USAGE_INDEX_BUFFER_BIT)
+		flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	if (usage & BUFFER_USAGE_VERTEX_BUFFER_BIT)
+		flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	if (usage & BUFFER_USAGE_INDIRECT_BUFFER_BIT)
+		flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+	return flags;
+}
+
 inline VkSampleCountFlagBits sampleCountToVkSampleCount(uint32_t samples)
 {
 	switch (samples)

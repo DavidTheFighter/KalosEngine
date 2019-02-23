@@ -31,6 +31,9 @@ void RendererRenderGraph::findResourceAliasingCandidates(const std::vector<size_
 		for (size_t st = 0; st < pass.getStorageTextures().size(); st++)
 			passResources.push_back(pass.getStorageTextures()[st].textureName);
 
+		for (size_t sb = 0; sb < pass.getStorageBuffers().size(); sb++)
+			passResources.push_back(pass.getStorageBuffers()[sb].bufferName);
+
 		for (size_t o = 0; o < pass.getColorAttachmentOutputs().size(); o++)
 			passResources.push_back(pass.getColorAttachmentOutputs()[o].textureName);
 

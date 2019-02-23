@@ -63,6 +63,20 @@ void RenderGraphRenderPass::addStorageTexture(const std::string &name, const Ren
 	storageTextures.push_back(storageTexture);
 }
 
+void RenderGraphRenderPass::addStorageBuffer(const std::string &bufferName, uint32_t size, BufferUsageFlags usage, bool canReadAsInput, bool canWriteAsOutput, BufferLayout passBeginLayout, BufferLayout passEndLayout)
+{
+	RenderPassStorageBuffer storageBuffer = {};
+	storageBuffer.bufferName = bufferName;
+	storageBuffer.size = size;
+	storageBuffer.usage = usage;
+	storageBuffer.canReadAsInput = canReadAsInput;
+	storageBuffer.canWriteAsOutput = canWriteAsOutput;
+	storageBuffer.passBeginLayout = passBeginLayout;
+	storageBuffer.passEndLayout = passEndLayout;
+
+	storageBuffers.push_back(storageBuffer);
+}
+
 void RenderGraphRenderPass::setInitFunction(std::function<void(const RenderGraphInitFunctionData&)> callbackFunc)
 {
 	initFunction = callbackFunc;
@@ -139,6 +153,11 @@ const std::vector<std::string> &RenderGraphRenderPass::getInputAttachmentInputs(
 const std::vector<RenderPassStorageTexture> &RenderGraphRenderPass::getStorageTextures() const
 {
 	return storageTextures;
+}
+
+const std::vector<RenderPassStorageBuffer> &RenderGraphRenderPass::getStorageBuffers() const
+{
+	return storageBuffers;
 }
 
 const std::string &RenderGraphRenderPass::getPassName() const

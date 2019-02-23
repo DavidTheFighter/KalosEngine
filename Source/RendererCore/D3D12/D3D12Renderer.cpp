@@ -581,13 +581,13 @@ void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<
 				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + storageBufferOffset);
 
 				D3D12_BUFFER_UAV buffer = {};
-				buffer.FirstElement = writeInfo.bufferInfo.offset / 4;
-				buffer.NumElements = writeInfo.bufferInfo.range / 4;
+				buffer.FirstElement = writeInfo.bufferInfo.offset;
+				buffer.NumElements = writeInfo.bufferInfo.range;
 				buffer.StructureByteStride = 0;
-				buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+				buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
 
 				D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc = {};
-				viewDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+				viewDesc.Format = DXGI_FORMAT_R8_UINT;
 				viewDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 				viewDesc.Buffer = buffer;
 
