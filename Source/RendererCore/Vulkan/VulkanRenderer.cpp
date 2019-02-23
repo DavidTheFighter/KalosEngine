@@ -813,7 +813,7 @@ TextureView VulkanRenderer::createTextureView (Texture texture, TextureViewType 
 	return vkTexView;
 }
 
-Sampler VulkanRenderer::createSampler (SamplerAddressMode addressMode, SamplerFilter minFilter, SamplerFilter magFilter, float anisotropy, svec3 min_max_biasLod, SamplerMipmapMode mipmapMode)
+Sampler VulkanRenderer::createSampler (SamplerAddressMode addressMode, SamplerFilter minFilter, SamplerFilter magFilter, float maxAnisotropy, svec3 min_max_biasLod, SamplerMipmapMode mipmapMode)
 {
 	VkSamplerCreateInfo samplerCreateInfo = {};
 	samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -830,10 +830,15 @@ Sampler VulkanRenderer::createSampler (SamplerAddressMode addressMode, SamplerFi
 	samplerCreateInfo.minLod = min_max_biasLod.x;
 	samplerCreateInfo.maxLod = min_max_biasLod.y;
 
-	if (deviceFeatures.samplerAnisotropy && anisotropy > 1.0f)
+	if (deviceFeatures.samplerAnisotropy && maxAnisotropy > 1.0f)
 	{
 		samplerCreateInfo.anisotropyEnable = VK_TRUE;
-		samplerCreateInfo.maxAnisotropy = std::max<float>(anisotropy, deviceProps.limits.maxSamplerAnisotropy);
+		samplerCreateInfo.maxAnisotropy = std::min<float>(maxAnisotropy, deviceProps.limits.maxSamplerAnisotropy);
+	}
+	else
+	{
+		samplerCreateInfo.anisotropyEnable = VK_FALSE;
+		samplerCreateInfo.maxAnisotropy = 1.0f;
 	}
 
 	VulkanSampler* vkSampler = new VulkanSampler();

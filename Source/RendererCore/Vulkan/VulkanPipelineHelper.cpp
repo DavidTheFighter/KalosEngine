@@ -308,6 +308,17 @@ VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const Des
 				samplerCreateInfo.minLod = samplerInfo.minLod;
 				samplerCreateInfo.maxLod = samplerInfo.maxLod;
 
+				if (renderer->deviceFeatures.samplerAnisotropy && samplerInfo.maxAnisotropy > 1.0f)
+				{
+					samplerCreateInfo.anisotropyEnable = VK_TRUE;
+					samplerCreateInfo.maxAnisotropy = std::min<float>(samplerInfo.maxAnisotropy, renderer->deviceProps.limits.maxSamplerAnisotropy);
+				}
+				else
+				{
+					samplerCreateInfo.anisotropyEnable = VK_FALSE;
+					samplerCreateInfo.maxAnisotropy = 1.0f;
+				}
+
 				VkSampler samplerHandle;
 				VK_CHECK_RESULT(vkCreateSampler(renderer->device, &samplerCreateInfo, nullptr, &samplerHandle));
 

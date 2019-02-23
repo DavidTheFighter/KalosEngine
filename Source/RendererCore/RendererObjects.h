@@ -115,7 +115,7 @@ typedef struct RendererDescriptorStaticSampler
 	SamplerAddressMode addressMode = SAMPLER_ADDRESS_MODE_REPEAT;
 	SamplerFilter minFilter = SAMPLER_FILTER_LINEAR;
 	SamplerFilter magFilter = SAMPLER_FILTER_LINEAR;
-	float anisotropy = 1.0f;
+	float maxAnisotropy = 1.0f;
 	float minLod = 0.0f;
 	float maxLod = 0.0f;
 	float mipLodBias = 0.0f;
@@ -131,7 +131,7 @@ typedef struct RendererDescriptorStaticSampler
 			return false;
 		if (magFilter != other.magFilter)
 			return false;
-		if (anisotropy != other.anisotropy)
+		if (maxAnisotropy != other.maxAnisotropy)
 			return false;
 		if (minLod != other.minLod)
 			return false;

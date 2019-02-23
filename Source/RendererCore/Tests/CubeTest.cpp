@@ -59,7 +59,7 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 	createBuffers();
 	createTextures();
 
-	cubeTexSampler = renderer->createSampler(SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	cubeTexSampler = renderer->createSampler(SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_FILTER_LINEAR, SAMPLER_FILTER_LINEAR, 16.0f);
 
 	rotateCounter = 0.0f;
 
@@ -377,6 +377,7 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	DescriptorStaticSampler staticSampler = {};
 	staticSampler.samplerBinding = 1;
 	staticSampler.magFilter = SAMPLER_FILTER_NEAREST;
+	staticSampler.maxAnisotropy = 16.0f;
 
 	set0.staticSamplers.push_back(staticSampler);
 

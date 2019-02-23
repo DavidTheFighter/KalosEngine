@@ -226,7 +226,7 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 			samplerDesc.AddressV = samplerAddressModeToD3D12TextureAddressMode(setSamplerDesc.addressMode);
 			samplerDesc.AddressW = samplerAddressModeToD3D12TextureAddressMode(setSamplerDesc.addressMode);
 			samplerDesc.MipLODBias = setSamplerDesc.mipLodBias;
-			samplerDesc.MaxAnisotropy = UINT(setSamplerDesc.anisotropy);
+			samplerDesc.MaxAnisotropy = UINT(setSamplerDesc.maxAnisotropy);
 			samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 			samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
 			samplerDesc.MinLOD = setSamplerDesc.minLod;
@@ -548,7 +548,7 @@ Pipeline D3D12PipelineHelper::createComputePipeline(const ComputePipelineInfo &p
 			samplerDesc.AddressV = samplerAddressModeToD3D12TextureAddressMode(setSamplerDesc.addressMode);
 			samplerDesc.AddressW = samplerAddressModeToD3D12TextureAddressMode(setSamplerDesc.addressMode);
 			samplerDesc.MipLODBias = setSamplerDesc.mipLodBias;
-			samplerDesc.MaxAnisotropy = UINT(setSamplerDesc.anisotropy);
+			samplerDesc.MaxAnisotropy = UINT(setSamplerDesc.maxAnisotropy);
 			samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 			samplerDesc.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
 			samplerDesc.MinLOD = setSamplerDesc.minLod;

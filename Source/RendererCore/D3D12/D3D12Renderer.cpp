@@ -833,7 +833,7 @@ TextureView D3D12Renderer::createTextureView(Texture texture, TextureViewType vi
 	return textureView;
 }
 
-Sampler D3D12Renderer::createSampler(SamplerAddressMode addressMode, SamplerFilter minFilter, SamplerFilter magFilter, float anisotropy, svec3 min_max_biasLod, SamplerMipmapMode mipmapMode)
+Sampler D3D12Renderer::createSampler(SamplerAddressMode addressMode, SamplerFilter minFilter, SamplerFilter magFilter, float maxAnisotropy, svec3 min_max_biasLod, SamplerMipmapMode mipmapMode)
 {
 	D3D12Sampler *sampler = new D3D12Sampler();
 
@@ -843,7 +843,7 @@ Sampler D3D12Renderer::createSampler(SamplerAddressMode addressMode, SamplerFilt
 	samplerDesc.AddressV = samplerAddressModeToD3D12TextureAddressMode(addressMode);
 	samplerDesc.AddressW = samplerAddressModeToD3D12TextureAddressMode(addressMode);
 	samplerDesc.MipLODBias = min_max_biasLod.z;
-	samplerDesc.MaxAnisotropy = UINT(anisotropy);
+	samplerDesc.MaxAnisotropy = UINT(maxAnisotropy);
 	samplerDesc.ComparisonFunc = D3D12_COMPARISON_FUNC_ALWAYS;
 	samplerDesc.BorderColor[0] = samplerDesc.BorderColor[1] = samplerDesc.BorderColor[2] = 0.0f;
 	samplerDesc.BorderColor[3] = 1.0f;
