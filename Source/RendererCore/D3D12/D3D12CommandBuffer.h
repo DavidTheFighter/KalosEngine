@@ -64,8 +64,15 @@ class D3D12CommandBuffer : public RendererCommandBuffer
 	ID3D12GraphicsCommandList *cmdList;
 
 	D3D12Pipeline *cxt_currentGraphicsPipeline;
+	D3D12Pipeline *cxt_currentComputePipeline;
+
+	ID3D12RootSignature *cxt_currentGraphicsRootSignature;
+	ID3D12RootSignature *cxt_currentComputeRootSignature;
+
 	ID3D12DescriptorHeap *ctx_currentBoundSamplerDescHeap;
 	ID3D12DescriptorHeap *ctx_currentBoundSrvUavCbvDescHeap;
+
+	char pushConstantData[128];
 
 	bool startedRecording;
 

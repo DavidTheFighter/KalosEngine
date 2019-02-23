@@ -46,8 +46,14 @@ void D3D12CommandBuffer::beginCommands(CommandBufferUsageFlags flags)
 
 	startedRecording = true;
 	cxt_currentGraphicsPipeline = nullptr;
+	cxt_currentComputePipeline = nullptr;
 	ctx_currentBoundSamplerDescHeap = nullptr;
 	ctx_currentBoundSrvUavCbvDescHeap = nullptr;
+
+	cxt_currentGraphicsRootSignature = nullptr;
+	cxt_currentComputeRootSignature = nullptr;
+
+	memset(pushConstantData, 0, sizeof(pushConstantData));
 }
 
 void D3D12CommandBuffer::endCommands()
@@ -68,20 +74,39 @@ void D3D12CommandBuffer::d3d12_reset()
 void D3D12CommandBuffer::bindPipeline(PipelineBindPoint point, Pipeline pipeline)
 {
 	D3D12Pipeline *d3dpipeline = static_cast<D3D12Pipeline*>(pipeline);
-	cxt_currentGraphicsPipeline = d3dpipeline;
 
 	if (point == PIPELINE_BIND_POINT_GRAPHICS)
 	{
-		cmdList->SetGraphicsRootSignature(d3dpipeline->rootSignature);
+		if (d3dpipeline->rootSignature != cxt_currentGraphicsRootSignature)
+		{
+			cxt_currentGraphicsRootSignature = d3dpipeline->rootSignature;
+			cmdList->SetGraphicsRootSignature(d3dpipeline->rootSignature);
+			
+			if (d3dpipeline->gfxPipelineInfo.inputPushConstants.size > 0)
+				cmdList->SetGraphicsRoot32BitConstants(0, (uint32_t) std::floor(d3dpipeline->gfxPipelineInfo.inputPushConstants.size / 4.0), pushConstantData, 0);
+		}
+
 		cmdList->SetPipelineState(d3dpipeline->pipeline);
 
 		cmdList->IASetPrimitiveTopology(primitiveTopologyToD3DPrimitiveTopology(d3dpipeline->gfxPipelineInfo.inputAssemblyInfo.topology, d3dpipeline->gfxPipelineInfo.tessellationPatchControlPoints));
 		cmdList->OMSetBlendFactor(d3dpipeline->gfxPipelineInfo.colorBlendInfo.blendConstants);
+
+		cxt_currentGraphicsPipeline = d3dpipeline;
 	}
 	else if (point == PIPELINE_BIND_POINT_COMPUTE)
 	{
-		cmdList->SetComputeRootSignature(d3dpipeline->rootSignature);
+		if (d3dpipeline->rootSignature != cxt_currentComputeRootSignature)
+		{
+			cxt_currentComputeRootSignature = d3dpipeline->rootSignature;
+			cmdList->SetComputeRootSignature(d3dpipeline->rootSignature);
+
+			if (d3dpipeline->computePipelineInfo.inputPushConstants.size > 0)
+				cmdList->SetComputeRoot32BitConstants(0, (uint32_t) std::floor(d3dpipeline->computePipelineInfo.inputPushConstants.size / 4.0), pushConstantData, 0);
+		}
+
 		cmdList->SetPipelineState(d3dpipeline->pipeline);
+
+		cxt_currentComputePipeline = d3dpipeline;
 	}
 }
 
@@ -174,7 +199,13 @@ void D3D12CommandBuffer::resolveTexture(Texture srcTexture, Texture dstTexture, 
 
 void D3D12CommandBuffer::pushConstants(uint32_t offset, uint32_t size, const void *data)
 {
-	cmdList->SetGraphicsRoot32BitConstants(0, (uint32_t) std::ceil(size / 4.0), data, (uint32_t) std::ceil(offset / 4.0));
+	memcpy(&pushConstantData[offset], data, size);
+
+	if (cxt_currentGraphicsPipeline != nullptr && cxt_currentGraphicsPipeline->gfxPipelineInfo.inputPushConstants.size > 0)
+		cmdList->SetGraphicsRoot32BitConstants(0, (uint32_t) std::floor(std::min<uint32_t>(size, cxt_currentGraphicsPipeline->gfxPipelineInfo.inputPushConstants.size) / 4.0), data, (uint32_t) std::floor(offset / 4.0));
+
+	if (cxt_currentComputePipeline != nullptr && cxt_currentComputePipeline->computePipelineInfo.inputPushConstants.size > 0)
+		cmdList->SetComputeRoot32BitConstants(0, (uint32_t) std::floor(std::min<uint32_t>(size, cxt_currentComputePipeline->computePipelineInfo.inputPushConstants.size) / 4.0), data, (uint32_t) std::floor(offset / 4.0));
 }
 
 void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t firstSet, const std::vector<DescriptorSet> &sets)
