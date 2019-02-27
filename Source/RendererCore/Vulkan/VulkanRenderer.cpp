@@ -495,7 +495,7 @@ RenderPass VulkanRenderer::createRenderPass (const std::vector<AttachmentDescrip
 	{
 		const AttachmentDescription &attachment = attachments[i];
 		VkAttachmentDescription vkAttachment = {};
-		vkAttachment.format = toVkFormat(attachment.format);
+		vkAttachment.format = ResourceFormatToVkFormat(attachment.format);
 		vkAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		vkAttachment.loadOp = toVkAttachmentLoadOp(attachment.loadOp);
 		vkAttachment.storeOp = toVkAttachmentStoreOp(attachment.storeOp);
@@ -765,14 +765,14 @@ Texture VulkanRenderer::createTexture (suvec3 extent, ResourceFormat format, Tex
 
 	VkImageCreateInfo imageCreateInfo = {};
 	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageCreateInfo.extent = toVkExtent(extent);
+	imageCreateInfo.extent = {extent.x, extent.y, extent.z};
 	imageCreateInfo.imageType = extent.z > 1 ? VK_IMAGE_TYPE_3D : (extent.y > 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D);
 	imageCreateInfo.mipLevels = mipLevelCount;
 	imageCreateInfo.arrayLayers = arrayLayerCount;
-	imageCreateInfo.format = toVkFormat(format);
+	imageCreateInfo.format = ResourceFormatToVkFormat(format);
 	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageCreateInfo.usage = toVkImageUsageFlags(usage);
+	imageCreateInfo.usage = TextureUsageFlagsToVkImageUsageFlags(usage);
 	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageCreateInfo.flags = createFlags;
 	imageCreateInfo.samples = sampleCountToVkSampleCount(multiSampleCount);
@@ -794,7 +794,7 @@ TextureView VulkanRenderer::createTextureView (Texture texture, TextureViewType 
 	imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	imageViewCreateInfo.image = vkTex->imageHandle;
 	imageViewCreateInfo.viewType = toVkImageViewType(viewType);
-	imageViewCreateInfo.format = viewFormat == RESOURCE_FORMAT_UNDEFINED ? toVkFormat(vkTex->textureFormat) : toVkFormat(viewFormat);
+	imageViewCreateInfo.format = viewFormat == RESOURCE_FORMAT_UNDEFINED ? ResourceFormatToVkFormat(vkTex->textureFormat) : ResourceFormatToVkFormat(viewFormat);
 	imageViewCreateInfo.subresourceRange.aspectMask = isVkDepthFormat(imageViewCreateInfo.format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 	imageViewCreateInfo.subresourceRange.baseMipLevel = subresourceRange.baseMipLevel;
 	imageViewCreateInfo.subresourceRange.levelCount = subresourceRange.levelCount;

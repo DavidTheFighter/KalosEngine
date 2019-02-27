@@ -760,7 +760,7 @@ Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, Textu
 	texture->textureFormat = format;
 	texture->layerCount = arrayLayerCount;
 	texture->mipCount = mipLevelCount;
-	
+
 	D3D12_RESOURCE_DESC texDesc = {};
 	texDesc.Dimension = extent.z > 1 ? D3D12_RESOURCE_DIMENSION_TEXTURE3D : (extent.y > 1 ? D3D12_RESOURCE_DIMENSION_TEXTURE2D : D3D12_RESOURCE_DIMENSION_TEXTURE1D);
 	texDesc.Alignment = 0;
@@ -772,13 +772,11 @@ Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, Textu
 	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 
-	if (usage & TEXTURE_USAGE_COLOR_ATTACHMENT_BIT)
-		texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+	if (usage & TEXTURE_USAGE_STORAGE_BIT)
+		texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-	if (usage & TEXTURE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-		texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
-
-	// TODO Apply D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE where applicable
+	if (!(usage & TEXTURE_USAGE_STORAGE_BIT) && !(usage & TEXTURE_USAGE_SAMPLED_BIT))
+		texDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 
 	switch (multiSampleCount)
 	{

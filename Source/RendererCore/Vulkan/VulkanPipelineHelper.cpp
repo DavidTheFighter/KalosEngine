@@ -64,7 +64,7 @@ Pipeline VulkanPipelineHelper::createGraphicsPipeline (const GraphicsPipelineInf
 			VkVertexInputAttributeDescription attrib = {};
 			attrib.location = genericAttrib.location;
 			attrib.binding = genericAttrib.binding;
-			attrib.format = toVkFormat(genericAttrib.format);
+			attrib.format = ResourceFormatToVkFormat(genericAttrib.format);
 			attrib.offset = genericAttrib.offset;
 
 			inputAttribs.push_back(attrib);

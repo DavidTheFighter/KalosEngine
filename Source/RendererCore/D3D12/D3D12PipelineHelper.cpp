@@ -167,6 +167,8 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	std::vector<D3D12_ROOT_PARAMETER> rootParams;
 	std::vector<D3D12_STATIC_SAMPLER_DESC> staticSamplers;
 
+	ShaderStageFlags rootSigShaderVisibility = 0;
+
 	if (pipelineInfo.inputPushConstants.size > 0)
 	{
 		D3D12_ROOT_CONSTANTS rootConstants = {};
@@ -201,6 +203,7 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 				rootConstantsParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 		}
 
+		rootSigShaderVisibility |= pipelineInfo.inputPushConstants.stageAccessFlags;
 		rootParams.push_back(rootConstantsParam);
 	}
 
@@ -257,6 +260,7 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 					samplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 			}
 
+			rootSigShaderVisibility |= setDesc.samplerBindingsShaderStageAccess[setSamplerDesc.samplerBinding];
 			staticSamplers.push_back(samplerDesc);
 		}
 
@@ -387,6 +391,9 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 				allDescriptorStages |= setDesc.textureBindingsShaderStageAccess[d];
 		}
 
+		rootSigShaderVisibility |= allDescriptorStages;
+		rootSigShaderVisibility |= samplerDescriptorStages;
+
 		if (ranges.size() > 0)
 		{
 			D3D12_ROOT_DESCRIPTOR_TABLE descTable = {};
@@ -470,7 +477,20 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 	if (pipelineInfo.vertexInputInfo.vertexInputAttribs.size() > 0)
 		rootSigDesc.Flags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-	// TODO Add root sig deny flags where applicable
+	if (!(rootSigShaderVisibility & SHADER_STAGE_VERTEX_BIT))
+		rootSigDesc.Flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
+
+	if (!(rootSigShaderVisibility & SHADER_STAGE_TESSELLATION_CONTROL_BIT))
+		rootSigDesc.Flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS;
+
+	if (!(rootSigShaderVisibility & SHADER_STAGE_TESSELLATION_EVALUATION_BIT))
+		rootSigDesc.Flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS;
+
+	if (!(rootSigShaderVisibility & SHADER_STAGE_GEOMETRY_BIT))
+		rootSigDesc.Flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+
+	if (!(rootSigShaderVisibility & SHADER_STAGE_FRAGMENT_BIT))
+		rootSigDesc.Flags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
 	ID3DBlob* signature = nullptr;
 	DX_CHECK_RESULT(D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr));

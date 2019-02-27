@@ -320,13 +320,13 @@ inline VkImageLayout toVkImageLayout (TextureLayout layout)
 	}
 }
 
-inline VkImageUsageFlags toVkImageUsageFlags(TextureUsageFlags flags)
+inline VkImageUsageFlags TextureUsageFlagsToVkImageUsageFlags(TextureUsageFlags flags)
 {
 	// Generic texture usage flags map directly to vulkan image usage flags
 	return static_cast<VkImageUsageFlags> (flags);
 }
 
-inline VkFormat toVkFormat (ResourceFormat format)
+inline VkFormat ResourceFormatToVkFormat (ResourceFormat format)
 {
 	// Generic formats map directly to vulkan formats
 	return static_cast<VkFormat>(format);
@@ -360,11 +360,6 @@ inline VkSamplerMipmapMode toVkSamplerMipmapMode (SamplerMipmapMode mode)
 {
 	// Generic sampler mipmap mods map directly to vulkan sampler mipmap modes
 	return static_cast<VkSamplerMipmapMode>(mode);
-}
-
-inline VkExtent3D toVkExtent (suvec3 vec)
-{
-	return {vec.x, vec.y, vec.z};
 }
 
 inline VmaMemoryUsage toVmaMemoryUsage (MemoryUsage usage)

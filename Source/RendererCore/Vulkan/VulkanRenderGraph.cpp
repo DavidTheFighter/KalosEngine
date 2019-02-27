@@ -216,7 +216,7 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 		imageCreateInfo.imageType = sizeY > 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D;
 		imageCreateInfo.mipLevels = data.attachment.mipLevels;
 		imageCreateInfo.arrayLayers = data.attachment.arrayLayers;
-		imageCreateInfo.format = toVkFormat(data.attachment.format);
+		imageCreateInfo.format = ResourceFormatToVkFormat(data.attachment.format);
 		imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 		imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		imageCreateInfo.usage = data.usageFlags;
@@ -454,7 +454,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					const RenderPassOutputAttachment &outputAttachment = pass.getColorAttachmentOutputs()[o];
 					VkAttachmentDescription attachmentDesc = {};
 					attachmentDesc.flags = 0;
-					attachmentDesc.format = toVkFormat(outputAttachment.attachment.format);
+					attachmentDesc.format = ResourceFormatToVkFormat(outputAttachment.attachment.format);
 					attachmentDesc.samples = sampleCountToVkSampleCount(outputAttachment.attachment.samples);
 					attachmentDesc.loadOp = outputAttachment.clearAttachment ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 					attachmentDesc.storeOp = endPassStackIndex >= attachmentUsageLifetimes[outputAttachment.textureName].y ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
@@ -475,7 +475,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					const RenderPassOutputAttachment &outputAttachment = pass.getDepthStencilAttachmentOutput();
 					VkAttachmentDescription attachmentDesc = {};
 					attachmentDesc.flags = 0;
-					attachmentDesc.format = toVkFormat(outputAttachment.attachment.format);
+					attachmentDesc.format = ResourceFormatToVkFormat(outputAttachment.attachment.format);
 					attachmentDesc.samples = sampleCountToVkSampleCount(outputAttachment.attachment.samples);;
 					attachmentDesc.loadOp = outputAttachment.clearAttachment ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 					attachmentDesc.storeOp = endPassStackIndex >= attachmentUsageLifetimes[outputAttachment.textureName].y ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
@@ -512,7 +512,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					{
 						VkAttachmentDescription attachmentDesc = {};
 						attachmentDesc.flags = 0;
-						attachmentDesc.format = toVkFormat(graphTextureView.attachment.format);
+						attachmentDesc.format = ResourceFormatToVkFormat(graphTextureView.attachment.format);
 						attachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
 						attachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 						attachmentDesc.storeOp = endPassStackIndex >= attachmentUsageLifetimes[inputAttachmentName].y ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE;
