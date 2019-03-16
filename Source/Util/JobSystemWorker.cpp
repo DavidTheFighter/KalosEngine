@@ -1,0 +1,146 @@
+#include "Util/JobSystemWorker.h"
+
+#include <Util/JobSystem.h>
+#include <common.h>
+
+JobSystemWorker::JobSystemWorker(JobSystem *jobSystemParentPtr)
+{
+	jobSystemParent = jobSystemParentPtr;
+	active = false;
+	shouldShutdown = false;
+
+	bottom = 0;
+	top = 0;
+	allocatedJobs = 0;
+
+	jobPool = new Job[jobSystemMaxJobCount];
+	jobDeque = new Job*[jobSystemMaxJobCount];
+}
+
+JobSystemWorker::~JobSystemWorker()
+{
+	delete[] jobPool;
+	delete[] jobDeque;
+}
+
+void JobSystemWorker::push(Job *job)
+{
+	int64_t b = bottom;
+	jobDeque[b & jobSystemJobCountMask] = job;
+	
+	bottom = b + 1;
+}
+
+Job *JobSystemWorker::pop()
+{
+	int64_t b = bottom - 1;
+	bottom = b;
+
+	int64_t t = top;
+
+	if (t <= b)
+	{
+		Job *job = jobDeque[b & jobSystemJobCountMask];
+
+		if (t != b)
+			return job;
+		
+		if (!std::atomic_compare_exchange_weak(&top, &t, t + 1))
+			job =  nullptr;
+
+		bottom = t + 1;
+		return job;
+	}
+	else	
+	{
+		bottom = t;
+		return nullptr;
+	}
+}
+
+Job *JobSystemWorker::steal()
+{
+	int64_t t = top;
+	int64_t b = bottom;
+
+	if (t < b)
+	{
+		Job *job = jobDeque[t & jobSystemJobCountMask];
+
+		if (!std::atomic_compare_exchange_weak(&top, &t, t + 1))
+			return nullptr;
+
+		return job;
+	}
+	else
+	{
+		return nullptr;
+	}
+}
+
+Job *JobSystemWorker::findJob()
+{
+	Job *job = pop();
+
+	if (job == nullptr && jobSystemParent->getWorkerCount() > 1)
+	{
+		size_t stealThreadIndex = 0;
+		
+		while ((stealThreadIndex = rand() % jobSystemParent->getWorkerCount()) == workerIndex);
+
+		if ((job = jobSystemParent->workers[stealThreadIndex]->steal()) != nullptr)
+			return job;
+
+		return nullptr;
+	}
+
+	return job;
+}
+
+void JobSystemWorker::threadMainFunction()
+{
+	Job *job = nullptr;
+	while (!shouldShutdown)
+	{
+		{
+			uint64_t &availableJobs = jobSystemParent->availableJobs;
+			std::atomic<bool> &varShouldShutdown = shouldShutdown;
+
+			std::unique_lock<std::mutex> lck(jobSystemParent->availableJobs_mutex);
+			jobSystemParent->availableJobs_cond.wait(lck, [&availableJobs, &varShouldShutdown] { return availableJobs > 0 || varShouldShutdown; });
+		}
+
+		if (active && (job = findJob()) != nullptr)
+			executeJob(job);
+		else
+			std::this_thread::yield();
+	}
+}
+
+void JobSystemWorker::executeJob(Job *job)
+{
+	if (job->jobFunction != nullptr)
+		(job->jobFunction)(job);
+
+	finishJob(job);
+}
+
+void JobSystemWorker::finishJob(Job *job)
+{
+	const uint64_t unfinishedJobs = --job->unfinishedJobs;
+
+	if (job->parent == nullptr)
+	{
+		std::lock_guard<std::mutex> lck(jobSystemParent->availableJobs_mutex);
+		jobSystemParent->availableJobs--;
+	}
+	
+	if (unfinishedJobs == 0 && job->parent != nullptr)
+		finishJob(job->parent);
+}
+
+Job *JobSystemWorker::allocateJob()
+{
+	const uint64_t index = allocatedJobs++;
+	return &jobPool[index & (jobSystemMaxJobCount - 1u)];
+}

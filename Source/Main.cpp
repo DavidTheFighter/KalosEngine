@@ -62,8 +62,11 @@ int main(int argc, char *argv[])
 	launchArgs.push_back("-msaa_test");
 
 	Log::setInstance(new Log());
+	JobSystem::setInstance(new JobSystem(16));
 
 	printEnvironment(launchArgs);
+	
+	JobSystem::get()->test();
 
 	std::string workingDir = std::string(getenv("DEV_WORKING_DIR")) + "/";
 
@@ -124,6 +127,7 @@ int main(int argc, char *argv[])
 	Log::get()->info("Completed graceful shutdown");
 
 	delete Log::getInstance();
+	delete JobSystem::get();
 
 	//system("pause");
 

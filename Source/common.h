@@ -36,6 +36,7 @@
 #define M_TAU M_2PI
 
 #include <Util/Log.h>
+#include <Util/JobSystem.h>
 
 #define DEBUG_ASSERT(x) if (!(x)) { Log::get()->error("Assertion \"{}\" failed @ file \"{}\", line {}", #x, __FILE__, __LINE__); system("pause"); }
 
