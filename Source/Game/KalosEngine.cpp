@@ -49,6 +49,8 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 
 	if (doingRenderingTest)
 		renderTestHandler = std::unique_ptr<RenderTestHandler>(new RenderTestHandler(renderer.get(), mainWindow.get(), currentRenderingTest));
+
+	worldManager = std::unique_ptr<WorldManager>(new WorldManager());
 }
 
 KalosEngine::~KalosEngine()
@@ -110,42 +112,8 @@ void KalosEngine::update()
 	if (mainWindowSize != lastMainWindowSize)
 	{
 		renderer->recreateSwapchain(mainWindow.get());
-
-		/*
-		if (doingRenderingTest)
-		{
-			switch (currentRenderingTest)
-			{
-				case RENDERER_TEST_TRIANGLE:
-					triangleTest->gfxGraph->resizeNamedSize("swapchain", mainWindowSize);
-
-					renderer->setSwapchainTexture(mainWindow.get(), triangleTest->gfxGraph->getRenderGraphOutputTextureView(), triangleTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-					break;
-				case RENDERER_TEST_VERTEX_INDEX_BUFFER:
-					vertexIndexBufferTest->gfxGraph->resizeNamedSize("swapchain", mainWindowSize);
-
-					renderer->setSwapchainTexture(mainWindow.get(), vertexIndexBufferTest->gfxGraph->getRenderGraphOutputTextureView(), vertexIndexBufferTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-					break;
-				case RENDERER_TEST_PUSH_CONSTANTS:
-					pushConstantsTest->gfxGraph->resizeNamedSize("swapchain", mainWindowSize);
-
-					renderer->setSwapchainTexture(mainWindow.get(), pushConstantsTest->gfxGraph->getRenderGraphOutputTextureView(), pushConstantsTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-					break;
-				case RENDERER_TEST_CUBE:
-					cubeTest->gfxGraph->resizeNamedSize("swapchain", mainWindowSize);
-
-					renderer->setSwapchainTexture(mainWindow.get(), cubeTest->gfxGraph->getRenderGraphOutputTextureView(), cubeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-					break;
-				case RENDERER_TEST_COMPUTE:
-					computeTest->gfxGraph->resizeNamedSize("swapchain", mainWindowSize);
-
-					renderer->setSwapchainTexture(mainWindow.get(), computeTest->gfxGraph->getRenderGraphOutputTextureView(), computeTest->renderTargetSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-					break;
-			}
-		}
-		*/
 	}
-
+	
 	if (true)
 	{
 		static double windowTitleFrametimeUpdateTimer;

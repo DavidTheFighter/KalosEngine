@@ -24,9 +24,12 @@ Recognized launch args:
 
 #include <Game/EventHandler.h>
 #include <Game/KalosEngine.h>
+#include <Game/GameStateTitleScreen.h>
 
 #include <RendererCore/Renderer.h>
 #include <Resources/FileLoader.h>
+
+int main(int argc, char * argv[]);
 
 void printEnvironment(std::vector<std::string> launchArgs);
 
@@ -40,6 +43,56 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < argc; i++)
 	{
 		launchArgs.push_back(argv[i]);
+	}
+
+	if (true)
+	{
+		std::ofstream file("A:/Programming/KalosEngineDev-win/GameData/worlds/testworld.kew", std::ios::out | std::ios::binary);
+
+		if (!file.is_open())
+		{
+			return 0;
+		}
+
+		uint16_t fileVersion = 0;
+		std::string uniqueName = "testworld";
+		uint32_t uniqueNameStrLen = uniqueName.size();
+		uint8_t hasTerrain = 1;
+		uint32_t terrainSizeX = 4;
+		uint32_t terrainSizeY = 4;
+		int32_t terrainOffsetX = 0;
+		int32_t terrainOffsetY = 0;
+
+		// HEADER
+		file.write("KEW|", 4);
+		file.write(reinterpret_cast<const char*>(&fileVersion), sizeof(fileVersion));
+
+		// WORLD INFO
+		file.write(reinterpret_cast<const char*>(&uniqueNameStrLen), sizeof(uniqueNameStrLen));
+		file.write(uniqueName.c_str(), uniqueNameStrLen);
+		file.write(reinterpret_cast<const char*>(&hasTerrain), sizeof(hasTerrain));
+		file.write(reinterpret_cast<const char*>(&terrainSizeX), sizeof(terrainSizeX));
+		file.write(reinterpret_cast<const char*>(&terrainSizeY), sizeof(terrainSizeY));
+		file.write(reinterpret_cast<const char*>(&terrainOffsetX), sizeof(terrainOffsetX));
+		file.write(reinterpret_cast<const char*>(&terrainOffsetY), sizeof(terrainOffsetY));
+
+		uint64_t zeroValue = 0;
+
+		// LOOKUP TABLE
+		for (int64_t x = terrainOffsetX; x < int64_t(terrainSizeX) - terrainOffsetX; x++)
+		{
+			for (int64_t y = terrainOffsetY; y < int64_t(terrainSizeY) - terrainOffsetY; y++)
+			{
+				file.write(reinterpret_cast<const char*>(&zeroValue), sizeof(zeroValue));
+				file.write(reinterpret_cast<const char*>(&zeroValue), sizeof(zeroValue));
+			}
+		}
+
+		// HEIGHTMAP DATA
+
+		// OBJECT DATA
+
+		file.close();
 	}
 
 	if (true)
@@ -59,14 +112,14 @@ int main(int argc, char *argv[])
 	//launchArgs.push_back("-push_constants_test");
 	//launchArgs.push_back("-cube_test");
 	//launchArgs.push_back("-compute_test");
-	launchArgs.push_back("-msaa_test");
+	//launchArgs.push_back("-msaa_test");
 
 	Log::setInstance(new Log());
 	JobSystem::setInstance(new JobSystem(16));
 
 	printEnvironment(launchArgs);
 	
-	JobSystem::get()->test();
+	//JobSystem::get()->test();
 
 	std::string workingDir = std::string(getenv("DEV_WORKING_DIR")) + "/";
 
@@ -93,6 +146,11 @@ int main(int argc, char *argv[])
 	}
 
 	KalosEngine *engine = new KalosEngine(launchArgs, rendererBackend, 60);
+	engine->worldManager->loadWorld("GameData/worlds/testworld.kew");
+
+	std::unique_ptr<GameStateTitleScreen> titleScreenState(new GameStateTitleScreen(engine));
+
+	engine->pushState(titleScreenState.get());
 
 	Log::get()->info("Completed startup");
 

@@ -12,8 +12,6 @@ class GameState
 
 		virtual ~GameState();
 
-		KalosEngine *engine;
-
 		virtual void init () = 0;
 		virtual void destroy () = 0;
 

@@ -234,10 +234,36 @@ inline std::vector<std::string> strsplit(const std::string &s, char delim)
 	return elems;
 }
 
-inline void seqmemcpy(char *to, const void *from, size_t size, size_t &offset)
+inline void seqread(void *to, const void *from, size_t size, size_t &offset)
 {
-	memcpy(to + offset, from, size);
+	memcpy(reinterpret_cast<char*>(to), reinterpret_cast<const char*>(from) + offset, size);
 	offset += size;
+}
+
+inline void seqreadstr(std::string &to, const void *from, size_t &offset)
+{
+	uint32_t strLen = 0;
+
+	memcpy(&strLen, reinterpret_cast<const char*>(from) + offset, sizeof(strLen));
+	offset += sizeof(strLen);
+
+	char *strArray = new char[strLen];
+
+	memcpy(strArray, reinterpret_cast<const char*>(from) + offset, strLen);
+	offset += strLen;
+
+	to = std::string(strArray, strLen);
+
+	delete[] strArray;
+}
+
+inline bool datacmp(const char *data0, const char *data1, size_t dataSize)
+{
+	for (size_t i = 0; i < dataSize; i++)
+		if (data0[i] != data1[i])
+			return false;
+
+	return true;
 }
 
 template<typename T0>
@@ -293,6 +319,28 @@ typedef struct simple_float_vector_4
 typedef struct simple_integer_vector_2
 {
 	int32_t x, y;
+
+	bool operator< (const simple_integer_vector_2 &other) const
+	{
+		if (x < other.x)
+			return true;
+
+		if (x > other.x)
+			return false;
+
+		if (y < other.y)
+			return true;
+
+		if (y > other.y)
+			return false;
+
+		return false;
+	}
+
+	bool operator== (const simple_integer_vector_2 &other) const
+	{
+		return x == other.x && y == other.y;
+	}
 } sivec2;
 
 typedef struct simple_integer_vector_3

@@ -11,12 +11,15 @@
 #include <RendererCore/Renderer.h>
 #include <RendererCore/Tests/RenderTestHandler.h>
 
+#include <World/WorldManager.h>
+
 class KalosEngine
 {
 	public:
 
 	std::unique_ptr<Renderer> renderer;
 	std::unique_ptr<Window> mainWindow;
+	std::unique_ptr<WorldManager> worldManager;
 
 	KalosEngine(const std::vector<std::string> &launchArgs, RendererBackend rendererBackendType, uint32_t engineUpdateFrequencyCap = 250);
 	virtual ~KalosEngine();
