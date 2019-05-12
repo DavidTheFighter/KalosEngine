@@ -12,8 +12,8 @@ class GameState
 
 		virtual ~GameState();
 
-		virtual void init () = 0;
-		virtual void destroy () = 0;
+		virtual void pushed () = 0;
+		virtual void popped () = 0;
 
 		virtual void pause () = 0;
 		virtual void resume () = 0;

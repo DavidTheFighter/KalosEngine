@@ -11,8 +11,8 @@ public:
 	GameStateTitleScreen(KalosEngine *enginePtr);
 	~GameStateTitleScreen();
 
-	void init();
-	void destroy();
+	void pushed();
+	void popped();
 
 	void pause();
 	void resume();

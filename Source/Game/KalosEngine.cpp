@@ -59,7 +59,7 @@ KalosEngine::~KalosEngine()
 
 	while (!gameStates.empty())
 	{
-		gameStates.back()->destroy();
+		gameStates.back()->popped();
 		gameStates.pop_back();
 	}
 }
@@ -157,12 +157,12 @@ void KalosEngine::changeState(GameState *state)
 {
 	if (!gameStates.empty())
 	{
-		gameStates.back()->destroy();
+		gameStates.back()->popped();
 		gameStates.pop_back();
 	}
 
 	gameStates.push_back(state);
-	gameStates.back()->init();
+	gameStates.back()->pushed();
 }
 
 void KalosEngine::pushState(GameState *state)
@@ -173,14 +173,14 @@ void KalosEngine::pushState(GameState *state)
 	}
 
 	gameStates.push_back(state);
-	gameStates.back()->init();
+	gameStates.back()->pushed();
 }
 
 void KalosEngine::popState()
 {
 	if (!gameStates.empty())
 	{
-		gameStates.back()->destroy();
+		gameStates.back()->popped();
 		gameStates.pop_back();
 	}
 
