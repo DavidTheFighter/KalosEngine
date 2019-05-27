@@ -29,7 +29,7 @@ DescriptorSet D3D12DescriptorPool::allocateDescriptorSet()
 std::vector<DescriptorSet> D3D12DescriptorPool::allocateDescriptorSets(uint32_t setCount)
 {
 	uint32_t srvuavcbvDescCount = descriptorSetLayout.constantBufferDescriptorCount + descriptorSetLayout.inputAttachmentDescriptorCount + descriptorSetLayout.storageBufferDescriptorCount + descriptorSetLayout.storageTextureDescriptorCount + descriptorSetLayout.textureDescriptorCount;
-	uint32_t samplerDescCount = descriptorSetLayout.samplerDescriptorCount;
+	uint32_t samplerDescCount = descriptorSetLayout.samplerDescriptorCount - uint32_t(descriptorSetLayout.staticSamplers.size());
 
 	std::vector<DescriptorSet> sets;
 
@@ -104,7 +104,7 @@ std::vector<DescriptorSet> D3D12DescriptorPool::allocateDescriptorSets(uint32_t 
 				descHeap.numFreeDescriptors -= samplerDescCount;
 
 				for (uint32_t s = descBlockIndex; s < descBlockIndex + samplerDescCount; s++)
-					descHeap.allocatedDescriptors[s] = 0;
+					descHeap.allocatedDescriptors[s] = 1;
 
 				descSet->samplerHeap = descHeap.heap;
 				descSet->samplerMassHeapIndex = massDescIndex;
@@ -174,7 +174,7 @@ std::vector<DescriptorSet> D3D12DescriptorPool::allocateDescriptorSets(uint32_t 
 				descHeap.numFreeDescriptors -= srvuavcbvDescCount;
 				
 				for (uint32_t s = descBlockIndex; s < descBlockIndex + srvuavcbvDescCount; s++)
-					descHeap.allocatedDescriptors[s] = 0;
+					descHeap.allocatedDescriptors[s] = 1;
 
 				descSet->srvUavCbvHeap = descHeap.heap;
 				descSet->srvUavCbvMassHeapIndex = massDescIndex;

@@ -43,8 +43,8 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 		attBlendDesc.SrcBlend = blendFactorToD3D12Blend(att.srcColorBlendFactor);
 		attBlendDesc.DestBlend = blendFactorToD3D12Blend(att.dstColorBlendFactor);
 		attBlendDesc.BlendOp = blendOpToD3D12BlendOp(att.colorBlendOp);
-		attBlendDesc.SrcBlendAlpha = blendFactorToD3D12Blend(att.srcColorBlendFactor);
-		attBlendDesc.DestBlendAlpha = blendFactorToD3D12Blend(att.srcAlphaBlendFactor);
+		attBlendDesc.SrcBlendAlpha = blendFactorToD3D12Blend(att.srcAlphaBlendFactor);
+		attBlendDesc.DestBlendAlpha = blendFactorToD3D12Blend(att.dstAlphaBlendFactor);
 		attBlendDesc.BlendOpAlpha = blendOpToD3D12BlendOp(att.alphaBlendOp);
 		attBlendDesc.RenderTargetWriteMask = 0;
 
@@ -128,7 +128,7 @@ Pipeline D3D12PipelineHelper::createGraphicsPipeline(const GraphicsPipelineInfo 
 
 	psoDesc.InputLayout = inputLayoutDesc;
 	psoDesc.BlendState = blendDesc;
-	psoDesc.SampleMask = 0xFFFFFF; // TODO Figure out what this actually does xD
+	psoDesc.SampleMask = 0xFFFFFFFF;
 	psoDesc.RasterizerState = rastDesc;
 	psoDesc.DepthStencilState = depthStencilDesc;
 	psoDesc.IBStripCutValue = pipelineInfo.inputAssemblyInfo.primitiveRestart ? D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF : D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;

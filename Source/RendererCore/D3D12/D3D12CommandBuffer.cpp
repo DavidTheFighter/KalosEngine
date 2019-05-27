@@ -232,7 +232,7 @@ void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t fi
 	{
 		D3D12DescriptorSet *d3dset = static_cast<D3D12DescriptorSet*>(sets[i]);
 
-		ID3D12DescriptorHeap *samplerHeapToBind = d3dset->samplerCount == 0 ? ctx_currentBoundSamplerDescHeap : d3dset->samplerHeap;
+		ID3D12DescriptorHeap *samplerHeapToBind = d3dset->samplerDescriptorCount == 0 ? ctx_currentBoundSamplerDescHeap : d3dset->samplerHeap;
 		ID3D12DescriptorHeap *srvUavCbvHeapToBind = d3dset->srvUavCbvDescriptorCount == 0 ? ctx_currentBoundSrvUavCbvDescHeap : d3dset->srvUavCbvHeap;
 		ID3D12DescriptorHeap *heaps[2] = {samplerHeapToBind, srvUavCbvHeapToBind};
 
@@ -256,7 +256,7 @@ void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t fi
 			baseRootParameter++;
 		}
 
-		if (d3dset->samplerCount > 0)
+		if (d3dset->samplerDescriptorCount > 0)
 		{
 			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->samplerHeap->GetGPUDescriptorHandleForHeapStart();
 			descHandle.ptr += renderer->samplerDescriptorSize * (d3dset->samplerStartDescriptorSlot);
@@ -402,10 +402,10 @@ void D3D12CommandBuffer::setScissors(uint32_t firstScissor, const std::vector<Sc
 	for (const Scissor &s : scissors)
 	{
 		D3D12_RECT rect = {};
-		rect.left = s.x;
-		rect.right = (LONG) s.width;
-		rect.top = s.y;
-		rect.bottom = (LONG) s.height;
+		rect.left = (LONG) s.x;
+		rect.right = (LONG) (s.x + s.width);
+		rect.top = (LONG) s.y;
+		rect.bottom = (LONG) (s.y + s.height);
 
 		d3d12ScissorRects.push_back(rect);
 	}
