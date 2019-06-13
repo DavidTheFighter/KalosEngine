@@ -47,13 +47,10 @@ struct D3D12DescriptorSet : public RendererDescriptorSet
 
 	uint32_t srvUavCbvDescriptorCount;
 	uint32_t samplerDescriptorCount;
+	uint32_t nonStaticSamplerDescriptorCount;
 
-	uint32_t samplerCount;
-	uint32_t constantBufferCount;
-	uint32_t inputAtttachmentCount;
-	uint32_t storageBufferCount;
-	uint32_t storageTextureCount;
-	uint32_t sampledTextureCount;
+	std::map<uint32_t, uint32_t> bindingRegisterMap;
+	std::map<uint32_t, uint32_t> bindingHeapOffsetMap;
 
 	DescriptorPool parentPool;
 };

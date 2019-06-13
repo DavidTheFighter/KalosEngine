@@ -115,7 +115,7 @@ void D3D12CommandBuffer::bindIndexBuffer(Buffer buffer, size_t offset, bool uses
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 	indexBufferView.BufferLocation = static_cast<D3D12Buffer*>(buffer)->bufferResource->GetGPUVirtualAddress() + offset;
 	indexBufferView.Format = uses32BitIndices ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT;
-	indexBufferView.SizeInBytes = static_cast<D3D12Buffer*>(buffer)->bufferSize;
+	indexBufferView.SizeInBytes = static_cast<D3D12Buffer*>(buffer)->bufferSize - offset;
 
 	cmdList->IASetIndexBuffer(&indexBufferView);
 }
@@ -139,7 +139,7 @@ void D3D12CommandBuffer::bindVertexBuffers(uint32_t firstBinding, const std::vec
 			{
 				D3D12_VERTEX_BUFFER_VIEW view = {};
 				view.BufferLocation = d3dbuffer->bufferResource->GetGPUVirtualAddress() + offsets[i];
-				view.SizeInBytes = d3dbuffer->bufferSize;
+				view.SizeInBytes = d3dbuffer->bufferSize - offsets[i];
 				view.StrideInBytes = binding.stride;
 
 				bufferViews[attrib.location] = view;
@@ -212,41 +212,63 @@ void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t fi
 {
 	uint32_t baseRootParameter = 0;
 
-	if (cxt_currentGraphicsPipeline->gfxPipelineInfo.inputPushConstants.size > 0)
+	if (point == PIPELINE_BIND_POINT_GRAPHICS && cxt_currentGraphicsPipeline->gfxPipelineInfo.inputPushConstants.size > 0)
+		baseRootParameter++;
+	else if (point == PIPELINE_BIND_POINT_COMPUTE && cxt_currentComputePipeline->computePipelineInfo.inputPushConstants.size > 0)
 		baseRootParameter++;
 
 	for (uint32_t i = 0; i < firstSet; i++)
 	{
-		cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i];
+		const DescriptorSetLayoutDescription &setLayout = point == PIPELINE_BIND_POINT_GRAPHICS ? cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i] : cxt_currentComputePipeline->computePipelineInfo.inputSetLayouts[i];
 
-		if (cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].samplerDescriptorCount > 0)
-			baseRootParameter++;
+		for (size_t b = 0; b < setLayout.bindings.size(); b++)
+		{
+			if (setLayout.bindings[b].type == DESCRIPTOR_TYPE_SAMPLER)
+			{
+				baseRootParameter++;
+				break;
+			}
+		}
 
-		uint32_t srvUavCbvDescCount = cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].constantBufferDescriptorCount + cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].inputAttachmentDescriptorCount + cxt_currentGraphicsPipeline->gfxPipelineInfo.inputSetLayouts[i].textureDescriptorCount;
-
-		if (srvUavCbvDescCount > 0)
-			baseRootParameter++;
+		for (size_t b = 0; b < setLayout.bindings.size(); b++)
+		{
+			if (setLayout.bindings[b].type != DESCRIPTOR_TYPE_SAMPLER)
+			{
+				baseRootParameter++;
+				break;
+			}
+		}
 	}
 
 	for (size_t i = 0; i < sets.size(); i++)
 	{
 		D3D12DescriptorSet *d3dset = static_cast<D3D12DescriptorSet*>(sets[i]);
 
-		ID3D12DescriptorHeap *samplerHeapToBind = d3dset->samplerDescriptorCount == 0 ? ctx_currentBoundSamplerDescHeap : d3dset->samplerHeap;
+		ID3D12DescriptorHeap *samplerHeapToBind = d3dset->nonStaticSamplerDescriptorCount == 0 ? ctx_currentBoundSamplerDescHeap : d3dset->samplerHeap;
 		ID3D12DescriptorHeap *srvUavCbvHeapToBind = d3dset->srvUavCbvDescriptorCount == 0 ? ctx_currentBoundSrvUavCbvDescHeap : d3dset->srvUavCbvHeap;
 		ID3D12DescriptorHeap *heaps[2] = {samplerHeapToBind, srvUavCbvHeapToBind};
 
-		if (samplerHeapToBind == nullptr)
-			cmdList->SetDescriptorHeaps(1, &heaps[1]);
-		else if (srvUavCbvHeapToBind == nullptr)
-			cmdList->SetDescriptorHeaps(1, &heaps[0]);
-		else
-			cmdList->SetDescriptorHeaps(2, &heaps[0]);
-
-		if (d3dset->srvUavCbvDescriptorCount > 0)
+		if (samplerHeapToBind == nullptr && srvUavCbvHeapToBind != ctx_currentBoundSrvUavCbvDescHeap)
 		{
-			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetGPUDescriptorHandleForHeapStart();
-			descHandle.ptr += renderer->cbvSrvUavDescriptorSize * (d3dset->srvUavCbvStartDescriptorSlot);
+			cmdList->SetDescriptorHeaps(1, &heaps[1]);
+			ctx_currentBoundSrvUavCbvDescHeap = srvUavCbvHeapToBind;
+		}
+		else if (srvUavCbvHeapToBind == nullptr && samplerHeapToBind != ctx_currentBoundSamplerDescHeap)
+		{
+			cmdList->SetDescriptorHeaps(1, &heaps[0]);
+			ctx_currentBoundSamplerDescHeap = samplerHeapToBind;
+		}
+		else if (samplerHeapToBind != ctx_currentBoundSamplerDescHeap || srvUavCbvHeapToBind != ctx_currentBoundSrvUavCbvDescHeap)
+		{
+			cmdList->SetDescriptorHeaps(2, &heaps[0]);
+			ctx_currentBoundSrvUavCbvDescHeap = srvUavCbvHeapToBind;
+			ctx_currentBoundSamplerDescHeap = samplerHeapToBind;
+		}
+
+		if (d3dset->nonStaticSamplerDescriptorCount > 0)
+		{
+			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->samplerHeap->GetGPUDescriptorHandleForHeapStart();
+			descHandle.ptr += renderer->samplerDescriptorSize * (d3dset->samplerStartDescriptorSlot);
 
 			if (point == PIPELINE_BIND_POINT_GRAPHICS)
 				cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);
@@ -256,10 +278,10 @@ void D3D12CommandBuffer::bindDescriptorSets(PipelineBindPoint point, uint32_t fi
 			baseRootParameter++;
 		}
 
-		if (d3dset->samplerDescriptorCount > 0)
+		if (d3dset->srvUavCbvDescriptorCount > 0)
 		{
-			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->samplerHeap->GetGPUDescriptorHandleForHeapStart();
-			descHandle.ptr += renderer->samplerDescriptorSize * (d3dset->samplerStartDescriptorSlot);
+			D3D12_GPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetGPUDescriptorHandleForHeapStart();
+			descHandle.ptr += renderer->cbvSrvUavDescriptorSize * (d3dset->srvUavCbvStartDescriptorSlot);
 
 			if (point == PIPELINE_BIND_POINT_GRAPHICS)
 				cmdList->SetGraphicsRootDescriptorTable(baseRootParameter, descHandle);

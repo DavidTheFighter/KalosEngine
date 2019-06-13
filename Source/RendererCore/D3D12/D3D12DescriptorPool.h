@@ -29,6 +29,12 @@ class D3D12DescriptorPool : public RendererDescriptorPool
 
 	DescriptorSetLayoutDescription descriptorSetLayout;
 
+	uint32_t srvuavcbvDescriptorCount;
+	uint32_t samplerDescriptorCount;
+	uint32_t nonStaticSamplerDescriptorCount;
+
+	std::map<uint32_t, uint32_t> bindingRegisterMap;
+	std::map<uint32_t, uint32_t> bindingHeapOffsetMap;
 	std::vector<D3D12DescriptorSet*> allocatedDescSets;
 };
 

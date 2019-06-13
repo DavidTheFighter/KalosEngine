@@ -22,6 +22,8 @@ class D3D12PipelineHelper
 	private:
 
 	D3D12Renderer *renderer;
+
+	ID3D12RootSignature *createRootSignature(const PushConstantRange &inputPushConstants, const std::vector<DescriptorSetLayoutDescription> &inputSetLayouts, bool allowInputAssembler);
 };
 
 #endif

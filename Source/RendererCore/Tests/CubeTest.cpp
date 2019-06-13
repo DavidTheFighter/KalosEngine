@@ -17,7 +17,6 @@ Specifically this tests:
 - Buffer uploading/staging
 - Propery face culling order
 - Viewports/scissors, essentially everythign the triangle test does
-- Static samplers (well, a single static sampler)
 */
 
 CubeTest::CubeTest(Renderer *rendererPtr)
@@ -66,17 +65,20 @@ CubeTest::CubeTest(Renderer *rendererPtr)
 	descSet = cubeDescPool->allocateDescriptorSet();
 
 	std::vector<DescriptorWriteInfo> writes(3);
-	writes[0].dstBinding = 0;
+	writes[0].dstBinding = 1;
+	writes[0].dstArrayElement = 0;
 	writes[0].descriptorType = DESCRIPTOR_TYPE_CONSTANT_BUFFER;
-	writes[0].bufferInfo = {cubeCBuffer, 0, sizeof(glm::mat4)};
+	writes[0].bufferInfo = {{cubeCBuffer, 0, sizeof(glm::mat4)}};
 
 	writes[1].dstBinding = 0;
+	writes[1].dstArrayElement = 0;
 	writes[1].descriptorType = DESCRIPTOR_TYPE_SAMPLER;
-	writes[1].samplerInfo = {cubeTexSampler};
+	writes[1].samplerInfo = {{cubeTexSampler}};
 
-	writes[2].dstBinding = 0;
+	writes[2].dstBinding = 2;
+	writes[2].dstArrayElement = 0;
 	writes[2].descriptorType = DESCRIPTOR_TYPE_SAMPLED_TEXTURE;
-	writes[2].sampledTextureInfo = {cubeTestTextureView, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+	writes[2].textureInfo = {{cubeTestTextureView, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
 
 	renderer->writeDescriptorSets(descSet, writes);
 }
@@ -364,22 +366,26 @@ void CubeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	info.depthStencilInfo = depthInfo;
 	info.colorBlendInfo = colorBlend;
 
+	DescriptorSetBinding samplerBinding = {};
+	samplerBinding.binding = 0;
+	samplerBinding.arrayCount = 1;
+	samplerBinding.type = DESCRIPTOR_TYPE_SAMPLER;
+	samplerBinding.stageAccessMask = SHADER_STAGE_FRAGMENT_BIT;
+
+	DescriptorSetBinding cbufferBinding = {};
+	cbufferBinding.binding = 1;
+	cbufferBinding.arrayCount = 1;
+	cbufferBinding.type = DESCRIPTOR_TYPE_CONSTANT_BUFFER;
+	cbufferBinding.stageAccessMask = SHADER_STAGE_VERTEX_BIT;
+
+	DescriptorSetBinding cubeTexBinding = {};
+	cubeTexBinding.binding = 2;
+	cubeTexBinding.arrayCount = 1;
+	cubeTexBinding.type = DESCRIPTOR_TYPE_SAMPLED_TEXTURE;
+	cubeTexBinding.stageAccessMask = SHADER_STAGE_FRAGMENT_BIT;
+
 	DescriptorSetLayoutDescription set0 = {};
-	set0.samplerDescriptorCount = 2;
-	set0.constantBufferDescriptorCount = 1;
-	set0.inputAttachmentDescriptorCount = 0;
-	set0.textureDescriptorCount = 1;
-	set0.samplerBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT, SHADER_STAGE_FRAGMENT_BIT};
-	set0.constantBufferBindingsShaderStageAccess = {SHADER_STAGE_VERTEX_BIT};
-	set0.inputAttachmentBindingsShaderStageAccess = {};
-	set0.textureBindingsShaderStageAccess = {SHADER_STAGE_FRAGMENT_BIT};
-
-	DescriptorStaticSampler staticSampler = {};
-	staticSampler.samplerBinding = 1;
-	staticSampler.magFilter = SAMPLER_FILTER_NEAREST;
-	staticSampler.maxAnisotropy = 16.0f;
-
-	set0.staticSamplers.push_back(staticSampler);
+	set0.bindings = {samplerBinding, cbufferBinding, cubeTexBinding};
 
 	info.inputPushConstants = {sizeof(glm::mat4), SHADER_STAGE_VERTEX_BIT};
 	info.inputSetLayouts = {set0};

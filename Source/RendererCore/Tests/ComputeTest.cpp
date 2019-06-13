@@ -119,15 +119,18 @@ void ComputeTest::passDescUpdate(const RenderGraphDescriptorUpdateFunctionData& 
 	std::vector<DescriptorWriteInfo> writes(3);
 	writes[0].descriptorType = DESCRIPTOR_TYPE_STORAGE_TEXTURE;
 	writes[0].dstBinding = 0;
-	writes[0].sampledTextureInfo = testOutputInfo;
+	writes[0].dstArrayElement = 0;
+	writes[0].textureInfo = {testOutputInfo};
 
 	writes[1].descriptorType = DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	writes[1].dstBinding = 0;
-	writes[1].bufferInfo = testStorageBufferInfo;
+	writes[1].dstBinding = 1;
+	writes[1].dstArrayElement = 0;
+	writes[1].bufferInfo = {testStorageBufferInfo};
 
 	writes[2].descriptorType = DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	writes[2].dstBinding = 1;
-	writes[2].bufferInfo = graphStorageBufferInfo;
+	writes[2].dstBinding = 2;
+	writes[2].dstArrayElement = 0;
+	writes[2].bufferInfo = {graphStorageBufferInfo};
 
 	renderer->writeDescriptorSets(descSet, writes);
 }
@@ -158,11 +161,26 @@ void ComputeTest::createPipeline(const RenderGraphInitFunctionData &data)
 	PipelineShaderStage compShaderStage = {};
 	compShaderStage.shaderModule = compShader;
 
+	DescriptorSetBinding outTextureBinding = {};
+	outTextureBinding.binding = 0;
+	outTextureBinding.arrayCount = 1;
+	outTextureBinding.type = DESCRIPTOR_TYPE_STORAGE_TEXTURE;
+	outTextureBinding.stageAccessMask = SHADER_STAGE_COMPUTE_BIT;
+
+	DescriptorSetBinding testStorageBinding = {};
+	testStorageBinding.binding = 1;
+	testStorageBinding.arrayCount = 1;
+	testStorageBinding.type = DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	testStorageBinding.stageAccessMask = SHADER_STAGE_COMPUTE_BIT;
+
+	DescriptorSetBinding graphStorageBufferBinding = {};
+	graphStorageBufferBinding.binding = 2;
+	graphStorageBufferBinding.arrayCount = 1;
+	graphStorageBufferBinding.type = DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	graphStorageBufferBinding.stageAccessMask = SHADER_STAGE_COMPUTE_BIT;
+
 	DescriptorSetLayoutDescription set0 = {};
-	set0.storageBufferDescriptorCount = 2;
-	set0.storageTextureDescriptorCount = 1;
-	set0.storageBufferBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT, SHADER_STAGE_COMPUTE_BIT};
-	set0.storageTextureBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT};
+	set0.bindings = {outTextureBinding, testStorageBinding, graphStorageBufferBinding};
 
 	ComputePipelineInfo info = {};
 	info.shader = compShaderStage;
@@ -185,11 +203,26 @@ void ComputeTest::createBufferGenPipeline(const RenderGraphInitFunctionData &dat
 	PipelineShaderStage compShaderStage = {};
 	compShaderStage.shaderModule = compShader;
 
+	DescriptorSetBinding outTextureBinding = {};
+	outTextureBinding.binding = 0;
+	outTextureBinding.arrayCount = 1;
+	outTextureBinding.type = DESCRIPTOR_TYPE_STORAGE_TEXTURE;
+	outTextureBinding.stageAccessMask = SHADER_STAGE_COMPUTE_BIT;
+
+	DescriptorSetBinding testStorageBinding = {};
+	testStorageBinding.binding = 1;
+	testStorageBinding.arrayCount = 1;
+	testStorageBinding.type = DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	testStorageBinding.stageAccessMask = SHADER_STAGE_COMPUTE_BIT;
+
+	DescriptorSetBinding graphStorageBufferBinding = {};
+	graphStorageBufferBinding.binding = 2;
+	graphStorageBufferBinding.arrayCount = 1;
+	graphStorageBufferBinding.type = DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	graphStorageBufferBinding.stageAccessMask = SHADER_STAGE_COMPUTE_BIT;
+
 	DescriptorSetLayoutDescription set0 = {};
-	set0.storageBufferDescriptorCount = 2;
-	set0.storageTextureDescriptorCount = 1;
-	set0.storageBufferBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT, SHADER_STAGE_COMPUTE_BIT};
-	set0.storageTextureBindingsShaderStageAccess = {SHADER_STAGE_COMPUTE_BIT};
+	set0.bindings = {outTextureBinding, testStorageBinding, graphStorageBufferBinding};
 
 	ComputePipelineInfo info = {};
 	info.shader = compShaderStage;

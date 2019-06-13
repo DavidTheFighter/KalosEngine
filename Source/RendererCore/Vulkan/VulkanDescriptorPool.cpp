@@ -12,55 +12,82 @@ VulkanDescriptorPool::VulkanDescriptorPool(VulkanRenderer *rendererPtr, const De
 	descriptorSetDescription = descriptorSetLayout;
 	this->poolBlockAllocSize = poolBlockAllocSize;
 
-	if (descriptorSetLayout.samplerDescriptorCount > 0)
+	uint32_t samplerCount = 0, textureCount = 0, constantBufferCount = 0, storageTextureCount = 0, storageBufferCount = 0, inputAttachmentCount = 0;
+
+	for (size_t i = 0; i < descriptorSetLayout.bindings.size(); i++)
+	{
+		switch (descriptorSetLayout.bindings[i].type)
+		{
+			case DESCRIPTOR_TYPE_SAMPLER:
+				samplerCount += descriptorSetLayout.bindings[i].arrayCount;
+				break;
+			case DESCRIPTOR_TYPE_SAMPLED_TEXTURE:
+				textureCount += descriptorSetLayout.bindings[i].arrayCount;
+				break;
+			case DESCRIPTOR_TYPE_CONSTANT_BUFFER:
+				constantBufferCount += descriptorSetLayout.bindings[i].arrayCount;
+				break;
+			case DESCRIPTOR_TYPE_STORAGE_TEXTURE:
+				storageTextureCount += descriptorSetLayout.bindings[i].arrayCount;
+				break;
+			case DESCRIPTOR_TYPE_STORAGE_BUFFER:
+				storageBufferCount += descriptorSetLayout.bindings[i].arrayCount;
+				break;
+			case DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+				inputAttachmentCount += descriptorSetLayout.bindings[i].arrayCount;
+				break;
+		}
+	}
+
+	if (samplerCount > 0)
 	{
 		VkDescriptorPoolSize poolSize = {};
-		poolSize.descriptorCount = descriptorSetLayout.samplerDescriptorCount * poolBlockAllocSize;
+		poolSize.descriptorCount = samplerCount * poolBlockAllocSize;
 		poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLER;
 
 		vulkanPoolSizes.push_back(poolSize);
 	}
 
-	if (descriptorSetLayout.constantBufferDescriptorCount > 0)
+	if (constantBufferCount > 0)
 	{
 		VkDescriptorPoolSize poolSize = {};
-		poolSize.descriptorCount = descriptorSetLayout.constantBufferDescriptorCount * poolBlockAllocSize;
+		poolSize.descriptorCount = constantBufferCount * poolBlockAllocSize;
 		poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
 		vulkanPoolSizes.push_back(poolSize);
 	}
 
-	if (descriptorSetLayout.inputAttachmentDescriptorCount > 0)
+	if (inputAttachmentCount > 0)
 	{
 		VkDescriptorPoolSize poolSize = {};
-		poolSize.descriptorCount = descriptorSetLayout.inputAttachmentDescriptorCount * poolBlockAllocSize;
+		poolSize.descriptorCount = inputAttachmentCount * poolBlockAllocSize;
 		poolSize.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 
 		vulkanPoolSizes.push_back(poolSize);
 	}
 
-	if (descriptorSetLayout.textureDescriptorCount > 0)
+	if (textureCount > 0)
 	{
 		VkDescriptorPoolSize poolSize = {};
-		poolSize.descriptorCount = descriptorSetLayout.textureDescriptorCount * poolBlockAllocSize;
+		poolSize.descriptorCount = textureCount * poolBlockAllocSize;
 		poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
 		vulkanPoolSizes.push_back(poolSize);
 	}
 
-	if (descriptorSetLayout.storageBufferDescriptorCount > 0)
+	if (storageBufferCount > 0)
 	{
 		VkDescriptorPoolSize poolSize = {};
-		poolSize.descriptorCount = descriptorSetLayout.storageBufferDescriptorCount * poolBlockAllocSize;
+		poolSize.descriptorCount = storageBufferCount * poolBlockAllocSize;
 		poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
 		vulkanPoolSizes.push_back(poolSize);
 	}
 
-	if (descriptorSetLayout.storageTextureDescriptorCount > 0)
+	if (storageTextureCount > 0)
 	{
 		VkDescriptorPoolSize poolSize = {};
-		poolSize.descriptorCount = descriptorSetLayout.storageTextureDescriptorCount * poolBlockAllocSize;
+		poolSize.descriptorCount = storageTextureCount * poolBlockAllocSize;
 		poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
 		vulkanPoolSizes.push_back(poolSize);

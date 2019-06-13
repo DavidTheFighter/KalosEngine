@@ -9,6 +9,7 @@
 #include <RendererCore/D3D12/D3D12Swapchain.h>
 #include <RendererCore/D3D12/D3D12PipelineHelper.h>
 #include <RendererCore/D3D12/D3D12RenderGraph.h>
+#include <RendererCore/D3D12/D3D12ShaderLoader.h>
 
 #include <Resources/FileLoader.h>
 
@@ -530,12 +531,6 @@ void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<
 {
 	D3D12DescriptorSet *d3dset = static_cast<D3D12DescriptorSet*>(dstSet);
 
-	uint32_t constantBufferOffset = 0;
-	uint32_t inputAttachmentOffset = constantBufferOffset + d3dset->constantBufferCount;
-	uint32_t storageBufferOffset = inputAttachmentOffset + d3dset->inputAtttachmentCount;
-	uint32_t storageTextureOffset = storageBufferOffset + d3dset->storageBufferCount;
-	uint32_t sampledTextureOffset = storageTextureOffset + d3dset->storageTextureCount;
-
 	for (size_t i = 0; i < writes.size(); i++)
 	{
 		const DescriptorWriteInfo &writeInfo = writes[i];
@@ -544,76 +539,81 @@ void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<
 		{
 			case DESCRIPTOR_TYPE_SAMPLER:
 			{
-				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->samplerHeap->GetCPUDescriptorHandleForHeapStart();
-				descHandle.ptr += samplerDescriptorSize * (writeInfo.dstBinding + d3dset->samplerStartDescriptorSlot);
+				for (size_t a = 0; a < writeInfo.samplerInfo.size(); a++)
+				{
+					D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->samplerHeap->GetCPUDescriptorHandleForHeapStart();
+					descHandle.ptr += samplerDescriptorSize * (d3dset->bindingHeapOffsetMap[writeInfo.dstBinding] + writeInfo.dstArrayElement + a + d3dset->samplerStartDescriptorSlot);
 
-				device->CreateSampler(&static_cast<D3D12Sampler*>(writeInfo.samplerInfo.sampler)->samplerDesc, descHandle);
+					device->CreateSampler(&static_cast<D3D12Sampler *>(writeInfo.samplerInfo[a].sampler)->samplerDesc, descHandle);
+				}
 
 				break;
 			}
 			case DESCRIPTOR_TYPE_CONSTANT_BUFFER:
 			{
-				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
-				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + constantBufferOffset);
+				for (size_t a = 0; a < writeInfo.bufferInfo.size(); a++)
+				{
+					D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
+					descHandle.ptr += cbvSrvUavDescriptorSize * (d3dset->bindingHeapOffsetMap[writeInfo.dstBinding] + writeInfo.dstArrayElement + a + d3dset->srvUavCbvStartDescriptorSlot);
 
-				D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {};
-				viewDesc.BufferLocation = static_cast<D3D12Buffer*>(writeInfo.bufferInfo.buffer)->bufferResource->GetGPUVirtualAddress() + writeInfo.bufferInfo.offset;
-				viewDesc.SizeInBytes = (writeInfo.bufferInfo.range + 255) & (~255);
+					D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {};
+					viewDesc.BufferLocation = static_cast<D3D12Buffer *>(writeInfo.bufferInfo[a].buffer)->bufferResource->GetGPUVirtualAddress() + writeInfo.bufferInfo[a].offset;
+					viewDesc.SizeInBytes = (writeInfo.bufferInfo[a].range + 255) & (~255);
 
-				device->CreateConstantBufferView(&viewDesc, descHandle);
+					device->CreateConstantBufferView(&viewDesc, descHandle);
+				}
 
 				break;
 			}
 			case DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			case DESCRIPTOR_TYPE_SAMPLED_TEXTURE:
 			{
-				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
-				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + inputAttachmentOffset);
+				for (size_t a = 0; a < writeInfo.textureInfo.size(); a++)
+				{
+					D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
+					descHandle.ptr += cbvSrvUavDescriptorSize * (d3dset->bindingHeapOffsetMap[writeInfo.dstBinding] + writeInfo.dstArrayElement + a + d3dset->srvUavCbvStartDescriptorSlot);
 
-				D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.inputAttachmentInfo.view);
+					D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.textureInfo[a].view);
 
-				device->CreateShaderResourceView(static_cast<D3D12Texture*>(writeInfo.inputAttachmentInfo.view->parentTexture)->textureResource, &viewDesc, descHandle);
+					device->CreateShaderResourceView(static_cast<D3D12Texture *>(writeInfo.textureInfo[a].view->parentTexture)->textureResource, &viewDesc, descHandle);
+				}
 
 				break;
 			}
 			case DESCRIPTOR_TYPE_STORAGE_BUFFER:
 			{
-				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
-				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + storageBufferOffset);
+				for (size_t a = 0; a < writeInfo.bufferInfo.size(); a++)
+				{
+					D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
+					descHandle.ptr += cbvSrvUavDescriptorSize * (d3dset->bindingHeapOffsetMap[writeInfo.dstBinding] + writeInfo.dstArrayElement + a + d3dset->srvUavCbvStartDescriptorSlot);
 
-				D3D12_BUFFER_UAV buffer = {};
-				buffer.FirstElement = writeInfo.bufferInfo.offset;
-				buffer.NumElements = writeInfo.bufferInfo.range;
-				buffer.StructureByteStride = 0;
-				buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+					D3D12_BUFFER_UAV buffer = {};
+					buffer.FirstElement = writeInfo.bufferInfo[a].offset;
+					buffer.NumElements = writeInfo.bufferInfo[a].range;
+					buffer.StructureByteStride = 0;
+					buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
 
-				D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc = {};
-				viewDesc.Format = DXGI_FORMAT_R8_UINT;
-				viewDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
-				viewDesc.Buffer = buffer;
+					D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc = {};
+					viewDesc.Format = DXGI_FORMAT_R8_UINT;
+					viewDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+					viewDesc.Buffer = buffer;
 
-				device->CreateUnorderedAccessView(static_cast<D3D12Buffer*>(writeInfo.bufferInfo.buffer)->bufferResource, nullptr, &viewDesc, descHandle);
+					device->CreateUnorderedAccessView(static_cast<D3D12Buffer *>(writeInfo.bufferInfo[a].buffer)->bufferResource, nullptr, &viewDesc, descHandle);
+				}
 
 				break;
 			}
 			case DESCRIPTOR_TYPE_STORAGE_TEXTURE:
 			{
-				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
-				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + storageTextureOffset);
+				for (size_t a = 0; a < writeInfo.textureInfo.size(); a++)
+				{
+					D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
+					descHandle.ptr += cbvSrvUavDescriptorSize * (d3dset->bindingHeapOffsetMap[writeInfo.dstBinding] + writeInfo.dstArrayElement + a + d3dset->srvUavCbvStartDescriptorSlot);
 
-				D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc = createUAVDescFromTextureView(writeInfo.sampledTextureInfo.view);
+					D3D12_UNORDERED_ACCESS_VIEW_DESC viewDesc = createUAVDescFromTextureView(writeInfo.textureInfo[a].view);
 
-				device->CreateUnorderedAccessView(static_cast<D3D12Texture*>(writeInfo.sampledTextureInfo.view->parentTexture)->textureResource, nullptr, &viewDesc, descHandle);
-
-				break;
-			}
-			case DESCRIPTOR_TYPE_SAMPLED_TEXTURE:
-			{
-				D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
-				descHandle.ptr += cbvSrvUavDescriptorSize * (writeInfo.dstBinding + d3dset->srvUavCbvStartDescriptorSlot + sampledTextureOffset);
-
-				D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.sampledTextureInfo.view);
-
-				device->CreateShaderResourceView(static_cast<D3D12Texture*>(writeInfo.sampledTextureInfo.view->parentTexture)->textureResource, &viewDesc, descHandle);
+					device->CreateUnorderedAccessView(static_cast<D3D12Texture *>(writeInfo.textureInfo[a].view->parentTexture)->textureResource, nullptr, &viewDesc, descHandle);
+				}
 
 				break;
 			}
@@ -644,44 +644,7 @@ ShaderModule D3D12Renderer::createShaderModule(const std::string &file, ShaderSt
 
 ShaderModule D3D12Renderer::createShaderModuleFromSource(const std::string &source, const std::string &referenceName, ShaderStageFlagBits stage, ShaderSourceLanguage sourceLang, const std::string &entryPoint)
 {
-	D3D12ShaderModule *shaderModule = new D3D12ShaderModule();
-	ID3DBlob *blob = nullptr, *errorBuf = nullptr;
-
-	const D3D_SHADER_MACRO macroDefines[] = {
-		{nullptr, nullptr}
-	};
-
-	std::string modSource = source;
-	modSource = std::string(D3D12_HLSL_SAMPLED_TEXTURE_PREPROCESSOR) + "\n" + modSource;
-	modSource = std::string(D3D12_HLSL_STORAGE_TEXTURE_PREPROCESSOR) + "\n" + modSource;
-	modSource = std::string(D3D12_HLSL_STORAGE_BUFFER_PREPROCESSOR) + "\n" + modSource;
-	modSource = std::string(D3D12_HLSL_INPUT_ATTACHMENT_PREPROCESSOR) + "\n" + modSource;
-	modSource = std::string(D3D12_HLSL_CBUFFER_PREPROCESSOR) + "\n" + modSource;
-	modSource = std::string(D3D12_HLSL_SAMPLER_PREPROCESSOR) + "\n" + modSource;
-	modSource = std::string(D3D12_HLSL_PUSHCONSTANTBUFFER_PREPROCESSOR) + "\n" + modSource;
-	modSource = std::string(D3D12_HLSL_MERGE_PREPROCESSOR) + "\n" + modSource;
-
-	HRESULT hr = D3DCompile(modSource.data(), modSource.size(), referenceName.c_str(), macroDefines, nullptr, entryPoint.c_str(), shaderStageFlagBitsToD3D12CompilerTargetStr(stage).c_str(), D3DCOMPILE_DEBUG | D3DCOMPILE_ALL_RESOURCES_BOUND | D3DCOMPILE_SKIP_OPTIMIZATION, 0, &blob, &errorBuf);
-
-	if (FAILED(hr))
-	{
-		Log::get()->error("D3D12 failed to compile a shader, error msg: {}", std::string((char*) errorBuf->GetBufferPointer()));
-		throw std::runtime_error("d3d12 shader compile error");
-	}
-
-	shaderModule->shaderBytecode = std::unique_ptr<char>(new char[blob->GetBufferSize()]);
-	memcpy(shaderModule->shaderBytecode.get(), blob->GetBufferPointer(), blob->GetBufferSize());
-
-	shaderModule->shaderBytecodeLength = blob->GetBufferSize();
-	shaderModule->stage = stage;
-	shaderModule->entryPoint = entryPoint;
-
-	blob->Release();
-
-	if (errorBuf != nullptr)
-		errorBuf->Release();
-
-	return shaderModule;
+	return D3D12ShaderLoader::loadShaderModuleFromSource(source, referenceName, stage, sourceLang, entryPoint);
 }
 
 Pipeline D3D12Renderer::createGraphicsPipeline(const GraphicsPipelineInfo & pipelineInfo, RenderPass renderPass, uint32_t subpass)
@@ -1200,8 +1163,6 @@ void D3D12Renderer::setSwapchainTexture(Window *wnd, TextureView texView, Sample
 	srvDesc.ViewDimension = textureViewTypeToD3D12SRVDimension(d3dtv->viewType);
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Texture2D.MipLevels = 1;
-
-	Log::get()->info("{}", srvDesc.ViewDimension);
 
 	swapchainHandler->setSwapchainSourceTexture(srvDesc, static_cast<D3D12Texture*>(d3dtv->parentTexture)->textureResource);
 }

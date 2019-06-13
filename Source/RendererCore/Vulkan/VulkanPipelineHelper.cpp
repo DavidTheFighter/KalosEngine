@@ -12,12 +12,10 @@ VulkanPipelineHelper::VulkanPipelineHelper (VulkanRenderer *parentVulkanRenderer
 VulkanPipelineHelper::~VulkanPipelineHelper ()
 {
 	for (auto descriptorSetLayout : descriptorSetLayoutCache)
-	{
 		vkDestroyDescriptorSetLayout(renderer->device, descriptorSetLayout.setLayoutHandle, nullptr);
 
-		for (VkSampler sampler : descriptorSetLayout.staticSamplerHandles)
-			vkDestroySampler(renderer->device, sampler, nullptr);
-	}
+	for (auto &staticSampler : staticSamplerCache)
+		vkDestroySampler(renderer->device, staticSampler.samplerHandle, nullptr);
 }
 
 Pipeline VulkanPipelineHelper::createGraphicsPipeline (const GraphicsPipelineInfo &pipelineInfo, RenderPass renderPass, uint32_t subpass)
@@ -263,11 +261,6 @@ Pipeline VulkanPipelineHelper::createComputePipeline(const ComputePipelineInfo &
 
 VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const DescriptorSetLayoutDescription &setDescription)
 {
-	DEBUG_ASSERT(setDescription.samplerDescriptorCount == setDescription.samplerBindingsShaderStageAccess.size());
-	DEBUG_ASSERT(setDescription.constantBufferDescriptorCount == setDescription.constantBufferBindingsShaderStageAccess.size());
-	DEBUG_ASSERT(setDescription.inputAttachmentDescriptorCount == setDescription.inputAttachmentBindingsShaderStageAccess.size());
-	DEBUG_ASSERT(setDescription.textureDescriptorCount == setDescription.textureBindingsShaderStageAccess.size());
-
 	// Search the cache and see if we have an existing descriptor set layout to use
 	for (size_t i = 0; i < descriptorSetLayoutCache.size(); i++)
 		if (descriptorSetLayoutCache[i].description == setDescription)
@@ -275,114 +268,98 @@ VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const Des
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings;
 	std::vector<VkSampler> staticSamplerHandles;
-	staticSamplerHandles.reserve(setDescription.staticSamplers.size());
+	
+	size_t staticSamplerCount = 0;
 
-	for (uint32_t i = 0; i < setDescription.samplerDescriptorCount; i++)
+	for (size_t i = 0; i < setDescription.bindings.size(); i++)
+		if (setDescription.bindings[i].type == DESCRIPTOR_TYPE_SAMPLER)
+			staticSamplerCount += setDescription.bindings[i].staticSamplers.size();
+
+	staticSamplerHandles.reserve(staticSamplerCount);
+
+	for (size_t i = 0; i < setDescription.bindings.size(); i++)
 	{
+		const DescriptorSetBinding &binding = setDescription.bindings[i];
 		VkDescriptorSetLayoutBinding vulkanBinding = {};
-		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.samplerBindingsShaderStageAccess[i]);
-		vulkanBinding.binding = HLSL_SPV_SAMPLER_OFFSET + i;
-		vulkanBinding.descriptorCount = 1;
-		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+		vulkanBinding.binding = binding.binding;
+		vulkanBinding.descriptorCount = binding.arrayCount;
+		vulkanBinding.stageFlags = toVkShaderStageFlags(binding.stageAccessMask);
+		vulkanBinding.descriptorType = toVkDescriptorType(binding.type);
 
-		for (size_t s = 0; s < setDescription.staticSamplers.size(); s++)
+		if (binding.type == DESCRIPTOR_TYPE_SAMPLER)
 		{
-			const DescriptorStaticSampler &samplerInfo = setDescription.staticSamplers[s];
-
-			if (samplerInfo.samplerBinding == i)
+			if (binding.staticSamplers.size() > 0)
 			{
-				VkSamplerCreateInfo samplerCreateInfo = {};
-				samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-				samplerCreateInfo.pNext = nullptr;
-				samplerCreateInfo.flags = 0;
-				samplerCreateInfo.minFilter = toVkFilter(samplerInfo.minFilter);
-				samplerCreateInfo.magFilter = toVkFilter(samplerInfo.magFilter);
-				samplerCreateInfo.addressModeU = toVkSamplerAddressMode(samplerInfo.addressMode);
-				samplerCreateInfo.addressModeV = toVkSamplerAddressMode(samplerInfo.addressMode);
-				samplerCreateInfo.addressModeW = toVkSamplerAddressMode(samplerInfo.addressMode);
-				samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-				samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
-				samplerCreateInfo.compareEnable = VK_FALSE;
-				samplerCreateInfo.mipmapMode = toVkSamplerMipmapMode(samplerInfo.mipmapMode);
-				samplerCreateInfo.mipLodBias = samplerInfo.mipLodBias;
-				samplerCreateInfo.minLod = samplerInfo.minLod;
-				samplerCreateInfo.maxLod = samplerInfo.maxLod;
-
-				if (renderer->deviceFeatures.samplerAnisotropy && samplerInfo.maxAnisotropy > 1.0f)
+				if (binding.staticSamplers.size() != binding.arrayCount)
 				{
-					samplerCreateInfo.anisotropyEnable = VK_TRUE;
-					samplerCreateInfo.maxAnisotropy = std::min<float>(samplerInfo.maxAnisotropy, renderer->deviceProps.limits.maxSamplerAnisotropy);
-				}
-				else
-				{
-					samplerCreateInfo.anisotropyEnable = VK_FALSE;
-					samplerCreateInfo.maxAnisotropy = 1.0f;
+					Log::get()->error("VulkanPipelineHelper: If a sampler binding has any number of static samplers ALL samplers in that binding must be static! (AKA staticSamplers.size() == binding.arrayCount)");
+					throw std::runtime_error("vulkan - static sampler count doesn't match sampler count in descriptor set binding");
 				}
 
-				VkSampler samplerHandle;
-				VK_CHECK_RESULT(vkCreateSampler(renderer->device, &samplerCreateInfo, nullptr, &samplerHandle));
+				for (size_t s = 0; s < binding.staticSamplers.size(); s++)
+				{
+					size_t cachedStaticSamplerIndex = std::numeric_limits<size_t>::max();
+					const DescriptorStaticSampler &samplerInfo = binding.staticSamplers[s];
 
-				staticSamplerHandles.push_back(samplerHandle);
+					for (size_t cs = 0; cs < staticSamplerCache.size(); cs++)
+					{
+						if (staticSamplerCache[cs].samplerDesc == samplerInfo)
+						{
+							cachedStaticSamplerIndex = cs;
+							break;
+						}
+					}
 
-				vulkanBinding.pImmutableSamplers = &staticSamplerHandles.back();
-				break;
+					if (cachedStaticSamplerIndex != std::numeric_limits<size_t>::max())
+					{
+						staticSamplerHandles.push_back(staticSamplerCache[cachedStaticSamplerIndex].samplerHandle);
+					}
+					else
+					{
+						VkSamplerCreateInfo samplerCreateInfo = {};
+						samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+						samplerCreateInfo.pNext = nullptr;
+						samplerCreateInfo.flags = 0;
+						samplerCreateInfo.minFilter = toVkFilter(samplerInfo.minFilter);
+						samplerCreateInfo.magFilter = toVkFilter(samplerInfo.magFilter);
+						samplerCreateInfo.addressModeU = toVkSamplerAddressMode(samplerInfo.addressMode);
+						samplerCreateInfo.addressModeV = toVkSamplerAddressMode(samplerInfo.addressMode);
+						samplerCreateInfo.addressModeW = toVkSamplerAddressMode(samplerInfo.addressMode);
+						samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+						samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
+						samplerCreateInfo.compareEnable = VK_FALSE;
+						samplerCreateInfo.mipmapMode = toVkSamplerMipmapMode(samplerInfo.mipmapMode);
+						samplerCreateInfo.mipLodBias = samplerInfo.mipLodBias;
+						samplerCreateInfo.minLod = samplerInfo.minLod;
+						samplerCreateInfo.maxLod = samplerInfo.maxLod;
+
+						if (renderer->deviceFeatures.samplerAnisotropy && samplerInfo.maxAnisotropy > 1.0f)
+						{
+							samplerCreateInfo.anisotropyEnable = VK_TRUE;
+							samplerCreateInfo.maxAnisotropy = std::min<float>(samplerInfo.maxAnisotropy, renderer->deviceProps.limits.maxSamplerAnisotropy);
+						}
+						else
+						{
+							samplerCreateInfo.anisotropyEnable = VK_FALSE;
+							samplerCreateInfo.maxAnisotropy = 1.0f;
+						}
+
+						VkSampler samplerHandle;
+						VK_CHECK_RESULT(vkCreateSampler(renderer->device, &samplerCreateInfo, nullptr, &samplerHandle));
+
+						staticSamplerHandles.push_back(samplerHandle);
+
+						VulkanDescriptorSetStaticSamplerCache newCachedSampler = {};
+						newCachedSampler.samplerDesc = samplerInfo;
+						newCachedSampler.samplerHandle = samplerHandle;
+
+						staticSamplerCache.push_back(newCachedSampler);
+					}
+				}
+
+				vulkanBinding.pImmutableSamplers = &staticSamplerHandles[staticSamplerHandles.size() - binding.arrayCount];
 			}
 		}
-
-		bindings.push_back(vulkanBinding);
-	}
-
-	for (uint32_t i = 0; i < setDescription.constantBufferDescriptorCount; i++)
-	{
-		VkDescriptorSetLayoutBinding vulkanBinding = {};
-		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.constantBufferBindingsShaderStageAccess[i]);
-		vulkanBinding.binding = HLSL_SPV_CONSTANT_BUFFER_OFFSET + i;
-		vulkanBinding.descriptorCount = 1;
-		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-
-		bindings.push_back(vulkanBinding);
-	}
-
-	for (uint32_t i = 0; i < setDescription.inputAttachmentDescriptorCount; i++)
-	{
-		VkDescriptorSetLayoutBinding vulkanBinding = {};
-		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.inputAttachmentBindingsShaderStageAccess[i]);
-		vulkanBinding.binding = HLSL_SPV_INPUT_ATTACHMENT_OFFSET + i;
-		vulkanBinding.descriptorCount = 1;
-		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-
-		bindings.push_back(vulkanBinding);
-	}
-
-	for (uint32_t i = 0; i < setDescription.textureDescriptorCount; i++)
-	{
-		VkDescriptorSetLayoutBinding vulkanBinding = {};
-		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.textureBindingsShaderStageAccess[i]);
-		vulkanBinding.binding = HLSL_SPV_TEXTURE_OFFSET + i;
-		vulkanBinding.descriptorCount = 1;
-		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-
-		bindings.push_back(vulkanBinding);
-	}
-
-	for (uint32_t i = 0; i < setDescription.storageBufferDescriptorCount; i++)
-	{
-		VkDescriptorSetLayoutBinding vulkanBinding = {};
-		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.storageBufferBindingsShaderStageAccess[i]);
-		vulkanBinding.binding = HLSL_SPV_STORAGE_BUFFER_OFFSET + i;
-		vulkanBinding.descriptorCount = 1;
-		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-
-		bindings.push_back(vulkanBinding);
-	}
-
-	for (uint32_t i = 0; i < setDescription.storageTextureDescriptorCount; i++)
-	{
-		VkDescriptorSetLayoutBinding vulkanBinding = {};
-		vulkanBinding.stageFlags = toVkShaderStageFlags(setDescription.storageTextureBindingsShaderStageAccess[i]);
-		vulkanBinding.binding = HLSL_SPV_STORAGE_TEXTURE_OFFSET + i;
-		vulkanBinding.descriptorCount = 1;
-		vulkanBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
 		bindings.push_back(vulkanBinding);
 	}
@@ -399,7 +376,6 @@ VkDescriptorSetLayout VulkanPipelineHelper::createDescriptorSetLayout (const Des
 	VulkanDescriptorSetLayoutCacheInfo setLayoutCacheInfo = {};
 	setLayoutCacheInfo.description = setDescription;
 	setLayoutCacheInfo.setLayoutHandle = setLayout;
-	setLayoutCacheInfo.staticSamplerHandles = staticSamplerHandles;
 
 	descriptorSetLayoutCache.push_back(setLayoutCacheInfo);
 

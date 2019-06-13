@@ -380,13 +380,15 @@ void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vecto
 		{
 			case DESCRIPTOR_TYPE_CONSTANT_BUFFER:
 			case DESCRIPTOR_TYPE_STORAGE_BUFFER:
-				bf++;
+				bf += writeInfo.bufferInfo.size();
 				break;
 			case DESCRIPTOR_TYPE_SAMPLER:
+				im += writeInfo.samplerInfo.size();
+				break;
 			case DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 			case DESCRIPTOR_TYPE_SAMPLED_TEXTURE:
 			case DESCRIPTOR_TYPE_STORAGE_TEXTURE:
-				im++;
+				im += writeInfo.textureInfo.size();
 				break;
 		}
 	}
@@ -401,75 +403,91 @@ void VulkanRenderer::writeDescriptorSets (DescriptorSet dstSet, const std::vecto
 		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		write.pNext = nullptr;
 		write.dstSet = static_cast<VulkanDescriptorSet*>(dstSet)->setHandle;
-		write.dstArrayElement = 0;
-		write.descriptorCount = 1;
+		write.dstArrayElement = writeInfo.dstArrayElement;
+		write.dstBinding = writeInfo.dstBinding;
 		write.descriptorType = toVkDescriptorType(writeInfo.descriptorType);
 
 		switch (writeInfo.descriptorType)
 		{
 			case DESCRIPTOR_TYPE_CONSTANT_BUFFER:
 			{
-				VkDescriptorBufferInfo bufferInfo = {};
-				bufferInfo.buffer = static_cast<VulkanBuffer*>(writeInfo.bufferInfo.buffer)->bufferHandle;
-				bufferInfo.offset = static_cast<VkDeviceSize>(writeInfo.bufferInfo.offset);
-				bufferInfo.range = static_cast<VkDeviceSize>(writeInfo.bufferInfo.range);
+				for (size_t a = 0; a < writeInfo.bufferInfo.size(); a++)
+				{
+					VkDescriptorBufferInfo bufferInfo = {};
+					bufferInfo.buffer = static_cast<VulkanBuffer *>(writeInfo.bufferInfo[a].buffer)->bufferHandle;
+					bufferInfo.offset = static_cast<VkDeviceSize>(writeInfo.bufferInfo[a].offset);
+					bufferInfo.range = static_cast<VkDeviceSize>(writeInfo.bufferInfo[a].range);
 
-				bufferInfos.push_back(bufferInfo);
+					bufferInfos.push_back(bufferInfo);
+				}
 
-				write.pBufferInfo = &bufferInfos[bufferInfos.size() - 1];
-				write.dstBinding = HLSL_SPV_CONSTANT_BUFFER_OFFSET + writeInfo.dstBinding;
+				write.pBufferInfo = &bufferInfos[bufferInfos.size() - writeInfo.bufferInfo.size()];
+				write.descriptorCount = writeInfo.bufferInfo.size();
 
 				break;
 			}
 			case DESCRIPTOR_TYPE_SAMPLER:
 			{
-				VkDescriptorImageInfo imageInfo = {};
-				imageInfo.sampler = static_cast<VulkanSampler*>(writeInfo.samplerInfo.sampler)->samplerHandle;
+				for (size_t a = 0; a < writeInfo.samplerInfo.size(); a++)
+				{
+					VkDescriptorImageInfo imageInfo = {};
+					imageInfo.sampler = static_cast<VulkanSampler *>(writeInfo.samplerInfo[a].sampler)->samplerHandle;
 
-				imageInfos.push_back(imageInfo);
+					imageInfos.push_back(imageInfo);
+				}
 
-				write.pImageInfo = &imageInfos[imageInfos.size() - 1];
-				write.dstBinding = HLSL_SPV_SAMPLER_OFFSET + writeInfo.dstBinding;
+				write.pImageInfo = &imageInfos[imageInfos.size() - writeInfo.samplerInfo.size()];
+				write.descriptorCount = writeInfo.samplerInfo.size();
 
 				break;
 			}
 			case DESCRIPTOR_TYPE_SAMPLED_TEXTURE:
 			{
-				VkDescriptorImageInfo imageInfo = {};
-				imageInfo.imageView = static_cast<VulkanTextureView*>(writeInfo.sampledTextureInfo.view)->imageView;
-				imageInfo.imageLayout = toVkImageLayout(writeInfo.sampledTextureInfo.layout);
+				for (size_t a = 0; a < writeInfo.textureInfo.size(); a++)
+				{
+					VkDescriptorImageInfo imageInfo = {};
+					imageInfo.imageView = static_cast<VulkanTextureView *>(writeInfo.textureInfo[a].view)->imageView;
+					imageInfo.imageLayout = toVkImageLayout(writeInfo.textureInfo[a].layout);
 
-				imageInfos.push_back(imageInfo);
+					imageInfos.push_back(imageInfo);
+				}
 
-				write.pImageInfo = &imageInfos[imageInfos.size() - 1];
-				write.dstBinding = HLSL_SPV_TEXTURE_OFFSET + writeInfo.dstBinding;
+				write.pImageInfo = &imageInfos[imageInfos.size() - writeInfo.textureInfo.size()];
+				write.descriptorCount = writeInfo.textureInfo.size();
 
 				break;
 			}
 			case DESCRIPTOR_TYPE_STORAGE_BUFFER:
 			{
-				VkDescriptorBufferInfo bufferInfo = {};
-				bufferInfo.buffer = static_cast<VulkanBuffer*>(writeInfo.bufferInfo.buffer)->bufferHandle;
-				bufferInfo.offset = static_cast<VkDeviceSize>(writeInfo.bufferInfo.offset);
-				bufferInfo.range = static_cast<VkDeviceSize>(writeInfo.bufferInfo.range);
+				for (size_t a = 0; a < writeInfo.bufferInfo.size(); a++)
+				{
+					VkDescriptorBufferInfo bufferInfo = {};
+					bufferInfo.buffer = static_cast<VulkanBuffer *>(writeInfo.bufferInfo[a].buffer)->bufferHandle;
+					bufferInfo.offset = static_cast<VkDeviceSize>(writeInfo.bufferInfo[a].offset);
+					bufferInfo.range = static_cast<VkDeviceSize>(writeInfo.bufferInfo[a].range);
 
-				bufferInfos.push_back(bufferInfo);
+					bufferInfos.push_back(bufferInfo);
+				}
 
-				write.pBufferInfo = &bufferInfos[bufferInfos.size() - 1];
-				write.dstBinding = HLSL_SPV_STORAGE_BUFFER_OFFSET + writeInfo.dstBinding;
+				write.pBufferInfo = &bufferInfos[bufferInfos.size() - writeInfo.bufferInfo.size()];
+				write.descriptorCount = writeInfo.bufferInfo.size();
 
 				break;
 			}
 			case DESCRIPTOR_TYPE_STORAGE_TEXTURE:
 			{
-				VkDescriptorImageInfo imageInfo = {};
-				imageInfo.imageView = static_cast<VulkanTextureView*>(writeInfo.sampledTextureInfo.view)->imageView;
-				imageInfo.imageLayout = toVkImageLayout(writeInfo.sampledTextureInfo.layout);
+				for (size_t a = 0; a < writeInfo.textureInfo.size(); a++)
+				{
+					VkDescriptorImageInfo imageInfo = {};
+					imageInfo.imageView = static_cast<VulkanTextureView *>(writeInfo.textureInfo[a].view)->imageView;
+					imageInfo.imageLayout = toVkImageLayout(writeInfo.textureInfo[a].layout);
 
-				imageInfos.push_back(imageInfo);
+					imageInfos.push_back(imageInfo);
+				}
 
-				write.pImageInfo = &imageInfos[imageInfos.size() - 1];
-				write.dstBinding = HLSL_SPV_STORAGE_TEXTURE_OFFSET + writeInfo.dstBinding;
+				write.pImageInfo = &imageInfos[imageInfos.size() - writeInfo.textureInfo.size()];
+				write.descriptorCount = writeInfo.textureInfo.size();
+
 				break;
 			}
 		}

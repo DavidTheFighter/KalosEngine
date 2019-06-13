@@ -22,6 +22,8 @@ class VulkanShaderLoader
 #endif
 
 		static VkShaderModule createVkShaderModule (const VkDevice &device, const std::vector<uint32_t> &spirv);
+
+		static std::vector<char> parseHLSLSource(const std::vector<char> &source);
 };
 
 #endif

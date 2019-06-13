@@ -111,7 +111,6 @@ typedef struct RendererRenderPass
 
 typedef struct RendererDescriptorStaticSampler
 {
-	uint32_t samplerBinding;
 	SamplerAddressMode addressMode = SAMPLER_ADDRESS_MODE_REPEAT;
 	SamplerFilter minFilter = SAMPLER_FILTER_LINEAR;
 	SamplerFilter magFilter = SAMPLER_FILTER_LINEAR;
@@ -123,8 +122,6 @@ typedef struct RendererDescriptorStaticSampler
 
 	bool operator==(const RendererDescriptorStaticSampler &other)
 	{
-		if (samplerBinding != other.samplerBinding)
-			return false;
 		if (addressMode != other.addressMode)
 			return false;
 		if (minFilter != other.minFilter)
@@ -152,80 +149,44 @@ typedef struct RendererDescriptorStaticSampler
 
 } DescriptorStaticSampler;
 
+typedef struct RendererDescriptorSetBinding
+{
+	uint32_t binding;
+	DescriptorType type;
+	uint32_t arrayCount;
+	ShaderStageFlags stageAccessMask;
+	std::vector<DescriptorStaticSampler> staticSamplers;
+
+	bool operator== (const RendererDescriptorSetBinding &other)
+	{
+		if (binding != other.binding || type != other.type || arrayCount != other.arrayCount || stageAccessMask != other.stageAccessMask || staticSamplers.size() != other.staticSamplers.size())
+			return false;
+
+		for (size_t i = 0; i < staticSamplers.size(); i++)
+			if (staticSamplers[i] != other.staticSamplers[i])
+				return false;
+
+		return true;
+	}
+
+	bool operator!= (const RendererDescriptorSetBinding &other)
+	{
+		return !(operator==(other));
+	}
+
+} DescriptorSetBinding;
+
 typedef struct RendererDescriptorSetLayoutDescription
 {
-	uint32_t samplerDescriptorCount;
-	uint32_t constantBufferDescriptorCount;
-	uint32_t inputAttachmentDescriptorCount;
-	uint32_t textureDescriptorCount;
-	uint32_t storageBufferDescriptorCount;
-	uint32_t storageTextureDescriptorCount;
-
-	std::vector<ShaderStageFlags> samplerBindingsShaderStageAccess;
-	std::vector<ShaderStageFlags> constantBufferBindingsShaderStageAccess;
-	std::vector<ShaderStageFlags> inputAttachmentBindingsShaderStageAccess;
-	std::vector<ShaderStageFlags> textureBindingsShaderStageAccess;
-	std::vector<ShaderStageFlags> storageBufferBindingsShaderStageAccess;
-	std::vector<ShaderStageFlags> storageTextureBindingsShaderStageAccess;
-
-	std::vector<DescriptorStaticSampler> staticSamplers;
+	std::vector<DescriptorSetBinding> bindings;
 
 	bool operator==(const RendererDescriptorSetLayoutDescription &other)
 	{
-		if (samplerDescriptorCount != other.samplerDescriptorCount || constantBufferDescriptorCount != other.constantBufferDescriptorCount ||
-			inputAttachmentDescriptorCount != other.inputAttachmentDescriptorCount || textureDescriptorCount != other.textureDescriptorCount ||
-			storageBufferDescriptorCount != other.storageBufferDescriptorCount || storageTextureDescriptorCount != other.storageTextureDescriptorCount)
-		{
-			return false;
-		}
-
-		if (samplerBindingsShaderStageAccess.size() != other.samplerBindingsShaderStageAccess.size())
+		if (bindings.size() != other.bindings.size())
 			return false;
 
-		if (constantBufferBindingsShaderStageAccess.size() != other.constantBufferBindingsShaderStageAccess.size())
-			return false;
-
-		if (inputAttachmentBindingsShaderStageAccess.size() != other.inputAttachmentBindingsShaderStageAccess.size())
-			return false;
-
-		if (textureBindingsShaderStageAccess.size() != other.textureBindingsShaderStageAccess.size())
-			return false;
-
-		if (storageBufferBindingsShaderStageAccess.size() != other.storageBufferBindingsShaderStageAccess.size())
-			return false;
-
-		if (storageTextureBindingsShaderStageAccess.size() != other.storageTextureBindingsShaderStageAccess.size())
-			return false;
-
-		if (staticSamplers.size() != other.staticSamplers.size())
-			return false;
-
-		for (size_t i = 0; i < samplerBindingsShaderStageAccess.size(); i++)
-			if (samplerBindingsShaderStageAccess[i] != other.samplerBindingsShaderStageAccess[i])
-				return false;
-
-		for (size_t i = 0; i < constantBufferBindingsShaderStageAccess.size(); i++)
-			if (constantBufferBindingsShaderStageAccess[i] != other.constantBufferBindingsShaderStageAccess[i])
-				return false;
-
-		for (size_t i = 0; i < inputAttachmentBindingsShaderStageAccess.size(); i++)
-			if (inputAttachmentBindingsShaderStageAccess[i] != other.inputAttachmentBindingsShaderStageAccess[i])
-				return false;
-
-		for (size_t i = 0; i < textureBindingsShaderStageAccess.size(); i++)
-			if (textureBindingsShaderStageAccess[i] != other.textureBindingsShaderStageAccess[i])
-				return false;
-
-		for (size_t i = 0; i < storageBufferBindingsShaderStageAccess.size(); i++)
-			if (storageBufferBindingsShaderStageAccess[i] != other.storageBufferBindingsShaderStageAccess[i])
-				return false;
-
-		for (size_t i = 0; i < storageTextureBindingsShaderStageAccess.size(); i++)
-			if (storageTextureBindingsShaderStageAccess[i] != other.storageTextureBindingsShaderStageAccess[i])
-				return false;
-		
-		for (size_t i = 0; i < staticSamplers.size(); i++)
-			if (staticSamplers[i] != other.staticSamplers[i])
+		for (size_t i = 0; i < bindings.size(); i++)
+			if (bindings[i] != other.bindings[i])
 				return false;
 
 		return true;
@@ -418,15 +379,12 @@ typedef struct RendererDescriptorBufferInfo
 typedef struct RendererDescriptorWriteInfo
 {
 		uint32_t dstBinding;
+		uint32_t dstArrayElement;
 		DescriptorType descriptorType;
 
-		union
-		{
-			RendererDescriptorSamplerInfo samplerInfo;
-			DescriptorTextureInfo inputAttachmentInfo;
-			RendererDescriptorBufferInfo bufferInfo;
-			DescriptorTextureInfo sampledTextureInfo;
-		};
+		std::vector<RendererDescriptorSamplerInfo> samplerInfo;
+		std::vector<RendererDescriptorBufferInfo> bufferInfo;
+		std::vector<DescriptorTextureInfo> textureInfo;
 
 } DescriptorWriteInfo;
 
