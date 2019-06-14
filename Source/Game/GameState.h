@@ -21,6 +21,8 @@ class GameState
 		virtual void handleEvents () = 0;
 		virtual void update (float delta) = 0;
 		virtual void render () = 0;
+
+		virtual struct RendererTextureView *getOutputTexture() = 0;
 };
 
 #endif /* ENGINE_GAMESTATE_H_ */

@@ -278,6 +278,7 @@ void D3D12Renderer::submitToQueue(QueueType queueType, const std::vector<Command
 
 		if (d3dsem->semFence->GetCompletedValue() < d3dsemWaitValue)
 			DX_CHECK_RESULT(d3dsem->semFence->SetEventOnCompletion(d3dsemWaitValue, d3dsem->semFenceWaitEvent));
+
 	}
 
 	if (fence != nullptr)
@@ -299,10 +300,41 @@ void D3D12Renderer::submitToQueue(QueueType queueType, const std::vector<Command
 
 void D3D12Renderer::waitForQueueIdle(QueueType queue)
 {
+	ID3D12CommandQueue *cmdQueue = nullptr;
+
+	switch (queue)
+	{
+		case QUEUE_TYPE_COMPUTE:
+			cmdQueue = computeQueue;
+			break;
+		case QUEUE_TYPE_TRANSFER:
+			cmdQueue = transferQueue;
+			break;
+		case QUEUE_TYPE_GRAPHICS:
+		default:
+			cmdQueue = graphicsQueue;
+	}
+
+	ID3D12Fence *fenceHandle = nullptr;
+	HANDLE fenceEvent = createEventHandle();
+
+	DX_CHECK_RESULT(device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fenceHandle)));
+
+	cmdQueue->Signal(fenceHandle, 1);
+
+	DX_CHECK_RESULT(fenceHandle->SetEventOnCompletion(1, fenceEvent));
+
+	WaitForSingleObject(fenceEvent, static_cast<DWORD>(5 * 1000.0));
+
+	fenceHandle->Release();
+	CloseHandle(fenceEvent);
 }
 
 void D3D12Renderer::waitForDeviceIdle()
 {
+	waitForQueueIdle(QUEUE_TYPE_GRAPHICS);
+	waitForQueueIdle(QUEUE_TYPE_COMPUTE);
+	waitForQueueIdle(QUEUE_TYPE_TRANSFER);
 }
 
 bool D3D12Renderer::getFenceStatus(Fence fence)

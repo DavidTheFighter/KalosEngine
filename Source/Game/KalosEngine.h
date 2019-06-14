@@ -13,6 +13,8 @@
 
 #include <World/WorldManager.h>
 
+class NuklearGUIRenderer;
+
 class KalosEngine
 {
 	public:
@@ -39,12 +41,24 @@ class KalosEngine
 
 	double getTime();
 
+	RendererBackend getRendererBackendType();
+
+	TextureView get2DWhiteTextureView();
+
+	struct nk_font *getDefaultNKFont();
+
 	private:
 
 	RendererBackend rendererBackendType;
 
 	std::vector<std::string> launchArgs;
 	std::vector<GameState*> gameStates;
+
+	struct nk_context *nuklearCtx;
+	struct nk_font *font_clean;
+
+	float updateFunctionTimer;
+	float updatePacedDelta;
 
 	glm::uvec2 mainWindowSize;
 
@@ -53,11 +67,41 @@ class KalosEngine
 
 	bool engineIsRunning;
 
+	TextureView currentGameStateOutput;
+	TextureView currentEngineTextureOutput;
+	Sampler swapchainSampler;
+
+	CommandPool initCmdPool;
+
+	Texture whiteTexture2D;
+	TextureView whiteTexture2DView;
+
+	DescriptorPool testFontAtlasDescriptrPool;
+	DescriptorPool quadPassthroughDescriptorPool;
+
+	Texture testFontAtlas;
+	TextureView testFontAtlasView;
+
+	DescriptorSet defaultNKFontAtlasDescriptorSet;
+	DescriptorSet atlasNullDrawDescriptorSet;
+	DescriptorSet debugInfoPassthroughDescriptorSet;
+
+	RenderGraph debugInfoRenderGraph;
+
+	Pipeline debugInfoPassthroughPipeline;
+
 	// Defines an upper limit to the frequency at which the game is allowed to update. Can be pretty high without causing any trouble. Defined in Hertz
 	uint32_t updateFrequencyCap;
 
 	bool doingRenderingTest;
 	std::unique_ptr<RenderTestHandler> renderTestHandler;
+	std::unique_ptr<NuklearGUIRenderer> nuklearRenderer;
+
+	void initColorTextures();
+	void setupDebugInfoRenderGraph();
+
+	void debugInfoPassInit(const RenderGraphInitFunctionData &data);
+	void debugInfoPassRender(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData &data);
 };
 
 #endif /* GAME_KALOSENGINE_H_ */

@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 		file.close();
 	}
 
-	if (true)
+	if (false)
 	{
 		launchArgs.push_back("-force_vulkan");
 		launchArgs.push_back("-enable_vulkan_layers");
@@ -167,6 +167,8 @@ int main(int argc, char *argv[])
 	delete EventHandler::instance();
 	delete FileLoader::instance();
 
+	delete engine;
+
 	switch (rendererBackend)
 	{
 		case RENDERER_BACKEND_VULKAN:
@@ -179,8 +181,6 @@ int main(int argc, char *argv[])
 		default:
 			break;
 	}
-
-	delete engine;
 
 	Log::get()->info("Completed graceful shutdown");
 
