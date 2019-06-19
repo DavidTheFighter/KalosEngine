@@ -5,10 +5,11 @@
  *      Author: david
  */
 
+#define GLFW_DOUBLE_PRESS 3
+
 #include "Peripherals/Window.h"
 
 #include <GLFW/glfw3.h>
-#include <Game/EventHandler.h>
 
 Window::Window (RendererBackend backend)
 {
@@ -102,31 +103,19 @@ void Window::glfwWindowResizedCallback (GLFWwindow* window, int width, int heigh
 	windowInstance->windowWidth = (uint32_t) width;
 	windowInstance->windowHeight = (uint32_t) height;
 
-	EventWindowResizeData eventData = {};
-	eventData.window = windowInstance;
-	eventData.width = (uint32_t) width;
-	eventData.height = (uint32_t) height;
-	eventData.oldWidth = windowInstance->windowWidth;
-	eventData.oldHeight = windowInstance->windowHeight;
-
-	EventHandler::instance()->triggerEvent(EVENT_WINDOW_RESIZE, eventData);
+	for (size_t i = 0; i < windowInstance->windowResizeCallbacks.size(); i++)
+		windowInstance->windowResizeCallbacks[i](windowInstance, (uint32_t)width, (uint32_t)height);
 }
 
 void Window::glfwWindowCursorMoveCallback (GLFWwindow* window, double newCursorX, double newCursorY)
 {
 	Window* windowInstance = static_cast<Window*>(glfwGetWindowUserPointer(window));
 
-	EventCursorMoveData eventData = {};
-	eventData.window = windowInstance;
-	eventData.cursorX = newCursorX;
-	eventData.cursorY = newCursorY;
-	eventData.oldCursorX = windowInstance->cursorX;
-	eventData.oldCursorY = windowInstance->cursorY;
-
 	windowInstance->cursorX = newCursorX;
 	windowInstance->cursorY = newCursorY;
 
-	EventHandler::instance()->triggerEvent(EVENT_CURSOR_MOVE, eventData);
+	for (size_t i = 0; i < windowInstance->cursorMoveCallbacks.size(); i++)
+		windowInstance->cursorMoveCallbacks[i](windowInstance, newCursorX, newCursorY);
 }
 
 void Window::glfwWindowMouseButtonCallback (GLFWwindow* window, int button, int action, int mods)
@@ -169,18 +158,13 @@ void Window::glfwWindowMouseButtonCallback (GLFWwindow* window, int button, int 
 		}
 	}
 
-	EventMouseButtonData eventData = {};
-	eventData.window = windowInstance;
-	eventData.button = button;
-	eventData.action = action;
-	eventData.mods = mods;
-
-	EventHandler::instance()->triggerEvent(EVENT_MOUSE_BUTTON, eventData);
-
 	if (doubleClick)
 	{
 		glfwWindowMouseButtonCallback(window, button, GLFW_DOUBLE_PRESS, mods);
 	}
+
+	for (size_t i = 0; i < windowInstance->mouseButtonCallbacks.size(); i++)
+		windowInstance->mouseButtonCallbacks[i](windowInstance, (WindowInputMouseButton) button, (WindowInputAction) action, (WindowInputMod) mods);
 }
 
 void Window::glfwWindowKeyCallback (GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -206,38 +190,25 @@ void Window::glfwWindowKeyCallback (GLFWwindow* window, int key, int scancode, i
 		}
 	}
 
-	EventKeyActionData eventData = {};
-	eventData.window = windowInstance;
-	eventData.key = key;
-	eventData.scancode = scancode;
-	eventData.action = action;
-	eventData.mods = mods;
-
-	EventHandler::instance()->triggerEvent(EVENT_KEY_ACTION, eventData);
+	windowInstance->keyEventStack.push_back(std::make_tuple((WindowInputKeyID) key, (WindowInputAction) action, (WindowInputMod) mods));
 }
 
 void Window::glfwWindowTextCallback(GLFWwindow *window, unsigned int codepoint, int mods)
 {
 	Window* windowInstance = static_cast<Window*>(glfwGetWindowUserPointer(window));
 
-	EventTextActionData eventData = {};
-	eventData.window = windowInstance;
-	eventData.codepoint = codepoint;
-	eventData.mods = mods;
-	
-	EventHandler::instance()->triggerEvent(EVENT_TEXT_ACTION, eventData);
+	windowInstance->textCodepointStack.push_back((uint32_t) codepoint);
+
+	for (size_t i = 0; i < windowInstance->textCallbacks.size(); i++)
+		windowInstance->textCallbacks[i](windowInstance, (uint32_t) codepoint, (WindowInputMod) mods);
 }
 
 void Window::glfwWindowMouseScrollCallback (GLFWwindow* window, double xoffset, double yoffset)
 {
 	Window* windowInstance = static_cast<Window*>(glfwGetWindowUserPointer(window));
 
-	EventMouseScrollData eventData = {};
-	eventData.window = windowInstance;
-	eventData.deltaX = xoffset;
-	eventData.deltaY = yoffset;
-
-	EventHandler::instance()->triggerEvent(EVENT_MOUSE_SCROLL, eventData);
+	for (size_t i = 0; i < windowInstance->mouseScrollCallbacks.size(); i++)
+		windowInstance->mouseScrollCallbacks[i](windowInstance, xoffset, yoffset);
 }
 
 void Window::setTitle (std::string title)
@@ -260,6 +231,9 @@ void Window::setTitle (std::string title)
 
 void Window::pollEvents ()
 {
+	textCodepointStack.clear();
+	keyEventStack.clear();
+
 	switch (windowRendererBackend)
 	{
 		case RENDERER_BACKEND_VULKAN:
@@ -327,6 +301,16 @@ bool Window::isMouseButtonPressed (int button)
 	return mouseButtonsPressed[button];
 }
 
+std::vector<uint32_t> Window::getInputCodepointStack()
+{
+	return textCodepointStack;
+}
+
+std::vector<std::tuple<WindowInputKeyID, WindowInputAction, WindowInputMod>> Window::getInputKeyEventStack()
+{
+	return keyEventStack;
+}
+
 uint32_t Window::getWidth ()
 {
 	return windowWidth;
@@ -383,4 +367,29 @@ void* Window::getWindowObjectPtr ()
 const RendererBackend &Window::getRendererBackend ()
 {
 	return windowRendererBackend;
+}
+
+void Window::addWindowResizeCallback(std::function<void(Window *, uint32_t, uint32_t)> callback)
+{
+	windowResizeCallbacks.push_back(callback);
+}
+
+void Window::addCursorMoveCallback(std::function<void(Window *, float, float)> callback)
+{
+	cursorMoveCallbacks.push_back(callback);
+}
+
+void Window::addMouseButtonCallback(std::function<void(Window *, WindowInputMouseButton, WindowInputAction, WindowInputMod)> callback)
+{
+	mouseButtonCallbacks.push_back(callback);
+}
+
+void Window::addTextCallback(std::function<void(Window *, uint32_t, WindowInputMod)> callback)
+{
+	textCallbacks.push_back(callback);
+}
+
+void Window::addMouseScrollCallback(std::function<void(Window *, float, float)> callback)
+{
+	mouseScrollCallbacks.push_back(callback);
 }

@@ -39,6 +39,8 @@ class KalosEngine
 	bool isRunning();
 	void quit();
 
+	void enterNuklearInput(Window *window, struct nk_context *ctx);
+
 	double getTime();
 
 	RendererBackend getRendererBackendType();

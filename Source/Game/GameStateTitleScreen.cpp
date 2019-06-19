@@ -121,6 +121,7 @@ void GameStateTitleScreen::handleEvents()
 void GameStateTitleScreen::update(float delta)
 {
 	nk_clear(nuklearCtx);
+	engine->enterNuklearInput(engine->mainWindow.get(), nuklearCtx);
 
 	if (nk_begin(nuklearCtx, "DebugText", nk_rect(0, 0, 1920, 1080), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND | NK_WINDOW_NO_INPUT))
 	{

@@ -294,6 +294,65 @@ RendererBackend KalosEngine::getRendererBackendType()
 	return rendererBackendType;
 }
 
+void KalosEngine::enterNuklearInput(Window *window, struct nk_context *ctx)
+{
+	nk_input_begin(ctx);
+	int cursorX = (int)window->getCursorX(), cursorY = (int)window->getCursorY();
+
+	nk_input_motion(ctx, cursorX, cursorY);
+	nk_input_button(ctx, NK_BUTTON_LEFT, cursorX, cursorY, window->isMouseButtonPressed(WINDOW_INPUT_MOUSE_BUTTON_LEFT));
+	nk_input_button(ctx, NK_BUTTON_MIDDLE, cursorX, cursorY, window->isMouseButtonPressed(WINDOW_INPUT_MOUSE_BUTTON_MIDDLE));
+	nk_input_button(ctx, NK_BUTTON_RIGHT, cursorX, cursorY, window->isMouseButtonPressed(WINDOW_INPUT_MOUSE_BUTTON_RIGHT));
+	//nk_input_button(ctx, NK_BUTTON_DOUBLE, cursorX, cursorY, window->isMouseButtonPressed(3));
+
+	nk_input_key(ctx, NK_KEY_SHIFT, window->isKeyPressed(GLFW_KEY_LEFT_SHIFT) || window->isKeyPressed(GLFW_KEY_RIGHT_SHIFT));
+	nk_input_key(ctx, NK_KEY_CTRL, window->isKeyPressed(GLFW_KEY_LEFT_CONTROL) || window->isKeyPressed(GLFW_KEY_RIGHT_CONTROL));
+
+	std::vector<uint32_t> codepointStack = window->getInputCodepointStack();
+	std::vector<std::tuple<WindowInputKeyID, WindowInputAction, WindowInputMod>> keyEventStack = window->getInputKeyEventStack();
+
+	for (size_t i = 0; i < codepointStack.size(); i++)
+		nk_input_unicode(ctx, codepointStack[i]);
+
+	for (size_t i = 0; i < keyEventStack.size(); i++)
+	{
+		WindowInputKeyID key = std::get<0>(keyEventStack[i]);
+		WindowInputAction action = std::get<1>(keyEventStack[i]);
+		WindowInputMod mods = std::get<2>(keyEventStack[i]);
+
+		switch (key)
+		{
+			case WINDOW_INPUT_KEY_DELETE:
+				nk_input_key(ctx, NK_KEY_DEL, (action == WINDOW_INPUT_ACTION_PRESS || action == WINDOW_INPUT_ACTION_REPEAT) ? 1 : 0);
+				break;
+			case WINDOW_INPUT_KEY_ENTER:
+				nk_input_key(ctx, NK_KEY_ENTER, (action == WINDOW_INPUT_ACTION_PRESS || action == WINDOW_INPUT_ACTION_REPEAT) ? 1 : 0);
+				break;
+			case WINDOW_INPUT_KEY_TAB:
+				nk_input_key(ctx, NK_KEY_TAB, (action == WINDOW_INPUT_ACTION_PRESS || action == WINDOW_INPUT_ACTION_REPEAT) ? 1 : 0);
+				break;
+			case WINDOW_INPUT_KEY_BACKSPACE:
+				nk_input_key(ctx, NK_KEY_BACKSPACE, (action == WINDOW_INPUT_ACTION_PRESS || action == WINDOW_INPUT_ACTION_REPEAT) ? 1 : 0);
+				break;
+			case WINDOW_INPUT_KEY_UP:
+				nk_input_key(ctx, NK_KEY_UP, (action == WINDOW_INPUT_ACTION_PRESS || action == WINDOW_INPUT_ACTION_REPEAT) ? 1 : 0);
+				break;
+			case WINDOW_INPUT_KEY_DOWN:
+				nk_input_key(ctx, NK_KEY_DOWN, (action == WINDOW_INPUT_ACTION_PRESS || action == WINDOW_INPUT_ACTION_REPEAT) ? 1 : 0);
+				break;
+			case WINDOW_INPUT_KEY_LEFT:
+				nk_input_key(ctx, NK_KEY_LEFT, (action == WINDOW_INPUT_ACTION_PRESS || action == WINDOW_INPUT_ACTION_REPEAT) ? 1 : 0);
+				break;
+			case WINDOW_INPUT_KEY_RIGHT:
+				nk_input_key(ctx, NK_KEY_RIGHT, (action == WINDOW_INPUT_ACTION_PRESS || action == WINDOW_INPUT_ACTION_REPEAT) ? 1 : 0);
+				break;
+
+		}
+	}
+
+	nk_input_end(ctx);
+}
+
 void KalosEngine::initColorTextures()
 {
 	whiteTexture2D = renderer->createTexture({2, 2, 1}, RESOURCE_FORMAT_R8G8B8A8_UNORM, TEXTURE_USAGE_SAMPLED_BIT | TEXTURE_USAGE_TRANSFER_DST_BIT, MEMORY_USAGE_GPU_ONLY, false);

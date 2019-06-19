@@ -22,7 +22,6 @@ Recognized launch args:
 #include <assimp/version.h>
 #include <lodepng.h>
 
-#include <Game/EventHandler.h>
 #include <Game/KalosEngine.h>
 #include <Game/GameStateTitleScreen.h>
 
@@ -77,6 +76,7 @@ int main(int argc, char *argv[])
 		file.write(reinterpret_cast<const char*>(&terrainOffsetY), sizeof(terrainOffsetY));
 
 		uint64_t zeroValue = 0;
+		std::map<sivec2, std::streampos> objectDataFilePos;
 
 		// LOOKUP TABLE
 		for (int64_t x = terrainOffsetX; x < int64_t(terrainSizeX) - terrainOffsetX; x++)
@@ -84,18 +84,96 @@ int main(int argc, char *argv[])
 			for (int64_t y = terrainOffsetY; y < int64_t(terrainSizeY) - terrainOffsetY; y++)
 			{
 				file.write(reinterpret_cast<const char*>(&zeroValue), sizeof(zeroValue));
+				objectDataFilePos[{int32_t(x), int32_t(y)}] = file.tellp();
 				file.write(reinterpret_cast<const char*>(&zeroValue), sizeof(zeroValue));
 			}
 		}
 
 		// HEIGHTMAP DATA
 
-		// OBJECT DATA
+		// STATIC OBJECT DATA
+		for (int64_t x = terrainOffsetX; x < int64_t(terrainSizeX) - terrainOffsetX; x++)
+		{
+			for (int64_t y = terrainOffsetY; y < int64_t(terrainSizeY) - terrainOffsetY; y++)
+			{
+				// Write the lookup table position
+				std::streampos currentPos = file.tellp();
+				uint64_t currentPos_u64 = uint64_t(currentPos);
+				file.seekp(objectDataFilePos[{int32_t(x), int32_t(y)}]);
+				file.write(reinterpret_cast<const char *>(&currentPos_u64), sizeof(currentPos_u64));
+				file.seekp(currentPos);
+			
+				AABB chunkAABB = {{0, 0, 0, 0}, {256.0f, 256.0f, 256.0f, 0}};
+				file.write(reinterpret_cast<const char *>(&chunkAABB), sizeof(chunkAABB));
+
+				// Generate a test octree with random shit in it
+				Octree<StaticObjectEntry> testOctree;
+				testOctree.boundingBox = chunkAABB;
+
+				std::vector<StaticObjectEntry> items;
+				for (uint32_t i = 0; i < 4096; i++)
+				{
+					StaticObjectEntry entry = {};
+					entry.objectUUID = rand();
+					entry.meshID = rand();
+					entry.materialID = rand();
+					entry.position = {(rand() / float(RAND_MAX)) * 256.0f, (rand() / float(RAND_MAX)) * 256.0f, (rand() / float(RAND_MAX)) * 256.0f};
+					entry.scale = 1.0f;
+					entry.orientation = {0, 0, 0, 1};
+					entry.boundingSphereRadius = rand() % 64;
+					entry.bitmask = 0;
+
+					items.push_back(entry);
+				}
+
+				insertItemsIntoOctree(&testOctree, items);
+
+				std::vector<Octree<StaticObjectEntry> *> octreeList;
+				std::map<Octree<StaticObjectEntry> *, uint32_t> octreeList_map;
+
+				std::function<void(Octree<StaticObjectEntry> *node)> recursiveAddOctreeToList = [&octreeList, &octreeList_map, &recursiveAddOctreeToList] (Octree<StaticObjectEntry> *node) -> void {
+					octreeList.push_back(node);
+					octreeList_map[node] = octreeList.size() - 1;
+
+					for (int child = 0; child < 8; child++)
+						if (node->children[child] != nullptr)
+							recursiveAddOctreeToList(node->children[child]);
+				};
+
+				recursiveAddOctreeToList(&testOctree);
+
+				uint32_t octreeArrayCount = octreeList.size();
+				file.write(reinterpret_cast<const char *>(&octreeArrayCount), sizeof(octreeArrayCount));
+
+				for (size_t n = 0; n < octreeList.size(); n++)
+				{
+					Octree<StaticObjectEntry> *node = octreeList[n];
+					uint32_t parentNodeIndex = node->parent == nullptr ? 0xFFFFFFFF : octreeList_map[node->parent];
+					file.write(reinterpret_cast<const char *>(&parentNodeIndex), sizeof(parentNodeIndex));
+
+					uint32_t childNodeIndex[8];
+
+					for (int child = 0; child < 8; child++)
+					{
+						childNodeIndex[child] = node->children[child] == nullptr ? 0xFFFFFFFF : octreeList_map[node->children[child]];
+						file.write(reinterpret_cast<const char *>(&childNodeIndex[child]), sizeof(childNodeIndex[0]));
+					}
+
+					file.write(reinterpret_cast<const char *>(&node->boundingBox), sizeof(node->boundingBox));
+					
+					uint32_t itemCount = node->items.size();
+					file.write(reinterpret_cast<const char *>(&itemCount), sizeof(itemCount));
+					
+					if (itemCount > 0)
+						file.write(reinterpret_cast<const char *>(node->items.data()), itemCount * sizeof(node->items[0]));
+				}
+			}
+		}
 
 		file.close();
 	}
 
-	if (false)
+	if (true)
 	{
 		launchArgs.push_back("-force_vulkan");
 		launchArgs.push_back("-enable_vulkan_layers");
@@ -126,7 +204,6 @@ int main(int argc, char *argv[])
 	Log::get()->info("Current working directory: {}", workingDir);
 
 	// Initialize the singletons
-	EventHandler::setInstance(new EventHandler());
 	FileLoader::setInstance(new FileLoader());
 	FileLoader::instance()->setWorkingDir(workingDir);
 
@@ -164,7 +241,6 @@ int main(int argc, char *argv[])
 	Log::get()->info("Beginning shutdown");
 
 	// Delete the singletons
-	delete EventHandler::instance();
 	delete FileLoader::instance();
 
 	delete engine;
