@@ -62,61 +62,12 @@ constexpr uint32_t testDataWorkerSize = 32;
 
 void jobSystemTestFunc(Job *job)
 {
-	uint32_t workerIndex = *reinterpret_cast<uint32_t*>(&job->padding[0]) * testDataWorkerSize;
-	uint32_t *data = reinterpret_cast<uint32_t*>(job->usrData);
 
-	for (uint32_t i = workerIndex; i < workerIndex + testDataWorkerSize; i++)
-	{
-		float s = std::cos(float(i));
-		float f = std::asin(float(i));
-		float t = std::atan2(float(i) * float(i), float(i));
-
-		if (s * f * t != 0.015324654f)
-			data[i] = 1;
-		else
-			data[i] = 2;
-	}
 }
 
 void JobSystem::test()
 {
-	if (sizeof(Job) != 64)
-		Log::get()->warn("The size of a Job is {} bytes and not 64!", sizeof(Job));
 
-	double accumeT = 0.0;
-	uint32_t testDataSize = 16384;
-	uint32_t testCount = 1024;
-
-	uint32_t *testData = new uint32_t[testDataSize];
-
-	for (uint32_t t = 0; t < testCount; t++)
-	{
-		memset(testData, 0, sizeof(testData));
-
-		auto sT = std::chrono::high_resolution_clock::now();
-		Job *root = allocateJob(nullptr);
-
-		for (uint32_t i = 0; i < testDataSize / testDataWorkerSize; i++)
-		{
-			Job *child = allocateJobAsChild(root, &jobSystemTestFunc);
-			child->usrData = testData;
-			memcpy(child->padding, &i, sizeof(i));
-
-			runJob(child);
-		}
-
-		runJob(root);
-		waitForJob(root, true);
-
-		auto eT = std::chrono::high_resolution_clock::now() - sT;
-		accumeT += (std::chrono::duration_cast<std::chrono::nanoseconds>(eT).count() / 1000000.0) / double(testCount);
-
-		for (uint32_t i = 0; i < testDataSize; i++)
-			if (testData[i] != 1 && testData[i] != 2)
-				Log::get()->error("Found invalid value in testData at index {}", i);
-	}
-
-	Log::get()->info("JobSystem test took {}ms", accumeT);
 }
 
 Job *JobSystem::allocateJob(void(*jobFunction) (Job*))

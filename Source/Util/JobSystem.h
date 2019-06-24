@@ -11,7 +11,7 @@
 
 class JobSystemWorker;
 
-typedef struct Job
+typedef struct alignas(64) Job
 {
 private:
 	void(*jobFunction) (Job*);
@@ -20,7 +20,6 @@ private:
 
 public:
 	void *usrData;
-	char padding[32];
 
 	friend class JobSystem;
 	friend class JobSystemWorker;
