@@ -773,6 +773,8 @@ Texture D3D12Renderer::createTexture(suvec3 extent, ResourceFormat format, Textu
 	if (!(usage & TEXTURE_USAGE_STORAGE_BIT) && !(usage & TEXTURE_USAGE_SAMPLED_BIT))
 		texDesc.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 
+	texture->usage = texDesc.Flags;
+
 	switch (multiSampleCount)
 	{
 		case 1:

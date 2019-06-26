@@ -5,7 +5,7 @@
 
 Renderer::Renderer()
 {
-	
+	maxFramesInFlight = 2;
 }
 
 Renderer::~Renderer()
@@ -73,6 +73,11 @@ Renderer* Renderer::allocateRenderer (const RendererAllocInfo& allocInfo)
 			return nullptr;
 		}
 	}
+}
+
+uint32_t Renderer::getMaxFramesInFlight()
+{
+	return maxFramesInFlight;
 }
 
 RendererCommandPool::~RendererCommandPool()

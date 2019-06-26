@@ -15,6 +15,7 @@ typedef struct
 {
 	RenderPassAttachment attachment;
 	VulkanTexture *rendererTexture;
+	std::string debugName;
 
 } VulkanRenderGraphImage;
 
@@ -35,6 +36,7 @@ typedef struct
 
 	std::vector<size_t> passIndices;
 	std::vector<VkClearValue> clearValues;
+	std::vector<std::string> framebufferTextureViews;
 
 	std::vector<VkImageMemoryBarrier> beforeRenderImageBarriers;
 	std::vector<VkBufferMemoryBarrier> beforeRenderBufferBarriers;
@@ -56,6 +58,8 @@ class VulkanRenderGraph : public RendererRenderGraph
 	Semaphore execute(bool returnWaitableSemaphore);
 
 	TextureView getRenderGraphOutputTextureView();
+
+	void resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize);
 
 	private:
 

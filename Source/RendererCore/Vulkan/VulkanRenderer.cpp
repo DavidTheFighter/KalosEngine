@@ -773,6 +773,7 @@ Texture VulkanRenderer::createTexture (suvec3 extent, ResourceFormat format, Tex
 	tex->height = extent.y;
 	tex->depth = extent.z;
 	tex->textureFormat = format;
+	tex->usage = TextureUsageFlagsToVkImageUsageFlags(usage);
 	tex->layerCount = arrayLayerCount;
 	tex->mipCount = mipLevelCount;
 

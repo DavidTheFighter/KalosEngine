@@ -7,6 +7,8 @@
 struct D3D12Texture : public RendererTexture
 {
 	ID3D12Resource *textureResource;
+	D3D12_RESOURCE_FLAGS usage;
+	D3D12_CLEAR_VALUE clearValue;
 };
 
 struct D3D12TextureView : public RendererTextureView

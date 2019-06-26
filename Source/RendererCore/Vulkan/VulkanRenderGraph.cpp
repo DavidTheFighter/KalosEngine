@@ -12,13 +12,13 @@ VulkanRenderGraph::VulkanRenderGraph(VulkanRenderer *rendererPtr)
 	enableRenderPassMerging = true;
 	enableResourceAliasing = true;
 
-	for (size_t i = 0; i < 3; i++)
+	for (size_t i = 0; i < renderer->getMaxFramesInFlight(); i++)
 		gfxCommandPools.push_back(renderer->createCommandPool(QUEUE_TYPE_GRAPHICS, COMMAND_POOL_TRANSIENT_BIT | COMMAND_POOL_RESET_COMMAND_BUFFER_BIT));
 
-	for (size_t i = 0; i < 3; i++)
+	for (size_t i = 0; i < renderer->getMaxFramesInFlight(); i++)
 		executionDoneSemaphores.push_back(renderer->createSemaphore());
 
-	for (size_t i = 0; i < 3; i++)
+	for (size_t i = 0; i < renderer->getMaxFramesInFlight(); i++)
 		gfxCommandBuffers.push_back(gfxCommandPools[i]->allocateCommandBuffer());
 }
 
@@ -100,6 +100,132 @@ Semaphore VulkanRenderGraph::execute(bool returnWaitableSemaphore)
 	execCounter++;
 
 	return returnWaitableSemaphore ? signalSems[0] : nullptr;
+}
+
+void VulkanRenderGraph::resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize)
+{
+	namedSizes[sizeName] = newSize;
+
+	std::vector<VulkanTexture*> resizedTextures;
+
+	for (size_t i = 0; i < graphTextures.size(); i++)
+	{
+		if (graphTextures[i].attachment.namedRelativeSize == sizeName)
+		{
+			VulkanRenderGraphImage &graphImage = graphTextures[i];
+
+			resizedTextures.push_back(graphImage.rendererTexture);
+
+			vmaDestroyImage(renderer->memAllocator, graphImage.rendererTexture->imageHandle, graphImage.rendererTexture->imageMemory);
+			//graphImage.rendererTexture = static_cast<VulkanTexture*>(renderer->createTexture({tempGraphImageCopy.width, tempGraphImageCopy.height, tempGraphImageCopy.depth}, tempGraphImageCopy.textureFormat, tempGraphImageCopy.usage, MEMORY_USAGE_GPU_ONLY, true, tempGraphImageCopy.mipCount, tempGraphImageCopy.layerCount, 1));
+		
+			uint32_t sizeX = graphImage.attachment.namedRelativeSize == "" ? uint32_t(graphImage.attachment.sizeX) : uint32_t(namedSizes[graphImage.attachment.namedRelativeSize].x * graphImage.attachment.sizeX);
+			uint32_t sizeY = graphImage.attachment.namedRelativeSize == "" ? uint32_t(graphImage.attachment.sizeY) : uint32_t(namedSizes[graphImage.attachment.namedRelativeSize].y * graphImage.attachment.sizeY);
+
+			VkImageCreateInfo imageCreateInfo = {};
+			imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+			imageCreateInfo.extent = {sizeX, sizeY, 1};
+			imageCreateInfo.imageType = sizeY > 1 ? VK_IMAGE_TYPE_2D : VK_IMAGE_TYPE_1D;
+			imageCreateInfo.mipLevels = graphImage.attachment.mipLevels;
+			imageCreateInfo.arrayLayers = graphImage.attachment.arrayLayers;
+			imageCreateInfo.format = ResourceFormatToVkFormat(graphImage.attachment.format);
+			imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+			imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageCreateInfo.usage = graphImage.rendererTexture->usage;
+			imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			imageCreateInfo.flags = (graphImage.attachment.arrayLayers == 6 ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0);
+
+			switch (graphImage.attachment.samples)
+			{
+				case 1:
+					imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+					break;
+				case 2:
+					imageCreateInfo.samples = VK_SAMPLE_COUNT_2_BIT;
+					break;
+				case 4:
+					imageCreateInfo.samples = VK_SAMPLE_COUNT_4_BIT;
+					break;
+				case 8:
+					imageCreateInfo.samples = VK_SAMPLE_COUNT_8_BIT;
+					break;
+				case 16:
+					imageCreateInfo.samples = VK_SAMPLE_COUNT_16_BIT;
+					break;
+				default:
+					imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+			}
+
+			VmaAllocationCreateInfo allocInfo = {};
+			allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+			allocInfo.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
+
+			VulkanTexture *vulkanTexture = graphImage.rendererTexture;
+			vulkanTexture->width = sizeX;
+			vulkanTexture->height = sizeY;
+			vulkanTexture->depth = 1;
+			vulkanTexture->textureFormat = graphImage.attachment.format;
+			vulkanTexture->usage = graphImage.rendererTexture->usage;
+			vulkanTexture->layerCount = graphImage.attachment.arrayLayers;
+			vulkanTexture->mipCount = graphImage.attachment.mipLevels;
+
+			VK_CHECK_RESULT(vmaCreateImage(renderer->memAllocator, &imageCreateInfo, &allocInfo, &vulkanTexture->imageHandle, &vulkanTexture->imageMemory, nullptr));
+
+			renderer->setObjectDebugName(vulkanTexture, OBJECT_TYPE_TEXTURE, graphImage.debugName);
+		}
+	}
+
+	for (auto textureViewIt = graphTextureViews.begin(); textureViewIt != graphTextureViews.end(); textureViewIt++)
+	{
+		auto resizedTextureIt = std::find(resizedTextures.begin(), resizedTextures.end(), static_cast<VulkanTexture*>(textureViewIt->second.textureView->parentTexture));
+
+		if (resizedTextureIt != resizedTextures.end())
+		{
+			VulkanTextureView tempTextureViewCopy = *static_cast<VulkanTextureView*>(textureViewIt->second.textureView);
+
+			renderer->destroyTextureView(textureViewIt->second.textureView);
+			textureViewIt->second.textureView = renderer->createTextureView((*resizedTextureIt), tempTextureViewCopy.viewType, {tempTextureViewCopy.baseMip, tempTextureViewCopy.mipCount, tempTextureViewCopy.baseLayer, tempTextureViewCopy.layerCount}, tempTextureViewCopy.viewFormat);
+		}
+	}
+
+	for (VulkanRenderGraphRenderPass &pass : finalRenderPasses)
+	{
+		bool foundResizedTextureView = false;
+
+		for (const std::string &textureViewName : pass.framebufferTextureViews)
+		{
+			if (graphTextureViews[textureViewName].attachment.namedRelativeSize == sizeName)
+			{
+				foundResizedTextureView = true;
+				break;
+			}
+		}
+
+		if (foundResizedTextureView)
+		{
+			vkDestroyFramebuffer(renderer->device, pass.framebufferHandle, nullptr);
+
+			std::vector<VkImageView> framebufferVkImageViews;
+
+			for (const std::string &textureViewName : pass.framebufferTextureViews)
+				framebufferVkImageViews.push_back(static_cast<VulkanTextureView *>(graphTextureViews[textureViewName].textureView)->imageView);
+
+			pass.renderArea = glm::uvec3(newSize.x, newSize.y, pass.renderArea.z);
+
+			VkFramebufferCreateInfo framebufferCreateInfo = {};
+			framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferCreateInfo.pNext = nullptr;
+			framebufferCreateInfo.flags = 0;
+			framebufferCreateInfo.renderPass = pass.renderPassHandle;
+			framebufferCreateInfo.attachmentCount = (uint32_t)framebufferVkImageViews.size();
+			framebufferCreateInfo.pAttachments = framebufferVkImageViews.data();
+			framebufferCreateInfo.width = pass.renderArea.x;
+			framebufferCreateInfo.height = pass.renderArea.y;
+			framebufferCreateInfo.layers = pass.renderArea.z;
+
+			VK_CHECK_RESULT(vkCreateFramebuffer(renderer->device, &framebufferCreateInfo, nullptr, &pass.framebufferHandle));
+		}
+	}
 }
 
 const std::string viewSelectMipPostfix = "_fg_miplvl";
@@ -253,6 +379,7 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 		vulkanTexture->height = sizeY;
 		vulkanTexture->depth = 1;
 		vulkanTexture->textureFormat = data.attachment.format;
+		vulkanTexture->usage = data.usageFlags;
 		vulkanTexture->layerCount = data.attachment.arrayLayers;
 		vulkanTexture->mipCount = data.attachment.mipLevels;
 
@@ -263,6 +390,7 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 		VulkanRenderGraphImage graphImage = {};
 		graphImage.attachment = data.attachment;
 		graphImage.rendererTexture = vulkanTexture;
+		graphImage.debugName = it->first;
 
 		graphTextures.push_back(graphImage);
 
@@ -428,7 +556,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 			std::vector<VkAttachmentDescription> passAttachments;
 			std::vector<VkSubpassDescription> passSubpasses;
 			std::vector<VkSubpassDependency> passDependencies;
-			std::vector<VkImageView> passAttachmentImageViews;
+			std::vector<std::string> passAttachmentImageViews;
 
 			std::vector<std::vector<VkAttachmentReference>> subpassAttachmentRefs(endPassStackIndex - basePassStackIndex + 1); // One vector<..> per subpass, so that the memory pointers stay valid
 			std::vector<std::vector<uint32_t>> subpassPreserveAttachments(endPassStackIndex - basePassStackIndex + 1); // One vector<..> per subpass, so that the memory pointers stay valid
@@ -464,7 +592,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 					passAttachments.push_back(attachmentDesc);
-					passAttachmentImageViews.push_back(static_cast<VulkanTextureView*>(graphTextureViews[outputAttachment.textureName].textureView)->imageView);
+					passAttachmentImageViews.push_back(outputAttachment.textureName);
 					passData.clearValues.push_back(*reinterpret_cast<const VkClearValue*>(&outputAttachment.attachmentClearValue));
 					imageViewPassAttachmentsIndex[outputAttachment.textureName] = passAttachments.size() - 1;
 					textureStates[outputAttachment.textureName].currentLayout = attachmentDesc.finalLayout;
@@ -485,7 +613,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 					attachmentDesc.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
 					passAttachments.push_back(attachmentDesc);
-					passAttachmentImageViews.push_back(static_cast<VulkanTextureView*>(graphTextureViews[outputAttachment.textureName].textureView)->imageView);
+					passAttachmentImageViews.push_back(outputAttachment.textureName);
 					passData.clearValues.push_back(*reinterpret_cast<const VkClearValue*>(&outputAttachment.attachmentClearValue));
 					imageViewPassAttachmentsIndex[outputAttachment.textureName] = passAttachments.size() - 1;
 					textureStates[outputAttachment.textureName].currentLayout = attachmentDesc.finalLayout;
@@ -522,7 +650,7 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 						attachmentDesc.finalLayout = isDepthFormat(graphTextureView.attachment.format) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 						passAttachments.push_back(attachmentDesc);
-						passAttachmentImageViews.push_back(static_cast<VulkanTextureView*>(graphTextureViews[inputAttachmentName].textureView)->imageView);
+						passAttachmentImageViews.push_back(inputAttachmentName);
 						passData.clearValues.push_back({0.0f, 0.0f, 0.0f, 0.0f});
 						imageViewPassAttachmentsIndex[inputAttachmentName] = passAttachments.size() - 1;
 						textureStates[inputAttachmentName].currentLayout = attachmentDesc.finalLayout;
@@ -671,13 +799,20 @@ void VulkanRenderGraph::finishBuild(const std::vector<size_t> &passStack)
 
 			VK_CHECK_RESULT(vkCreateRenderPass(renderer->device, &renderPassCreateInfo, nullptr, &passData.renderPassHandle));
 
+			std::vector<VkImageView> framebufferVkImageViews;
+
+			for (const std::string &textureViewName : passAttachmentImageViews)
+				framebufferVkImageViews.push_back(static_cast<VulkanTextureView *>(graphTextureViews[textureViewName].textureView)->imageView);
+			
+			passData.framebufferTextureViews = passAttachmentImageViews;
+
 			VkFramebufferCreateInfo framebufferCreateInfo = {};
 			framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 			framebufferCreateInfo.pNext = nullptr;
 			framebufferCreateInfo.flags = 0;
 			framebufferCreateInfo.renderPass = passData.renderPassHandle;
-			framebufferCreateInfo.attachmentCount = (uint32_t) passAttachmentImageViews.size();
-			framebufferCreateInfo.pAttachments = passAttachmentImageViews.data();
+			framebufferCreateInfo.attachmentCount = (uint32_t)framebufferVkImageViews.size();
+			framebufferCreateInfo.pAttachments = framebufferVkImageViews.data();
 			framebufferCreateInfo.width = passData.renderArea.x;
 			framebufferCreateInfo.height = passData.renderArea.y;
 			framebufferCreateInfo.layers = passData.renderArea.z;

@@ -14,6 +14,8 @@ typedef struct
 	RenderPassAttachment attachment;
 	D3D12Texture *rendererTexture;
 
+	std::string name;
+
 } D3D12RenderGraphTexture;
 
 typedef struct
@@ -40,11 +42,14 @@ public:
 
 	TextureView getRenderGraphOutputTextureView();
 
+	void resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize);
+
 private:
 
 	D3D12Renderer *renderer;
 
 	std::vector<D3D12RenderGraphRenderPassData> finalPasses;
+	std::vector<size_t> finalPassStack;
 	std::vector<Semaphore> executionDoneSemaphores;
 
 	std::vector<CommandPool> gfxCommandPools;
@@ -52,9 +57,10 @@ private:
 
 	void cleanupResources();
 
-	void resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize);
 	void assignPhysicalResources(const std::vector<size_t> &passStack);
 	void finishBuild(const std::vector<size_t> &passStack);
+
+	void buildBarrierLists(const std::vector<size_t> &passStack);
 
 	std::vector<D3D12RenderGraphTexture> graphTextures;
 

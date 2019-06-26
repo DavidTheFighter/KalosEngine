@@ -28,6 +28,8 @@ class RendererRenderGraph
 	glm::uvec2 getNamedSize(const std::string &sizeName);
 	const std::string &getRenderGraphOutput();
 
+	virtual void resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize) = 0;
+
 	virtual TextureView getRenderGraphOutputTextureView() = 0;
 	
 	protected:

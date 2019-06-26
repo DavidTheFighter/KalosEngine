@@ -98,6 +98,12 @@ class Renderer
 
 		static RendererBackend chooseRendererBackend (const std::vector<std::string>& launchArgs);
 		static Renderer* allocateRenderer (const RendererAllocInfo& allocInfo);
+
+		uint32_t getMaxFramesInFlight();
+
+private:
+
+	uint32_t maxFramesInFlight;
 };
 
 #endif /* RENDERING_RENDERER_H_ */

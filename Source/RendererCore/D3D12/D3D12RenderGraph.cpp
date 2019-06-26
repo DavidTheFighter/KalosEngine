@@ -17,13 +17,13 @@ D3D12RenderGraph::D3D12RenderGraph(D3D12Renderer *rendererPtr)
 
 	enableRenderPassMerging = false;
 
-	for (size_t i = 0; i < 3; i ++)
+	for (size_t i = 0; i < renderer->getMaxFramesInFlight(); i ++)
 		gfxCommandPools.push_back(renderer->createCommandPool(QUEUE_TYPE_GRAPHICS, COMMAND_POOL_TRANSIENT_BIT | COMMAND_POOL_RESET_COMMAND_BUFFER_BIT));
 
-	for (size_t i = 0; i < 3; i++)
+	for (size_t i = 0; i < renderer->getMaxFramesInFlight(); i++)
 		executionDoneSemaphores.push_back(renderer->createSemaphore());
 
-	for (size_t i = 0; i < 3; i++)
+	for (size_t i = 0; i < renderer->getMaxFramesInFlight(); i++)
 		gfxCommandBuffers.push_back(gfxCommandPools[i]->allocateCommandBuffer());
 
 	rtvDescriptorSize = renderer->device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -95,24 +95,85 @@ Semaphore D3D12RenderGraph::execute(bool returnWaitableSemaphore)
 
 void D3D12RenderGraph::resizeNamedSize(const std::string &sizeName, glm::uvec2 newSize)
 {
-	renderer->waitForDeviceIdle();
+	namedSizes[sizeName] = newSize;
 
-	cleanupResources();
+	std::vector<D3D12Texture*> resizedTextures;
 
-	namedSizes[sizeName] = glm::uvec3(newSize, 1);
+	for (D3D12RenderGraphTexture &texture : graphTextures)
+	{
+		if (texture.attachment.namedRelativeSize == sizeName)
+		{
+			resizedTextures.push_back(texture.rendererTexture);
+			texture.rendererTexture->textureResource->Release();
 
-	execCounter = 0;
+			D3D12_RESOURCE_DESC texDesc = {};
+			texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+			texDesc.Alignment = 0;
+			texDesc.Width = newSize.x;
+			texDesc.Height = newSize.y;
+			texDesc.DepthOrArraySize = texture.attachment.arrayLayers;
+			texDesc.MipLevels = texture.attachment.mipLevels;
+			texDesc.Format = ResourceFormatToDXGIFormat(texture.attachment.format);
+			texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+			texDesc.Flags = texture.rendererTexture->usage;
 
-	for (size_t i = 0; i < 3; i++)
-		gfxCommandPools.push_back(renderer->createCommandPool(QUEUE_TYPE_GRAPHICS, COMMAND_POOL_TRANSIENT_BIT | COMMAND_POOL_RESET_COMMAND_BUFFER_BIT));
+			switch (texture.attachment.samples)
+			{
+				case 1:
+					texDesc.SampleDesc = {1, 0};
+					break;
+				case 2:
+					texDesc.SampleDesc = {2, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+					break;
+				case 4:
+					texDesc.SampleDesc = {4, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+					break;
+				case 8:
+					texDesc.SampleDesc = {8, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+					break;
+				case 16:
+					texDesc.SampleDesc = {16, DXGI_STANDARD_MULTISAMPLE_QUALITY_PATTERN};
+					break;
+				default:
+					texDesc.SampleDesc = {1, 0};
+			}
 
-	for (size_t i = 0; i < 3; i++)
-		gfxCommandBuffers.push_back(gfxCommandPools[i]->allocateCommandBuffer());
+			D3D12_RESOURCE_STATES textureState = graphResourcesInitialResourceState[texture.name];
 
-	for (size_t i = 0; i < 3; i++)
-		executionDoneSemaphores.push_back(renderer->createSemaphore());
+			bool useClearValue = (texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) || (texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
-	build();
+			DX_CHECK_RESULT(renderer->device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &texDesc, textureState, useClearValue ? &texture.rendererTexture->clearValue : nullptr, IID_PPV_ARGS(&texture.rendererTexture->textureResource)));
+		}
+	}
+
+	for (D3D12RenderGraphRenderPassData &passData : finalPasses)
+	{
+		RenderGraphRenderPass &pass = *passes[passData.passIndex].get();
+
+		ID3D12DescriptorHeap *rtvHeap = graphRTVs[passData.passIndex], *dsvHeap = graphDSVs[passData.passIndex];
+
+		if (pass.getColorAttachmentOutputs().size() > 0)
+		{
+			D3D12_DESCRIPTOR_HEAP_DESC passRTVDesc = {};
+			passRTVDesc.NumDescriptors = pass.getColorAttachmentOutputs().size();
+			passRTVDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+
+			for (size_t o = 0; o < passRTVDesc.NumDescriptors; o++)
+				renderer->device->CreateRenderTargetView(static_cast<D3D12Texture *>(graphTextureViews[pass.getColorAttachmentOutputs()[o].textureName]->parentTexture)->textureResource, nullptr, {rtvHeap->GetCPUDescriptorHandleForHeapStart().ptr + rtvDescriptorSize * o});
+		}
+
+		if (pass.hasDepthStencilOutput())
+		{
+			D3D12_DESCRIPTOR_HEAP_DESC passDSVDesc = {};
+			passDSVDesc.NumDescriptors = 1;
+			passDSVDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+			passDSVDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+			renderer->device->CreateDepthStencilView(static_cast<D3D12Texture *>(graphTextureViews[pass.getDepthStencilAttachmentOutput().textureName]->parentTexture)->textureResource, nullptr, dsvHeap->GetCPUDescriptorHandleForHeapStart());
+		}
+	}
+
+	buildBarrierLists(finalPassStack);
 }
 
 void D3D12RenderGraph::cleanupResources()
@@ -315,6 +376,8 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 		graphTexture.rendererTexture->textureFormat = data.attachment.format;
 		graphTexture.rendererTexture->layerCount = data.attachment.arrayLayers;
 		graphTexture.rendererTexture->mipCount = data.attachment.mipLevels;
+		graphTexture.rendererTexture->usage = texDesc.Flags;
+		graphTexture.name = it->first;
 
 		D3D12_RESOURCE_STATES textureState = graphResourcesInitialResourceState[it->first];
 
@@ -323,6 +386,7 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 		D3D12_CLEAR_VALUE optClearValue = {};
 		optClearValue.Format = texDesc.Format;
 		memcpy(optClearValue.Color, data.clearValue.color.float32, sizeof(optClearValue.Color));
+		graphTexture.rendererTexture->clearValue = optClearValue;
 
 		DX_CHECK_RESULT(renderer->device->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), D3D12_HEAP_FLAG_NONE, &texDesc, textureState, useClearValue ? &optClearValue : nullptr, IID_PPV_ARGS(&graphTexture.rendererTexture->textureResource)));
 
@@ -479,6 +543,24 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			pass.getInitFunction()(initData);
 	}
 
+	finalPassStack = passStack;
+
+	buildBarrierLists(passStack);
+
+	RenderGraphDescriptorUpdateFunctionData descUpdateData = {};
+	descUpdateData.graphTextureViews = graphTextureViews;
+	descUpdateData.graphBuffers = graphBuffers;
+
+	for (size_t i = 0; i < finalPasses.size(); i++)
+		if (passes[finalPasses[i].passIndex]->hasDescriptorUpdateFunction())
+			passes[finalPasses[i].passIndex]->getDescriptorUpdateFunction()(descUpdateData);
+}
+
+void D3D12RenderGraph::buildBarrierLists(const std::vector<size_t> &passStack)
+{
+	if (finalPasses.size() > 0)
+		finalPasses.clear();
+
 	typedef struct
 	{
 		D3D12_RESOURCE_STATES currentState;
@@ -509,7 +591,7 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 		if (pass.hasDepthStencilOutput())
 		{
 			const RenderPassAttachment &attachment = pass.getDepthStencilAttachmentOutput().attachment;
-			
+
 			passData.sizeX = attachment.namedRelativeSize == "" ? uint32_t(attachment.sizeX) : uint32_t(namedSizes[attachment.namedRelativeSize].x * attachment.sizeX);
 			passData.sizeY = attachment.namedRelativeSize == "" ? uint32_t(attachment.sizeY) : uint32_t(namedSizes[attachment.namedRelativeSize].y * attachment.sizeY);
 		}
@@ -530,7 +612,7 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			if (inputCurrentState != inputRequiredState)
 			{
 				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
-				transitionBarrier.pResource = static_cast<D3D12Texture*>(graphTextureViews[inputName]->parentTexture)->textureResource;
+				transitionBarrier.pResource = static_cast<D3D12Texture *>(graphTextureViews[inputName]->parentTexture)->textureResource;
 				transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 				transitionBarrier.StateBefore = inputCurrentState;
 				transitionBarrier.StateAfter = inputRequiredState;
@@ -555,7 +637,7 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			if (inputCurrentState != inputRequiredState)
 			{
 				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
-				transitionBarrier.pResource = static_cast<D3D12Texture*>(graphTextureViews[inputName]->parentTexture)->textureResource;
+				transitionBarrier.pResource = static_cast<D3D12Texture *>(graphTextureViews[inputName]->parentTexture)->textureResource;
 				transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 				transitionBarrier.StateBefore = inputCurrentState;
 				transitionBarrier.StateAfter = inputRequiredState;
@@ -580,7 +662,7 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			if (inputCurrentState != inputRequiredState)
 			{
 				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
-				transitionBarrier.pResource = static_cast<D3D12Texture*>(graphTextureViews[storageTextureName]->parentTexture)->textureResource;
+				transitionBarrier.pResource = static_cast<D3D12Texture *>(graphTextureViews[storageTextureName]->parentTexture)->textureResource;
 				transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 				transitionBarrier.StateBefore = inputCurrentState;
 				transitionBarrier.StateAfter = inputRequiredState;
@@ -598,7 +680,7 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			if (outputAttachmentName == storageTextureName)
 			{
 				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
-				transitionBarrier.pResource = static_cast<D3D12Texture*>(graphTextureViews[storageTextureName]->parentTexture)->textureResource;
+				transitionBarrier.pResource = static_cast<D3D12Texture *>(graphTextureViews[storageTextureName]->parentTexture)->textureResource;
 				transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 				transitionBarrier.StateBefore = TextureLayoutToD3D12ResourceStates(pass.getStorageTextures()[st].passEndLayout);
 				transitionBarrier.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(graphTextureViews[storageTextureName]->viewFormat) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
@@ -623,7 +705,7 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			if (currentState != requiredState)
 			{
 				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
-				transitionBarrier.pResource = static_cast<D3D12Buffer*>(graphBuffers[storageBuffer.bufferName])->bufferResource;
+				transitionBarrier.pResource = static_cast<D3D12Buffer *>(graphBuffers[storageBuffer.bufferName])->bufferResource;
 				transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 				transitionBarrier.StateBefore = currentState;
 				transitionBarrier.StateAfter = requiredState;
@@ -648,7 +730,7 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			if (inputCurrentState != inputRequiredState)
 			{
 				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
-				transitionBarrier.pResource = static_cast<D3D12Texture*>(graphTextureViews[outputName]->parentTexture)->textureResource;
+				transitionBarrier.pResource = static_cast<D3D12Texture *>(graphTextureViews[outputName]->parentTexture)->textureResource;
 				transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 				transitionBarrier.StateBefore = inputCurrentState;
 				transitionBarrier.StateAfter = inputRequiredState;
@@ -666,7 +748,7 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			if (outputAttachmentName == outputName)
 			{
 				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
-				transitionBarrier.pResource = static_cast<D3D12Texture*>(graphTextureViews[outputName]->parentTexture)->textureResource;
+				transitionBarrier.pResource = static_cast<D3D12Texture *>(graphTextureViews[outputName]->parentTexture)->textureResource;
 				transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 				transitionBarrier.StateBefore = inputRequiredState;
 				transitionBarrier.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
@@ -691,7 +773,7 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			if (inputCurrentState != inputRequiredState)
 			{
 				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
-				transitionBarrier.pResource = static_cast<D3D12Texture*>(graphTextureViews[outputName]->parentTexture)->textureResource;
+				transitionBarrier.pResource = static_cast<D3D12Texture *>(graphTextureViews[outputName]->parentTexture)->textureResource;
 				transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 				transitionBarrier.StateBefore = inputCurrentState;
 				transitionBarrier.StateAfter = inputRequiredState;
@@ -709,7 +791,7 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 			if (outputAttachmentName == outputName)
 			{
 				D3D12_RESOURCE_TRANSITION_BARRIER transitionBarrier = {};
-				transitionBarrier.pResource = static_cast<D3D12Texture*>(graphTextureViews[outputName]->parentTexture)->textureResource;
+				transitionBarrier.pResource = static_cast<D3D12Texture *>(graphTextureViews[outputName]->parentTexture)->textureResource;
 				transitionBarrier.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 				transitionBarrier.StateBefore = inputRequiredState;
 				transitionBarrier.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_DEPTH_READ;
@@ -727,14 +809,6 @@ void D3D12RenderGraph::finishBuild(const std::vector<size_t>& passStack)
 
 		finalPasses.push_back(passData);
 	}
-
-	RenderGraphDescriptorUpdateFunctionData descUpdateData = {};
-	descUpdateData.graphTextureViews = graphTextureViews;
-	descUpdateData.graphBuffers = graphBuffers;
-
-	for (size_t i = 0; i < finalPasses.size(); i++)
-		if (passes[finalPasses[i].passIndex]->hasDescriptorUpdateFunction())
-			passes[finalPasses[i].passIndex]->getDescriptorUpdateFunction()(descUpdateData);
 }
 
 #endif
