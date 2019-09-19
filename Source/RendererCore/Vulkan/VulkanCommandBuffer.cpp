@@ -111,7 +111,7 @@ void VulkanCommandBuffer::resolveTexture(Texture srcTexture, Texture dstTexture,
 
 void VulkanCommandBuffer::pushConstants (uint32_t offset, uint32_t size, const void *data)
 {
-	vkCmdPushConstants(bufferHandle, static_cast<VulkanPipeline*>(context_currentBoundPipeline)->pipelineLayoutHandle, toVkShaderStageFlags(context_currentBoundPipeline->gfxPipelineInfo.inputPushConstants.stageAccessFlags), offset, size, data);
+	vkCmdPushConstants(bufferHandle, static_cast<VulkanPipeline*>(context_currentBoundPipeline)->pipelineLayoutHandle, toVkShaderStageFlags(context_currentBoundPipeline->gfxPipelineInfo.inputPushConstants.stageAccessFlags | context_currentBoundPipeline->computePipelineInfo.inputPushConstants.stageAccessFlags), offset, size, data);
 }
 
 void VulkanCommandBuffer::bindDescriptorSets (PipelineBindPoint point, uint32_t firstSet, const std::vector<DescriptorSet> &sets)

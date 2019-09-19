@@ -37,7 +37,7 @@ void D3D12CommandBuffer::beginCommands(CommandBufferUsageFlags flags)
 
 	if (cmdList == nullptr)
 	{
-		DX_CHECK_RESULT(renderer->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, parentCmdPool->cmdAlloc, nullptr, IID_PPV_ARGS(&cmdList)));
+		DX_CHECK_RESULT(renderer->device->CreateCommandList(0, cmdListType, parentCmdPool->cmdAlloc, nullptr, IID_PPV_ARGS(&cmdList)));
 	}
 	else
 	{

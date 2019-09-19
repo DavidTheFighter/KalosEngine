@@ -207,6 +207,7 @@ Pipeline VulkanPipelineHelper::createGraphicsPipeline (const GraphicsPipelineInf
 Pipeline VulkanPipelineHelper::createComputePipeline(const ComputePipelineInfo &pipelineInfo)
 {
 	VulkanPipeline *vulkanPipeline = new VulkanPipeline();
+	vulkanPipeline->computePipelineInfo = pipelineInfo;
 
 	VkComputePipelineCreateInfo pipelineCreateInfo = {};
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
