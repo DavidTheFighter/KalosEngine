@@ -11,9 +11,9 @@
 #include <RendererCore/Renderer.h>
 #include <RendererCore/Tests/RenderTestHandler.h>
 
-#include <World/WorldManager.h>
-
 class NuklearGUIRenderer;
+class WorldManager;
+class ResourceManager;
 
 class KalosEngine
 {
@@ -22,6 +22,7 @@ class KalosEngine
 	std::unique_ptr<Renderer> renderer;
 	std::unique_ptr<Window> mainWindow;
 	std::unique_ptr<WorldManager> worldManager;
+	std::unique_ptr<ResourceManager> resourceManager;
 
 	KalosEngine(const std::vector<std::string> &launchArgs, RendererBackend rendererBackendType, uint32_t engineUpdateFrequencyCap = 250);
 	virtual ~KalosEngine();
@@ -101,6 +102,8 @@ class KalosEngine
 
 	void initColorTextures();
 	void setupDebugInfoRenderGraph();
+
+	void windowResizeCallback(Window *window, uint32_t width, uint32_t height);
 
 	void debugInfoPassInit(const RenderGraphInitFunctionData &data);
 	void debugInfoPassRender(CommandBuffer cmdBuffer, const RenderGraphRenderFunctionData &data);

@@ -24,9 +24,14 @@ Recognized launch args:
 
 #include <Game/KalosEngine.h>
 #include <Game/GameStateTitleScreen.h>
+#include <Game/GameStateInWorld.h>
 
 #include <RendererCore/Renderer.h>
 #include <Resources/FileLoader.h>
+#include <Resources/ResourceImporter.h>
+
+#include <World/WorldManager.h>
+
 
 int main(int argc, char * argv[]);
 
@@ -190,7 +195,7 @@ int main(int argc, char *argv[])
 	//launchArgs.push_back("-push_constants_test");
 	//launchArgs.push_back("-cube_test");
 	//launchArgs.push_back("-compute_test");
-	//launchArgs.push_back("-msaa_test");
+	launchArgs.push_back("-msaa_test");
 
 	Log::setInstance(new Log());
 	JobSystem::setInstance(new JobSystem(16));
@@ -206,6 +211,7 @@ int main(int argc, char *argv[])
 	// Initialize the singletons
 	FileLoader::setInstance(new FileLoader());
 	FileLoader::instance()->setWorkingDir(workingDir);
+	ResourceImporter::setInstance(new ResourceImporter());
 
 	RendererBackend rendererBackend = Renderer::chooseRendererBackend(launchArgs);
 
@@ -224,8 +230,10 @@ int main(int argc, char *argv[])
 
 	KalosEngine *engine = new KalosEngine(launchArgs, rendererBackend, 60);
 	engine->worldManager->loadWorld("GameData/worlds/testworld.kew");
-
-	std::unique_ptr<GameStateTitleScreen> titleScreenState(new GameStateTitleScreen(engine));
+	engine->worldManager->setActiveWorld("testworld");
+	
+	std::unique_ptr<GameStateInWorld> inWorldState(new GameStateInWorld(engine));
+	std::unique_ptr<GameStateTitleScreen> titleScreenState(new GameStateTitleScreen(engine, inWorldState.get()));
 
 	engine->pushState(titleScreenState.get());
 
@@ -242,6 +250,7 @@ int main(int argc, char *argv[])
 
 	// Delete the singletons
 	delete FileLoader::instance();
+	delete ResourceImporter::instance();
 
 	delete engine;
 

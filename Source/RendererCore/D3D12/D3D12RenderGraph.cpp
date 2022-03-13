@@ -249,10 +249,10 @@ void D3D12RenderGraph::assignPhysicalResources(const std::vector<size_t>& passSt
 		RenderGraphRenderPass &pass = *passes[passStack[i]];
 
 		for (size_t i = 0; i < pass.getSampledTextureInputs().size(); i++)
-			graphResourcesInitialResourceState[pass.getSampledTextureInputs()[i]] = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(graphTextureViews[pass.getSampledTextureInputs()[i]]->viewFormat) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
+			graphResourcesInitialResourceState[pass.getSampledTextureInputs()[i]] = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(textureData[pass.getSampledTextureInputs()[i]].attachment.format) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
 
 		for (size_t i = 0; i < pass.getInputAttachmentInputs().size(); i++)
-			graphResourcesInitialResourceState[pass.getInputAttachmentInputs()[i]] = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(graphTextureViews[pass.getInputAttachmentInputs()[i]]->viewFormat) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
+			graphResourcesInitialResourceState[pass.getInputAttachmentInputs()[i]] = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(textureData[pass.getSampledTextureInputs()[i]].attachment.format) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
 
 		for (size_t o = 0; o < pass.getColorAttachmentOutputs().size(); o++)
 		{

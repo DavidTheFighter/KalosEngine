@@ -13,6 +13,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #define APP_NAME "Not sure yet"
 #define ENGINE_NAME "KalosEngine"
@@ -26,6 +27,8 @@
 #define ENGINE_VERSION_REVISION 0
 
 #define WORLD_CHUNK_SIZE 256
+
+#define MATERIAL_MAX_TEXTURE_COUNT 8
 
 #ifndef M_PI
 #define M_PI 3.1415926535897932384
@@ -50,6 +53,17 @@
   * Turn A into a string literal after macro-expanding it.
   */
 #define STRINGIZE(A) STRINGIZE_NX(A)
+
+struct KETHeader
+{
+	uint32_t magic; // Must be equal to "KET " or 0x2054454b
+	uint32_t format;
+	uint32_t width;
+	uint32_t height;
+	uint32_t depth;
+	uint32_t mipLevels;
+	uint32_t arrayLayers;
+};
 
 /*
 Converts a UTF8 string into a UTF16 string (std::string to std::wstring)

@@ -57,8 +57,16 @@ public:
 	void loadWorld(const std::string &file);
 	void unloadWorld(const std::string &worldUniqueName);
 
+	void setActiveWorld(const std::string &worldUniqueName);
+
+	WorldInfo *getActiveWorld();
+	WorldInfo *getLoadedWorld(const std::string &worldUniqueName);
+
 private:
 
+	std::map<std::string, WorldInfo *> loadedWorlds;
+
+	WorldInfo *activeWorld;
 };
 
 #endif /* WORLD_WORLDMANAGER_H_ */

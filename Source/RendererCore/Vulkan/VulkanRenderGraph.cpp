@@ -254,11 +254,11 @@ void VulkanRenderGraph::assignPhysicalResources(const std::vector<size_t> &passS
 	{
 		RenderGraphRenderPass &pass = *passes[passStack[i]];
 
-		//for (size_t i = 0; i < pass.getSampledTextureInputs().size(); i++)
-			//graphResourcesInitialResourceState[pass.getSampledTextureInputs()[i]] = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(graphTextureViews[pass.getSampledTextureInputs()[i]]->viewFormat) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
+		for (size_t i = 0; i < pass.getSampledTextureInputs().size(); i++)
+			textureData[pass.getSampledTextureInputs()[i]].usageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
-		//for (size_t i = 0; i < pass.getInputAttachmentInputs().size(); i++)
-			//graphResourcesInitialResourceState[pass.getInputAttachmentInputs()[i]] = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | (isDepthFormat(graphTextureViews[pass.getInputAttachmentInputs()[i]]->viewFormat) ? D3D12_RESOURCE_STATE_DEPTH_READ : D3D12_RESOURCE_STATE_COMMON);
+		for (size_t i = 0; i < pass.getInputAttachmentInputs().size(); i++)
+			textureData[pass.getInputAttachmentInputs()[i]].usageFlags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
 		for (size_t o = 0; o < pass.getColorAttachmentOutputs().size(); o++)
 		{

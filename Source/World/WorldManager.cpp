@@ -5,6 +5,8 @@
 WorldManager::WorldManager()
 {
 	DEBUG_ASSERT(sizeof(StaticObjectEntry) == 64);
+
+	activeWorld = nullptr;
 }
 
 WorldManager::~WorldManager()
@@ -39,7 +41,8 @@ void WorldManager::loadWorld(const std::string &fileName)
 	}
 
 	// WORLD INFO
-	WorldInfo worldInfo = {};
+	WorldInfo *worldInfoPtr = new WorldInfo();
+	WorldInfo &worldInfo = *worldInfoPtr;
 
 	seqreadstr(worldInfo.uniqueName, file.data(), offset);
 	seqread(&worldInfo.hasTerrain, file.data(), sizeof(worldInfo.hasTerrain), offset);
@@ -105,6 +108,31 @@ void WorldManager::loadWorld(const std::string &fileName)
 			}
 		}
 	}
+
+	loadedWorlds[worldInfo.uniqueName] = worldInfoPtr;
+}
+
+void WorldManager::setActiveWorld(const std::string &worldUniqueName)
+{
+	activeWorld = getLoadedWorld(worldUniqueName);
+}
+
+WorldInfo *WorldManager::getActiveWorld()
+{
+	return activeWorld;
+}
+
+WorldInfo *WorldManager::getLoadedWorld(const std::string &worldUniqueName)
+{
+	auto worldIt = loadedWorlds.find(worldUniqueName);
+
+	if (worldIt == loadedWorlds.end())
+	{
+		Log::get()->error("Tried getting world \"{}\" that has not been loaded yet!", worldUniqueName);
+		throw std::runtime_error("tried getting world that is not loaded");
+	}
+
+	return worldIt->second;
 }
 
 void WorldManager::unloadWorld(const std::string &worldUniqueName)

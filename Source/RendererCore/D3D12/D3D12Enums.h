@@ -105,6 +105,23 @@ inline D3D12_SRV_DIMENSION textureViewTypeToD3D12SRVDimension(TextureViewType ty
 	}
 }
 
+inline D3D12_DSV_DIMENSION textureViewTypeToD3D12DSVDimension(TextureViewType type)
+{
+	switch (type)
+	{
+		case TEXTURE_VIEW_TYPE_1D:
+			return D3D12_DSV_DIMENSION_TEXTURE1D;
+		case TEXTURE_VIEW_TYPE_2D:
+			return D3D12_DSV_DIMENSION_TEXTURE2D;
+		case TEXTURE_VIEW_TYPE_1D_ARRAY:
+			return D3D12_DSV_DIMENSION_TEXTURE1DARRAY;
+		case TEXTURE_VIEW_TYPE_2D_ARRAY:
+			return D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+		default:
+			return D3D12_DSV_DIMENSION_TEXTURE2D;
+	}
+}
+
 inline D3D12_UAV_DIMENSION textureViewTypeToD3D12UAVDimension(TextureViewType type)
 {
 	switch (type)

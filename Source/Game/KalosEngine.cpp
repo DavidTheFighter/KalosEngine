@@ -2,8 +2,6 @@
 
 #include <chrono>
 
-#include <Resources/FileLoader.h>
-
 #include <GLFW/glfw3.h>
 
 #define NK_INCLUDE_FIXED_TYPES
@@ -17,6 +15,11 @@
 #include <Renderer/NuklearGUIRenderer.h>
 
 #include <RendererCore/Tests/RenderTestHandler.h>
+
+#include <Resources/FileLoader.h>
+#include <Resources/ResourceManager.h>
+
+#include <World/WorldManager.h>
 
 KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBackend rendererBackendType, uint32_t engineUpdateFrequencyCap)
 {
@@ -39,6 +42,8 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 	renderAlloc.backend = rendererBackendType;
 	renderAlloc.launchArgs = launchArgs;
 	renderAlloc.mainWindow = mainWindow.get();
+
+	mainWindow->addWindowResizeCallback(std::bind(&KalosEngine::windowResizeCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
 	renderer = std::unique_ptr<Renderer>(Renderer::allocateRenderer(renderAlloc));
 
@@ -70,6 +75,7 @@ KalosEngine::KalosEngine(const std::vector<std::string> &launchArgs, RendererBac
 	if (doingRenderingTest)
 		renderTestHandler = std::unique_ptr<RenderTestHandler>(new RenderTestHandler(renderer.get(), mainWindow.get(), currentRenderingTest));
 
+	resourceManager = std::unique_ptr<ResourceManager>(new ResourceManager(this));
 	worldManager = std::unique_ptr<WorldManager>(new WorldManager());
 }
 
@@ -78,6 +84,7 @@ KalosEngine::~KalosEngine()
 	renderer->waitForDeviceIdle();
 
 	nuklearRenderer.reset();
+	resourceManager.reset();
 
 	nk_free(nuklearCtx);
 	delete nuklearCtx;
@@ -610,6 +617,33 @@ void KalosEngine::debugInfoPassInit(const RenderGraphInitFunctionData &data)
 
 	renderer->destroyShaderModule(vertShaderStage.shaderModule);
 	renderer->destroyShaderModule(fragShaderStage.shaderModule);
+}
+
+void KalosEngine::windowResizeCallback(Window *window, uint32_t width, uint32_t height)
+{
+	if (width == 0 || height == 0)
+		return;
+
+	renderer->waitForDeviceIdle();
+
+	if (window == mainWindow.get())
+	{
+		debugInfoRenderGraph->resizeNamedSize("swapchain", glm::uvec2(width, height));
+		renderer->setSwapchainTexture(mainWindow.get(), debugInfoRenderGraph->getRenderGraphOutputTextureView(), swapchainSampler, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	}
+
+	for (GameState *gameState : gameStates)
+		gameState->windowResizeEvent(window, width, height);
+
+	currentGameStateOutput = gameStates.back()->getOutputTexture();
+
+	RendererDescriptorWriteInfo descWrite = {};
+	descWrite.dstBinding = 1;
+	descWrite.dstArrayElement = 0;
+	descWrite.descriptorType = DESCRIPTOR_TYPE_SAMPLED_TEXTURE;
+	descWrite.textureInfo = {{currentGameStateOutput, TEXTURE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
+
+	renderer->writeDescriptorSets(debugInfoPassthroughDescriptorSet, {descWrite});
 }
 
 TextureView KalosEngine::get2DWhiteTextureView()

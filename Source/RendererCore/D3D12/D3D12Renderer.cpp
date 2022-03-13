@@ -391,7 +391,7 @@ inline D3D12_SHADER_RESOURCE_VIEW_DESC createSRVDescFromTextureView(TextureView 
 	viewDesc.Format = ResourceFormatToDXGIFormat(view->viewFormat);
 	viewDesc.ViewDimension = textureViewTypeToD3D12SRVDimension(view->viewType);
 	viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	
+
 	switch (viewDesc.ViewDimension)
 	{
 		case D3D12_SRV_DIMENSION_TEXTURE1D:
@@ -479,6 +479,63 @@ inline D3D12_SHADER_RESOURCE_VIEW_DESC createSRVDescFromTextureView(TextureView 
 			tex.MipLevels = 1;
 			tex.PlaneSlice = 0;
 			tex.ResourceMinLODClamp = 0.0f;
+
+			viewDesc.Texture2D = tex;
+		}
+	}
+
+	return viewDesc;
+}
+
+inline D3D12_DEPTH_STENCIL_VIEW_DESC createDSVDescFromTextureView(TextureView view)
+{
+	D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc = {};
+	viewDesc.Format = ResourceFormatToDXGIFormat(view->viewFormat);
+	viewDesc.ViewDimension = textureViewTypeToD3D12DSVDimension(view->viewType);
+	viewDesc.Flags = D3D12_DSV_FLAG_READ_ONLY_DEPTH;
+
+	switch (viewDesc.ViewDimension)
+	{
+		case D3D12_DSV_DIMENSION_TEXTURE1D:
+		{
+			D3D12_TEX1D_DSV tex = {};
+			tex.MipSlice = view->baseMip;
+
+			viewDesc.Texture1D = tex;
+			break;
+		}
+		case D3D12_DSV_DIMENSION_TEXTURE1DARRAY:
+		{
+			D3D12_TEX1D_ARRAY_DSV tex = {};
+			tex.MipSlice = view->baseMip;
+			tex.FirstArraySlice = view->baseLayer;
+			tex.ArraySize = view->layerCount;
+
+			viewDesc.Texture1DArray = tex;
+			break;
+		}
+		case D3D12_DSV_DIMENSION_TEXTURE2D:
+		{
+			D3D12_TEX2D_DSV tex = {};
+			tex.MipSlice = view->baseMip;
+
+			viewDesc.Texture2D = tex;
+			break;
+		}
+		case D3D12_DSV_DIMENSION_TEXTURE2DARRAY:
+		{
+			D3D12_TEX2D_ARRAY_DSV tex = {};
+			tex.MipSlice = view->baseMip;
+			tex.FirstArraySlice = view->baseLayer;
+			tex.ArraySize = view->layerCount;
+
+			viewDesc.Texture2DArray = tex;
+			break;
+		}
+		default:
+		{
+			D3D12_TEX2D_DSV tex = {};
+			tex.MipSlice = view->baseMip;
 
 			viewDesc.Texture2D = tex;
 		}
@@ -605,9 +662,18 @@ void D3D12Renderer::writeDescriptorSets(DescriptorSet dstSet, const std::vector<
 					D3D12_CPU_DESCRIPTOR_HANDLE descHandle = d3dset->srvUavCbvHeap->GetCPUDescriptorHandleForHeapStart();
 					descHandle.ptr += cbvSrvUavDescriptorSize * (d3dset->bindingHeapOffsetMap[writeInfo.dstBinding] + writeInfo.dstArrayElement + a + d3dset->srvUavCbvStartDescriptorSlot);
 
-					D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.textureInfo[a].view);
+					if (isDepthFormat(writeInfo.textureInfo[a].view->viewFormat))
+					{
+						D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc = createDSVDescFromTextureView(writeInfo.textureInfo[a].view);
 
-					device->CreateShaderResourceView(static_cast<D3D12Texture *>(writeInfo.textureInfo[a].view->parentTexture)->textureResource, &viewDesc, descHandle);
+						device->CreateDepthStencilView(static_cast<D3D12Texture*>(writeInfo.textureInfo[a].view->parentTexture)->textureResource, &viewDesc, descHandle);
+					}
+					else
+					{
+						D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = createSRVDescFromTextureView(writeInfo.textureInfo[a].view);
+
+						device->CreateShaderResourceView(static_cast<D3D12Texture*>(writeInfo.textureInfo[a].view->parentTexture)->textureResource, &viewDesc, descHandle);
+					}
 				}
 
 				break;

@@ -7,11 +7,12 @@
 
 class KalosEngine;
 class NuklearGUIRenderer;
+class GameStateInWorld;
 
 class GameStateTitleScreen : public GameState
 {
 public:
-	GameStateTitleScreen(KalosEngine *enginePtr);
+	GameStateTitleScreen(KalosEngine *enginePtr, GameStateInWorld *inWorldGameStatePtr);
 	~GameStateTitleScreen();
 
 	void pushed();
@@ -25,10 +26,12 @@ public:
 	void render();
 
 	TextureView getOutputTexture();
+	void windowResizeEvent(Window *window, uint32_t width, uint32_t height);
 
 private:
 
 	KalosEngine *engine;
+	GameStateInWorld *inWorldGameState;
 
 	std::unique_ptr<NuklearGUIRenderer> nuklearRenderer;
 

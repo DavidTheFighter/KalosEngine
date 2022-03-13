@@ -1,12 +1,15 @@
 #include "Game/GameStateTitleScreen.h"
 
 #include <Game/KalosEngine.h>
+#include <Game/GameStateInWorld.h>
 
 #include <Resources/FileLoader.h>
 
 #include <RendererCore/Renderer.h>
 
 #include <Renderer/NuklearGUIRenderer.h>
+
+#include <Peripherals/Window.h>
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -16,9 +19,10 @@
 #define NK_INCLUDE_FONT_BAKING
 #include <nuklear.h>
 
-GameStateTitleScreen::GameStateTitleScreen(KalosEngine *enginePtr)
+GameStateTitleScreen::GameStateTitleScreen(KalosEngine *enginePtr, GameStateInWorld *inWorldGameStatePtr)
 {
 	engine = enginePtr;
+	inWorldGameState = inWorldGameStatePtr;
 
 	nuklearCtx = new nk_context();
 	nk_init_default(nuklearCtx, nullptr);
@@ -123,7 +127,7 @@ void GameStateTitleScreen::update(float delta)
 	nk_clear(nuklearCtx);
 	engine->enterNuklearInput(engine->mainWindow.get(), nuklearCtx);
 
-	if (nk_begin(nuklearCtx, "DebugText", nk_rect(0, 0, 1920, 1080), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND | NK_WINDOW_NO_INPUT))
+	if (nk_begin(nuklearCtx, "DebugText", nk_rect(0, 0, engine->mainWindow->getWidth(), engine->mainWindow->getHeight()), NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND | NK_WINDOW_NO_INPUT))
 	{
 		enum
 		{
@@ -131,18 +135,13 @@ void GameStateTitleScreen::update(float delta)
 		};
 		static int op = EASY;
 		static int property = 20;
-		nk_layout_row_static(nuklearCtx, 30, 80, 1);
-		if (nk_button_label(nuklearCtx, "button"))
-			fprintf(stdout, "button pressed\n");
 
-		nk_layout_row_dynamic(nuklearCtx, 30, 2);
-		if (nk_option_label(nuklearCtx, "easy", op == EASY))
-			op = EASY;
-		if (nk_option_label(nuklearCtx, "hard", op == HARD))
-			op = HARD;
-
-		nk_layout_row_dynamic(nuklearCtx, 25, 1);
-		nk_property_int(nuklearCtx, "Compression:", 0, &property, 100, 10, 1);
+		nk_layout_row_static(nuklearCtx, 500, 80, 1);
+		nk_layout_row_dynamic(nuklearCtx, 50, 1);
+		if (nk_button_label(nuklearCtx, "Play"))
+		{
+			engine->pushState(inWorldGameState);
+		}
 	}
 	nk_end(nuklearCtx);
 }
@@ -165,4 +164,10 @@ void GameStateTitleScreen::titleScreenPassRender(CommandBuffer cmdBuffer, const 
 TextureView GameStateTitleScreen::getOutputTexture()
 {
 	return titleScreenRenderGraph->getRenderGraphOutputTextureView();
+}
+
+void GameStateTitleScreen::windowResizeEvent(Window *window, uint32_t width, uint32_t height)
+{
+	if (window == engine->mainWindow.get())
+		titleScreenRenderGraph->resizeNamedSize("swapchain", glm::uvec2(width, height));
 }
